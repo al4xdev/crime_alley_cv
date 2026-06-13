@@ -211,6 +211,21 @@ class Harvey:
         
         return self
 
+    def check_dependencies(self) -> Harvey:
+        try:
+            result = subprocess.run(
+                ["which", "at"],
+                capture_output=True,
+                text=True
+            )
+            if result.returncode != 0:
+                self.log.warning("WARNING: 'at' utility is not installed. Long-running task watchdog cron checks may fail. Please install 'at' on your system (e.g. 'sudo apt install at' or 'brew install at').")
+            else:
+                self.log.info("'at' utility is installed and available.")
+        except Exception as e:
+            self.log.warning(f"Could not verify 'at' utility presence: {e}")
+        return self
+
     def print_session_id(self) -> Harvey:
         print(self.session_id)
         return self

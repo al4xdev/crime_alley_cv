@@ -10,11 +10,11 @@ Read this runbook sequentially. You must initialize state variables, run tasks i
 To ensure reliable, safe, and consistent execution on the host machine, you must strictly adhere to the following rules:
 
 ### 1. Shell & Tooling
-- **Shell**: Use **fish** shell for running commands.
-- **Python projects**: Use `uv` with virtual environment at `.venv/`, activated via `source .venv/bin/activate.fish`.
-- **Display Server**: Use **Wayland**. When output would be shown for the user to copy, pipe it to `wl-copy` instead of using `xclip` or `xsel`.
-- **Command Output Capture**: Every shell command must capture output. Never run a command and assume it succeeded. Always append `; or report_error` to your commands, or immediately `set st $status` to capture the status.
-- **Silent Commands**: For commands with no natural output (e.g., `mv`, `mkdir`, `chmod`, `git add`), append `&& echo ok` (or `and echo ok` in fish).
+- **Shell**: Use the system's default shell (e.g., bash/sh) or the user's preferred shell, ensuring commands are compatible.
+- **Python projects**: Use `uv` with virtual environment at `.venv/`, activated via `source .venv/bin/activate` (or `activate.fish` if using fish).
+- **Display Server**: Use the available display server. If Wayland is active, pipe terminal outputs to `wl-copy` when sharing content for the user.
+- **Command Output Capture**: Every shell command must capture output. Never run a command and assume it succeeded. Always check exit codes or append appropriate error-handling checks compatible with the shell being used.
+- **Silent Commands**: For commands with no natural output (e.g., `mv`, `mkdir`, `chmod`, `git add`), verify success by appending success indicators (like `&& echo ok` or equivalent).
 
 ### 2. Long-Running Task Watchdog
 - Before starting any task expected to take >30 seconds, register it:
@@ -31,7 +31,7 @@ To ensure reliable, safe, and consistent execution on the host machine, you must
 - **Anti-Looping**: If you run the same command or hit the same error twice, **stop**. Analyze why it failed, form a new hypothesis, verify assumptions, then act. If stuck, explain what failed and ask for direction.
 - **Scope Discipline**: Do not add features, refactor, or abstract beyond the task. Report failures and skipped steps faithfully.
 - **Code Discipline**: No placeholders (`// ... rest of code`). Always write complete code. Read a file before editing it. Check linter output after every change.
-- **Language Selection**: Default to fish + Unix tools (`jq`, `awk`, `sed`, `curl`, `fd`, `rg`) for system tasks. Only use Python when libraries have no shell equivalent or logic is genuinely clearer in Python. State why in one sentence before writing Python.
+- **Language Selection**: Default to shell scripts (bash/sh/fish) + standard Unix tools (`jq`, `awk`, `sed`, `curl`, `fd`, `rg`) for system tasks. Only use Python when libraries have no shell equivalent or logic is genuinely clearer in Python. State why in one sentence before writing Python.
 - **Destructive File Ops**: Move files to `/tmp/` (or `.bak`) instead of `rm -rf`. Use plain `rm` only when the user explicitly says "delete", "rm", or "permanently remove".
 
 ---
@@ -43,9 +43,11 @@ Before executing any commands, you must enter "interactive setup mode". Ask the 
 1. **`MAX_LOOPS`**: What is the maximum number of CV refinement iterations allowed? (e.g., `3`)
 2. **`MIN_FIT_SCORE`**: What is the target minimum technical fit score (0-100) needed to accept the CV? (e.g., `80`)
 3. **`JOB_DESCRIPTION_RAW`**: Please paste the raw text of the target job description.
+4. **`DEPENDENCY_CHECK_AT`**: Verify if the `at` command-line utility is installed (e.g., run `which at` or `at -V`). If it is not found, instruct the user to install it (e.g., `sudo apt install at` on Debian/Ubuntu, `brew install at` on macOS, or equivalent) and confirm before proceeding.
 
 ### Initialization Actions:
 - Initialize **`CURRENT_LOOP`** to `0`.
+- Verify the presence of the `at` utility. If missing, block and ask the user to install it.
 - Write/update the parsed job description to [data/docs/job.md](file:///home/alex/git/my/meta_2028/data/docs/job.md) based on the **`JOB_DESCRIPTION_RAW`** input.
 
 > [!IMPORTANT]

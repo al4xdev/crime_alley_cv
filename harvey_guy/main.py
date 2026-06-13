@@ -13,6 +13,7 @@ from .harvey_guy import Harvey
 def main():
     Harvey.setup()\
         .setup_paths()\
+        .check_dependencies()\
         .ingest_documents()\
         .fetch_github_username()\
         .ingest_repositories()\
