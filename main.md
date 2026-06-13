@@ -48,7 +48,7 @@ uv run python harvey_guy/main.py
 
 **⚡ Parallel Execution Instruction for the Agent:**
 While the above command is running (which clones repositories and queries APIs), you should spin up a parallel thread or run commands concurrently to:
-1. **Parallel Task A**: Monitor the progress of repository clones inside `/tmp/karen_guard_<SESSION_ID>/repos/`.
+1. **Parallel Task A**: Monitor the progress of repository clones inside `/tmp/karen_guard_$SESSION_ID/repos/`.
 2. **Parallel Task B**: Inspect the local workspace file [data/docs/cv.md](file:///home/alex/git/my/meta_2028/data/docs/cv.md) to preemptively index the candidate's declared technologies.
 
 **Actions:**
@@ -64,13 +64,13 @@ Run the evaluator docker sandbox using the **`SESSION_ID`** from Step 1.
 
 **Command to run:**
 ```bash
-./karen_guard/run.sh <SESSION_ID>
+./karen_guard/run.sh $SESSION_ID
 ```
 
 **Actions:**
 1. Execute the command above. All diagnostic prints are routed to `stderr`. 
 2. Capture the single output line from `stdout`, which is the absolute path to the generated evaluation report: `/tmp/karen_guard_$SESSION_ID/karen_output.md`. Store this as **`KAREN_REPORT_PATH`**.
-3. Open **`KAREN_REPORT_PATH`** (or [data/evaluation.md](file:///home/alex/git/my/meta_2028/data/evaluation.md)) and extract the **`FIT_SCORE`** (parsed from the "Nota de Fit Técnico" / "Technical Fit Score" section).
+3. Open **`KAREN_REPORT_PATH`** (or [data/evaluation.md](file:///home/alex/git/my/meta_2028/data/evaluation.md)) and extract the **`FIT_SCORE`** (parsed from the "Technical Fit Score" section).
 
 ---
 
@@ -88,11 +88,12 @@ Compare your variables:
 
 ### Step 3: CV Revision (Bob Revisor)
 
-Engage Bob Revisor to modify the candidate's CV and resolve the gaps listed in the evaluation.
+Once Bob's revisor pipeline is set up, run Bob's script to rewrite the candidate's CV using Karen's report:
 
-**Planned Command to run:**
+**Command to run:**
 ```bash
-# ./bob_revisor/run.sh <SESSION_ID> <KAREN_REPORT_PATH>
+# Planned execution command:
+# ./bob_revisor/run.sh $SESSION_ID $KAREN_REPORT_PATH
 ```
 
 **Actions:**
