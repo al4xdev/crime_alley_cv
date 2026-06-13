@@ -42,6 +42,7 @@ meta_2028/
 - [ ] Create project folder structure (`docs/`, `repos/`)
 - [ ] Organize workspace mounting workflow in `/tmp/karen_guard_<timestamp>/`
 - [ ] Implement automatic generation of the evaluation report (`evaluation.md`)
+- [ ] Clean up host `/tmp/` pollution by ensuring child run logs/errors (Harvey, Karen, Bill) are saved exclusively inside the session directory `/tmp/karen_guard_$SESSION_ID/`.
 
 ### Phase 3: CV Adaptation and MCP
 - [ ] Implement CV adaptation script/CLI

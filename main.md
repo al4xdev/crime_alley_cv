@@ -63,17 +63,18 @@ While the above command is running (which clones repositories and queries APIs),
 
 ### Step 2: Skeptical Auditing (Karen Guard)
 
-Run the evaluator docker sandbox using the **`SESSION_ID`** from Step 1.
+Delegate or follow the instructions defined in [karen_guard/main.md](file:///home/alex/git/my/meta_2028/karen_guard/main.md) to execute the evaluator docker sandbox using the active **`SESSION_ID`**.
 
 **Command to run:**
 ```bash
-./karen_guard/run.sh $SESSION_ID
+./karen_guard/run.sh $SESSION_ID > /tmp/karen_guard_$SESSION_ID/karen_run.log 2> /tmp/karen_guard_$SESSION_ID/karen_run.err
 ```
 
 **Actions:**
-1. Execute the command above. All diagnostic prints are routed to `stderr`. 
-2. Capture the single output line from `stdout`, which is the absolute path to the generated evaluation report: `/tmp/karen_guard_$SESSION_ID/karen_output.md`. Store this as **`KAREN_REPORT_PATH`**.
-3. Open **`KAREN_REPORT_PATH`** (or [data/evaluation.md](file:///home/alex/git/my/meta_2028/data/evaluation.md)) and extract the **`FIT_SCORE`** (parsed from the "Technical Fit Score" section).
+1. Execute the command above to isolate output logs inside the session directory.
+2. Monitor progress by viewing `/tmp/karen_guard_$SESSION_ID/karen_run.err`.
+3. Retrieve **`KAREN_REPORT_PATH`** from the last line of `/tmp/karen_guard_$SESSION_ID/karen_run.log`.
+4. Open **`KAREN_REPORT_PATH`** (or the host copy [data/evaluation.md](file:///home/alex/git/my/meta_2028/data/evaluation.md)) and extract the **`FIT_SCORE`** (parsed from the "Technical Fit Score" section).
 
 ---
 
