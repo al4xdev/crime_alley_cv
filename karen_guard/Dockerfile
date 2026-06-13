@@ -29,9 +29,8 @@ ENV PATH="/usr/local/bin:${PATH}"
 COPY requirements.txt .
 RUN uv pip install --system --no-cache -r requirements.txt
 
-# Copia o script para os binários locais e dá permissão de execução
+COPY prompt_persona.txt /app/prompt_persona.txt
 COPY run_evaluator.sh /usr/local/bin/run_evaluator
 RUN chmod +x /usr/local/bin/run_evaluator
 
-# Pode deixar o CMD como [/bin/bash] já que o run.sh chamará a ferramenta explicitamente
 CMD ["/bin/bash"]
