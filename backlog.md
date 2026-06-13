@@ -1,55 +1,55 @@
 # Karen Guard & Job-Stack — Backlog
 
-> Único documento de planejamento do projeto.
-> O que não está implementado vive aqui.
+> Single project planning document.
+> What is not implemented lives here.
 
 ---
 
-## Arquitetura alvo (Simplificada)
+## Target Architecture (Simplified)
 
 ```
 meta_2028/
-├── docs/                        ← briefing.md, cv_base.md e retrospectivas
-├── repos/                       ← clones/cópias dos repositórios públicos
+├── docs/                        ← briefing.md, cv_base.md and retrospects
+├── repos/                       ← clones/copies of public repositories
 └── karen_guard/
-    ├── Dockerfile               ← define o ambiente isolado
-    ├── run.sh                   ← script para subir o container com volumes
-    └── evaluator.py             ← avaliador (script Python consumindo APIs de LLM)
+    ├── Dockerfile               ← defines the isolated environment
+    ├── run.sh                   ← script to run container with volumes mounted
+    └── evaluator.py             ← evaluator (Python script calling LLM APIs)
 ```
 
 ---
 
-## Fluxo simplificado (Foco Inicial)
+## Simplified Workflow (Initial Focus)
 
 ```
-1. Preparar o container Docker do Karen Guard
-2. Subir o container de forma interativa / ativa
-3. Entrar no container junto com o usuário para testar e validar autenticação
-4. Executar avaliação apontando para os repos locais montados como volume
+1. Prepare Karen Guard's Docker container
+2. Run the container interactively/actively
+3. Enter the container with the user to test and validate authentication
+4. Run evaluation targeting local repos mounted as volumes
 ```
 
 ---
 
-## Backlog de tasks
+## Task Backlog
 
-### Fase 1: Karen Guard & Ambiente Docker (Alta Prioridade)
-- [ ] Criar o `Dockerfile` inicial do Karen Guard (Python + dependências necessárias)
-- [ ] Criar o script `run.sh` para build e execução interativa (com montagem de volumes para repos e chaves)
-- [ ] Testar e validar autenticação (exploração interativa do Gemini/Claude dentro do Docker)
-- [ ] Implementar script básico de avaliação (`evaluator.py`) rodando dentro do container
+### Phase 1: Karen Guard & Docker Environment (High Priority)
+- [ ] Create initial Karen Guard `Dockerfile` (Python + necessary dependencies)
+- [ ] Create `run.sh` script for building and interactive execution (mounting volumes for repos and credentials)
+- [ ] Test and validate authentication (interactive exploration of Gemini/Claude inside Docker)
+- [ ] Implement basic evaluation script (`evaluator.py`) running inside the container
 
-### Fase 2: Estrutura do Workspace e Integração
-- [ ] Criar estrutura de pastas do projeto (`docs/`, `repos/`)
-- [ ] Organizar o fluxo de montagem do workspace em `/tmp/karen_guard_<timestamp>/`
-- [ ] Implementar a geração automática do relatório de avaliação (`evaluation.md`)
+### Phase 2: Workspace Structure and Integration
+- [ ] Create project folder structure (`docs/`, `repos/`)
+- [ ] Organize workspace mounting workflow in `/tmp/karen_guard_<timestamp>/`
+- [ ] Implement automatic generation of the evaluation report (`evaluation.md`)
 
-### Fase 3: Adaptação de CV e MCP
-- [ ] Implementar o script/CLI de adaptação de CV
-- [ ] Criar o servidor MCP de contexto para servir `docs/` ao Antigravity CLI no host
+### Phase 3: CV Adaptation and MCP
+- [ ] Implement CV adaptation script/CLI
+- [ ] Create context MCP server to serve `docs/` to Antigravity CLI on the host
 
 ---
 
-## Fora de escopo (Decidido)
+## Out of Scope (Decided)
 
-- **Anonimização de CV**: Removida do escopo para simplificação técnica e foco na isolação pura do container.
-- **LinkedIn/Browser Automation**: Apenas curadoria manual.
+- **CV Anonymization**: Removed from scope for technical simplification and pure focus on container isolation.
+- **LinkedIn/Browser Automation**: Manual curation only.
