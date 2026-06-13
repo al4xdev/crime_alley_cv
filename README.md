@@ -1,35 +1,35 @@
 # Job-Stack & Karen Guard
 
-Orquestrador e avaliador de candidaturas automatizadas baseado em uma arquitetura multi-agente Actor-Critic.
+Orchestrator and evaluator of automated job applications based on a multi-agent Actor-Critic architecture.
 
-## Arquitetura Multi-Agente (Actor-Critic Loop)
+## Multi-Agent Architecture (Actor-Critic Loop)
 
-O projeto é estruturado como um sistema de agentes autônomos que cooperam em um loop de feedback contínuo para otimizar e validar currículos:
+The project is structured as a system of autonomous agents cooperating in a continuous feedback loop to optimize and validate resumes:
 
-1. **Harvey (Orquestrador/Contexto)**: Coleta dados do candidato, clona seus repositórios públicos e monta o ambiente isolado de sessão.
-2. **Karen Guard (Avaliadora/Critic)**: Analisa o currículo do candidato contra a vaga de emprego e valida as alegações técnicas inspecionando o código real nos repositórios. É ultra-cética e gera um dossiê detalhado de inconsistências e defeitos (`evaluation.md`).
-3. **Bob Revisor (Editor/Generator)**: Consome o currículo original, a vaga de emprego e o relatório de defeitos da Karen, reescrevendo o currículo para blindá-lo contra as críticas e ajustar a senioridade real do candidato.
-
----
-
-## Glossário de Módulos
-
-* [Harvey (Orchestrator)](file:///home/alex/git/my/meta_2028/harvey_guy/README.md) - Coleta de contexto e preparação do workspace.
-* [Karen Guard (Evaluator)](file:///home/alex/git/my/meta_2028/karen_guard/Readme.md) - Validador estático cético e geração de relatório de fit técnico.
-* [Bob Revisor (Editor)](file:///home/alex/git/my/meta_2028/bob_revisor/README.md) - Revisão e otimização automatizada do CV.
+1. **Harvey (Orchestrator/Context)**: Gathers candidate data, clones their public repositories, and prepares the isolated session workspace.
+2. **Karen Guard (Evaluator/Critic)**: Analyzes the candidate's CV against the job requirements and validates technical claims by inspecting actual code in their repositories. Highly skeptical, producing a detailed report of inconsistencies and defects (`evaluation.md`).
+3. **Bob Revisor (Editor/Generator)**: Consumes the original CV, job description, and Karen's defect report, rewriting the CV to address all criticisms and align the candidate's senior profile.
 
 ---
 
-## Arquitetura de Sessão e Logs
+## Modules Glossary
 
-A cada execução do orquestrador principal (`harvey_guy/main.py`), uma nova sessão com identificador único (UUID) é gerada.
+* [Harvey (Orchestrator)](file:///home/alex/git/my/meta_2028/harvey_guy/README.md) - Context collection and workspace setup.
+* [Karen Guard (Evaluator)](file:///home/alex/git/my/meta_2028/karen_guard/Readme.md) - Skeptical static validator and technical fit reporting.
+* [Bob Revisor (Editor)](file:///home/alex/git/my/meta_2028/bob_revisor/README.md) - Automated CV review and optimization.
 
-### Diretório de Sessão
-Uma pasta dedicada para a sessão atual é criada no diretório temporário do sistema:
+---
+
+## Session and Log Architecture
+
+On each run of the main orchestrator (`harvey_guy/main.py`), a new session with a unique identifier (UUID) is generated.
+
+### Session Directory
+A dedicated folder for the current session is created in the system's temporary directory:
 `/tmp/karen_guard_<UUID>/`
 
-### Localização dos Logs
-O arquivo de log da execução atual fica armazenado diretamente dentro desta pasta de sessão:
+### Log Location
+The log file of the current run is stored directly inside this session folder:
 `/tmp/karen_guard_<UUID>/karen_guard_core.log`
 
-Os logs possuem timestamps detalhados e um contador sequencial de mensagens (`[count]`) para rastreamento preciso da execução do pipeline.
+Logs contain detailed timestamps and a sequential message counter (`[count]`) for precise tracking of the pipeline execution.
