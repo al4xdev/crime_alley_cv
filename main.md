@@ -17,6 +17,9 @@ Before executing any commands, you must enter "interactive setup mode". Ask the 
 - Initialize **`CURRENT_LOOP`** to `0`.
 - Write/update the parsed job description to [data/docs/job.md](file:///home/alex/git/my/meta_2028/data/docs/job.md) based on the **`JOB_DESCRIPTION_RAW`** input.
 
+> [!IMPORTANT]
+> **SANDBOXING RULE**: During the loop iterations, do NOT modify the local repository file `data/docs/cv.md`. All updates and edits must occur exclusively inside the session directory at `/tmp/karen_guard_$SESSION_ID/docs/cv.md`.
+
 ---
 
 ## 🔁 The Optimization Loop (Play Phase)
@@ -30,7 +33,7 @@ graph TD
     Step2 --> Check{Gatekeeper Check}
     Check -- "FIT_SCORE >= MIN_FIT_SCORE" --> End([Exit Loop - Success])
     Check -- "CURRENT_LOOP >= MAX_LOOPS" --> End
-    Check -- "Refine CV" --> Step3[Step 3: Bob - Revision]
+    Check -- "Refine CV" --> Step3[Step 3: Bob - Delegate Revision]
     Step3 --> Increment[Increment CURRENT_LOOP]
     Increment --> Step1
 ```
@@ -49,7 +52,7 @@ uv run python harvey_guy/main.py
 **⚡ Parallel Execution Instruction for the Agent:**
 While the above command is running (which clones repositories and queries APIs), you should spin up a parallel thread or run commands concurrently to:
 1. **Parallel Task A**: Monitor the progress of repository clones inside `/tmp/karen_guard_$SESSION_ID/repos/`.
-2. **Parallel Task B**: Inspect the local workspace file [data/docs/cv.md](file:///home/alex/git/my/meta_2028/data/docs/cv.md) to preemptively index the candidate's declared technologies.
+2. **Parallel Task B**: Inspect the temporary session CV file `/tmp/karen_guard_$SESSION_ID/docs/cv.md` (if already created by a previous loop run) or index the local file [data/docs/cv.md](file:///home/alex/git/my/meta_2028/data/docs/cv.md) on the first iteration to map technologies.
 
 **Actions:**
 1. Execute the main pipeline command.
@@ -78,9 +81,9 @@ Run the evaluator docker sandbox using the **`SESSION_ID`** from Step 1.
 
 Compare your variables:
 - **IF** **`FIT_SCORE`** >= **`MIN_FIT_SCORE`**:
-  - **Exit Loop**: The CV has successfully met the user's requirements. Print the final CV location: `data/docs/cv.md`.
+  - **Exit Loop**: The CV has successfully met the user's requirements. Copy the final optimized CV from `/tmp/karen_guard_$SESSION_ID/docs/cv.md` back to the local repository at [data/docs/cv.md](file:///home/alex/git/my/meta_2028/data/docs/cv.md).
 - **IF** **`CURRENT_LOOP`** >= **`MAX_LOOPS`**:
-  - **Exit Loop**: Reached maximum cycles. Print a summary of the latest evaluation and output `data/docs/cv.md` as the final draft.
+  - **Exit Loop**: Reached maximum cycles. Copy the last iteration's CV from `/tmp/karen_guard_$SESSION_ID/docs/cv.md` back to the local repository at [data/docs/cv.md](file:///home/alex/git/my/meta_2028/data/docs/cv.md) and report the final status.
 - **ELSE**:
   - Proceed to **Step 3 (Bob Revisor)**.
 
@@ -88,16 +91,11 @@ Compare your variables:
 
 ### Step 3: CV Revision (Bob Revisor)
 
-Once Bob's revisor pipeline is set up, run Bob's script to rewrite the candidate's CV using Karen's report:
-
-**Command to run:**
-```bash
-# Planned execution command:
-# ./bob_revisor/run.sh $SESSION_ID $KAREN_REPORT_PATH
-```
+Delegate the CV revision to a specialized subagent. This isolates the editing logic and prevents cluttering the main orchestrator's context.
 
 **Actions:**
-1. Run Bob's revision script. It must ingest the CV, Job Description, and **`KAREN_REPORT_PATH`**.
-2. Bob will output the optimized CV, overwriting [data/docs/cv.md](file:///home/alex/git/my/meta_2028/data/docs/cv.md) on the host.
-3. Increment **`CURRENT_LOOP`** by 1.
-4. Restart the loop from **Step 1**.
+1. Spawn a subagent (Bob Revisor) to optimize the CV.
+2. Instruct the subagent to read and execute the instructions defined in [bob_revisor/main.md](file:///home/alex/git/my/meta_2028/bob_revisor/main.md) using the active **`SESSION_ID`** and **`KAREN_REPORT_PATH`**.
+3. Wait for the subagent to complete the revision. (The subagent will modify `/tmp/karen_guard_$SESSION_ID/docs/cv.md` directly).
+4. Increment **`CURRENT_LOOP`** by 1.
+5. Restart the loop from **Step 1**.
