@@ -1,18 +1,18 @@
 # Harvey (Orchestrator)
 
-Módulo responsável pela orquestração inicial do pipeline, ingestão de dados locais e coleta de contexto do candidato.
+Module responsible for the initial orchestration of the pipeline, local data ingestion, and candidate context collection.
 
-## Funcionalidades
+## Features
 
-1. **Gestão de Sessão**: Cria o diretório de execução temporário `/tmp/karen_guard_<UUID>/` e inicia os logs detalhados do pipeline.
-2. **Ingestão de Documentos**: Copia os arquivos locais de currículo, briefing e vaga de `data/docs/` para a pasta de sessão.
-3. **Mapeamento de Repositórios**: Detecta o nome do usuário no GitHub através do repositório local e consulta a API do GitHub para obter a lista de repositórios públicos.
-4. **Clonagem e Workspace**: Efetua a clonagem assíncrona dos repositórios públicos na pasta `/tmp/karen_guard_<UUID>/repos/` para posterior análise de código.
-5. **Output de Sessão**: Imprime o ID da sessão ao final para encadeamento de scripts de shell.
+1. **Session Management**: Creates the temporary execution directory `/tmp/karen_guard_<UUID>/` and initializes detailed pipeline logging.
+2. **Document Ingestion**: Copies local resume, briefing, and job description files from `data/docs/` to the session folder.
+3. **Repository Mapping**: Detects the candidate's GitHub username from the local git configuration and queries the GitHub API to fetch public repositories.
+4. **Cloning and Workspace**: Clones the public repositories into `/tmp/karen_guard_<UUID>/repos/` for subsequent code analysis.
+5. **Session Output**: Prints the session UUID at the end to allow for shell command piping.
 
-## Execução
+## Execution
 
-O entrypoint principal do Harvey pode ser executado diretamente pelo Python:
+The main entrypoint of Harvey can be executed directly using Python:
 
 ```bash
 uv run python harvey_guy/main.py
