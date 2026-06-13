@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# User data (contains sensitive CV documents, JDs, and cloned repositories)
+data/
+
