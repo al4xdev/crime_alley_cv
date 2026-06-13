@@ -5,6 +5,37 @@ Read this runbook sequentially. You must initialize state variables, run tasks i
 
 ---
 
+## 🤖 Global Agent Execution Rules
+
+To ensure reliable, safe, and consistent execution on the host machine, you must strictly adhere to the following rules:
+
+### 1. Shell & Tooling
+- **Shell**: Use **fish** shell for running commands.
+- **Python projects**: Use `uv` with virtual environment at `.venv/`, activated via `source .venv/bin/activate.fish`.
+- **Display Server**: Use **Wayland**. When output would be shown for the user to copy, pipe it to `wl-copy` instead of using `xclip` or `xsel`.
+- **Command Output Capture**: Every shell command must capture output. Never run a command and assume it succeeded. Always append `; or report_error` to your commands, or immediately `set st $status` to capture the status.
+- **Silent Commands**: For commands with no natural output (e.g., `mv`, `mkdir`, `chmod`, `git add`), append `&& echo ok` (or `and echo ok` in fish).
+
+### 2. Long-Running Task Watchdog
+- Before starting any task expected to take >30 seconds, register it:
+  `echo (date +%s) $task_description > /tmp/agt_task_active`
+- On completion (success or failure), clear it:
+  `rm -f /tmp/agt_task_active`
+- If a sub-agent or background process is spawned, set a cron to alert if still running after 5 minutes:
+  `echo "notify-send 'AGY watchdog' 'Task may be stuck: $task_description'" | at now + 5 minutes`
+- If `/tmp/agt_task_active` already exists when starting a new task, report it immediately to the user.
+
+### 3. Execution Style & Scope Discipline
+- **Persona**: Direct, no filler. Act like a senior staff engineer.
+- **Root Cause First**: Do not patch symptoms. Check for edge cases and security risks before touching anything.
+- **Anti-Looping**: If you run the same command or hit the same error twice, **stop**. Analyze why it failed, form a new hypothesis, verify assumptions, then act. If stuck, explain what failed and ask for direction.
+- **Scope Discipline**: Do not add features, refactor, or abstract beyond the task. Report failures and skipped steps faithfully.
+- **Code Discipline**: No placeholders (`// ... rest of code`). Always write complete code. Read a file before editing it. Check linter output after every change.
+- **Language Selection**: Default to fish + Unix tools (`jq`, `awk`, `sed`, `curl`, `fd`, `rg`) for system tasks. Only use Python when libraries have no shell equivalent or logic is genuinely clearer in Python. State why in one sentence before writing Python.
+- **Destructive File Ops**: Move files to `/tmp/` (or `.bak`) instead of `rm -rf`. Use plain `rm` only when the user explicitly says "delete", "rm", or "permanently remove".
+
+---
+
 ## 🎮 Phase 0: Initialize State (Interactive Setup)
 
 Before executing any commands, you must enter "interactive setup mode". Ask the user the following questions to initialize the loop configuration variables (always reference them in **UPPERCASE**):
