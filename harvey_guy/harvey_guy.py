@@ -1,37 +1,38 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-import os
 import re
 import json
 import uuid
+import shutil
 import urllib.request
 import subprocess
 from pathlib import Path
 from .libs import Log
 
-class Core:
-    def __init__(self):
+class Harvey:
+    def __init__(self) -> None:
         if TYPE_CHECKING:
             self.root_dir: Path
             self.data_dir: Path
             self.documentation_dir: Path
             self.docs_dir: Path
-            self.repos_dir: Path 
+            self.repos_dir: Path
+            self.session_docs_dir: Path
             self.session_dir: Path 
             self.session_id: str
             self.github_username: str
             self.repos: list[dict[str, str]]
             self.log: Log
 
-      
-    def _setup(self) -> Core:
+    def _setup(self) -> Harvey:
         self._get_paths()
         self.session_id, self.session_dir, self.log = self._init_session()
+        self.session_docs_dir = self.session_dir / "docs"
         self.repos_dir = self.session_dir / "repos"
         return self
 
     @classmethod
-    def setup(cls) -> Core:
+    def setup(cls) -> Harvey:
         _instance = cls()
         return _instance._setup()
 
@@ -45,7 +46,7 @@ class Core:
         session_dir = Path("/tmp") / f"karen_guard_{session_id}"
         session_dir.mkdir(parents=True, exist_ok=True)
 
-        log = Log.config(session_dir / "karen_guard_core.log", tool="core")
+        log = Log.config(session_dir / "karen_guard_core.log", tool="harvey")
         log.info(f"Session initialized with ID: {session_id}")
         log.info(f"Session directory created: {session_dir}")
         return session_id, session_dir, log
@@ -55,11 +56,9 @@ class Core:
         self.data_dir = self.root_dir / "data"
         self.documentation_dir = self.data_dir / "documentation"
         self.docs_dir = self.data_dir / "docs"
-        self.repos_dir = self.data_dir / "repos"
-        
         self.repos = []
 
-    def setup_paths(self) -> Core:
+    def setup_paths(self) -> Harvey:
         self.data_dir.mkdir(exist_ok=True)
         self.documentation_dir.mkdir(exist_ok=True)
         self.docs_dir.mkdir(exist_ok=True)
@@ -68,7 +67,15 @@ class Core:
         self.log.info(f"Directories initialized under {self.data_dir}")
         return self
 
-    def fetch_github_username(self) -> Core:
+    def ingest_documents(self) -> Harvey:
+        self.session_docs_dir.mkdir(parents=True, exist_ok=True)
+        for item in self.docs_dir.iterdir():
+            if item.is_file():
+                shutil.copy2(item, self.session_docs_dir / item.name)
+                self.log.info(f"Ingested document {item.name} to session")
+        return self
+
+    def fetch_github_username(self) -> Harvey:
         try:
             result = subprocess.run(
                 ["git", "config", "remote.origin.url"],
@@ -107,22 +114,19 @@ class Core:
             
         return self
 
-    def fetch_user_repositories(self) -> Core:
+    def ingest_repositories(self) -> Harvey:
         if not self.github_username:
             self.log.error("No GitHub username detected. Run fetch_github_username first.")
             return self
 
         url = f"https://api.github.com/users/{self.github_username}/repos?per_page=100"
-        self.log.info(f"Fetching repositories from GitHub API: {url}")
+        self.log.info(f"Ingesting repositories from GitHub API: {url}")
         
         try:
             req = urllib.request.Request(
                 url,
-                headers={"User-Agent": "Antigravity-JobStack-Core"}
+                headers={"User-Agent": "Antigravity-JobStack-Harvey"}
             )
-            token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-            if token:
-                req.add_header("Authorization", f"token {token}")
 
             with urllib.request.urlopen(req) as response:
                 data = json.loads(response.read().decode())
@@ -134,46 +138,28 @@ class Core:
                     }
                     for repo in data
                 ]
-                self.log.info(f"Found {len(self.repos)} repositories.")
+                
+            repos_file = self.session_dir / "repos.json"
+            with open(repos_file, "w", encoding="utf-8") as f:
+                json.dump(self.repos, f, indent=4)
+                
+            self.log.info(f"Ingested {len(self.repos)} repositories nomenclature to {repos_file}")
+
+            for repo in self.repos:
+                try:
+                    clone_url = repo["clone_url"]
+                    target_path = self.repos_dir / repo["name"]
+                    if target_path.exists():
+                        shutil.rmtree(target_path)
+                    subprocess.run(
+                        ["git", "clone", clone_url, str(target_path)],
+                        capture_output=True,
+                        check=True
+                    )
+                    self.log.info(f"Cloned repository {repo['name']} to {target_path}")
+                except Exception as clone_error:
+                    self.log.error(f"Failed to clone repository {repo['name']}: {clone_error}")
         except Exception as e:
-            self.log.error(f"Failed to fetch repositories from GitHub API: {e}")
+            self.log.error(f"Failed to ingest repositories from GitHub API: {e}")
             
-        return self
-
-    def clone_repositories(self) -> Core:
-        if not self.repos:
-            self.log.warning("No repositories to clone. Run fetch_user_repositories first.")
-            return self
-
-        self.log.info(f"Starting cloning/updating process for {len(self.repos)} repositories...")
-        for repo in self.repos:
-            name = repo["name"]
-            clone_url = repo["clone_url"]
-            repo_path = self.repos_dir / name
-
-            if repo_path.exists():
-                self.log.info(f"Repo '{name}' already exists. Updating...")
-                try:
-                    subprocess.run(
-                        ["git", "pull"],
-                        cwd=repo_path,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL
-                    )
-                    self.log.info(f"  -> '{name}' updated successfully.")
-                except Exception as e:
-                    self.log.error(f"  -> Failed to update '{name}': {e}")
-            else:
-                self.log.info(f"Cloning '{name}' from {clone_url}...")
-                try:
-                    subprocess.run(
-                        ["git", "clone", clone_url, str(repo_path)],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL
-                    )
-                    self.log.info(f"  -> '{name}' cloned successfully.")
-                except Exception as e:
-                    self.log.error(f"  -> Failed to clone '{name}': {e}")
-
-        self.log.info("All repositories processed.")
         return self

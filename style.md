@@ -53,8 +53,8 @@ Code must be completely clean and free of inline comments (`#`) and docstrings (
 
 ## 5. Relative Package Imports
 Always use relative imports for modules and packages inside the same directory tree.
-* Correct: `from .core import Core`
-* Incorrect: `from core import Core`
+* Correct: `from .harvey import Harvey`
+* Incorrect: `from harvey import Harvey`
 
 ## 6. Typing and Annotations
 * Always import `from __future__ import annotations` as the first line of every Python file.

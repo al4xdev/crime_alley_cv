@@ -4,7 +4,7 @@ Orquestrador e avaliador de candidaturas automatizadas.
 
 ## Arquitetura de Sessão e Logs
 
-A cada execução do orquestrador principal (`core/main.py`), uma nova sessão com identificador único (UUID) é gerada.
+A cada execução do orquestrador principal (`harvey/main.py`), uma nova sessão com identificador único (UUID) é gerada.
 
 ### Diretório de Sessão
 Uma pasta dedicada para a sessão atual é criada no diretório temporário do sistema:
