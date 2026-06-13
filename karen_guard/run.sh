@@ -89,8 +89,12 @@ if docker run --rm -v "${SESSION_GEMINI_DIR}:/home/${HOST_USER}/.gemini" \
 fi
 
 echo "Starting Karen Guard evaluation process for session ${SESSION_ID}..."
-# Roda a IA com a sessão de arquivos e o contexto .gemini isolado e com bypass de prompts
 docker run -it --rm \
   -v "${SESSION_DIR}:/app/session" \
   -v "${SESSION_GEMINI_DIR}:/home/${HOST_USER}/.gemini" \
   karen_guard su - "${HOST_USER}" -c "run_evaluator"
+
+if [ -f "${SESSION_DIR}/evaluation.md" ]; then
+    cp "${SESSION_DIR}/evaluation.md" "${DIR}/../data/evaluation.md"
+    echo "Evaluation report copied to: data/evaluation.md"
+fi
