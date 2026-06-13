@@ -163,3 +163,7 @@ class Harvey:
             self.log.error(f"Failed to ingest repositories from GitHub API: {e}")
             
         return self
+
+    def print_session_id(self) -> Harvey:
+        print(self.session_id)
+        return self

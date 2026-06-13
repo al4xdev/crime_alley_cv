@@ -15,7 +15,8 @@ def main():
         .setup_paths()\
         .ingest_documents()\
         .fetch_github_username()\
-        .ingest_repositories()
+        .ingest_repositories()\
+        .print_session_id()
 
 if __name__ == "__main__":
     main()
