@@ -1,21 +1,21 @@
 # Karen Guard — Backlog
 
-> Funcionalidades planejadas para o ambiente de avaliação isolado.
-> Este arquivo é o planejamento específico do módulo Karen Guard.
+> Planned features for the isolated evaluation environment.
+> This file is the specific planning for the Karen Guard module.
 
 ---
 
-## Próximas entregas
+## Upcoming Deliveries
 
-### 3. evaluator.py — Avaliador Estateless
-- [ ] Desenvolver script de avaliação baseado no SDK do Gemini/Claude.
-- [ ] Carregar a persona do recrutador sênior a partir de um arquivo de prompt.
-- [ ] Ler o CV e arquivos do repositório a partir do volume montado.
-- [ ] Retornar o relatório estruturado de avaliação (`evaluation.md`).
+### 3. evaluator.py — Stateless Evaluator
+- [ ] Develop evaluation script based on the Gemini/Claude SDK.
+- [ ] Load the senior technical recruiter persona from a prompt file.
+- [ ] Read the CV and repository files from the mounted volume.
+- [ ] Return the structured evaluation report (`evaluation.md`).
 
 ---
 
-## Fora de escopo (Simplificado)
+## Out of Scope (Simplified)
 
-- **Anonimização de CV**: Removida. A avaliação será feita com o CV direto, pois a sessão limpa da API já garante o isolamento contra dados históricos.
-- **Mapeamento de credenciais locais (gcloud config mount)**: Não será feito a menos que seja estritamente necessário. Usaremos variáveis de ambiente padrão (`GEMINI_API_KEY`) para autenticação stateless da API.
+- **CV Anonymization**: Removed. Evaluation will be conducted using the direct CV, since a clean API session already guarantees isolation against historical data.
+- **Local Credentials Mapping (gcloud config mount)**: Will not be performed unless strictly necessary. We will use standard environment variables (`GEMINI_API_KEY`) for stateless API authentication.
