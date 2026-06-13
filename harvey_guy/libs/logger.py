@@ -1,24 +1,24 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Any
 import logging
 from pathlib import Path
 
-def _log_method(func):
-    def wrapper(self, msg: str, *args, **kwargs):
-        if self._logger:
+def _log_method(func: Callable[[Log, str], Log]) -> Callable[[Log, str], Log]:
+    def wrapper(self: Log, msg: str, *args: Any, **kwargs: Any) -> Log:
+        if self._logger is not None:
             self._count += 1
-            msg = f"[{self._count}] {msg}"
-        return func(self, msg, *args, **kwargs)
+            func(self, f"[{self._count}] {msg}", *args, **kwargs)
+        return self
     return wrapper
 
 class Log:
     def __init__(self):
         if TYPE_CHECKING:
-            self._logger: logging.Logger | None
+            self._logger: logging.Logger
             self._count: int
 
     @classmethod
-    def config(cls, log_file: Path, tool: str = "core") -> Log:
+    def config(cls, log_file: Path, tool: str = "harvey") -> Log:
         instance = cls()
         instance._count = 0
         
@@ -39,24 +39,20 @@ class Log:
 
     @_log_method
     def info(self, msg: str) -> Log:
-        if self._logger:
-            self._logger.info(msg)
+        self._logger.info(msg)
         return self
 
     @_log_method
     def warning(self, msg: str) -> Log:
-        if self._logger:
-            self._logger.warning(msg)
+        self._logger.warning(msg)
         return self
 
     @_log_method
     def error(self, msg: str) -> Log:
-        if self._logger:
-            self._logger.error(msg)
+        self._logger.error(msg)
         return self
 
     @_log_method
     def debug(self, msg: str) -> Log:
-        if self._logger:
-            self._logger.debug(msg)
+        self._logger.debug(msg)
         return self
