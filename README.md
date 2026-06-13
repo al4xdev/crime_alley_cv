@@ -6,8 +6,8 @@ Orchestrator and evaluator of automated job applications based on a multi-agent 
 
 The project is structured as a system of autonomous agents cooperating in a continuous feedback loop to optimize and validate resumes:
 
-1. **Harvey (Orchestrator/Context)**: Gathers candidate data, clones their public repositories, and prepares the isolated session workspace.
-2. **Karen Guard (Evaluator/Critic)**: Analyzes the candidate's CV against the job requirements and validates technical claims by inspecting actual code in their repositories. Highly skeptical, producing a detailed report of inconsistencies and defects (`evaluation.md`).
+1. **Harvey (Orchestrator/Context)**: Gathers candidate data, clones public repositories, researches the target company (saving details to `company_info.md`), and prepares the isolated session workspace including a protected `anti_karen/` folder.
+2. **Karen Guard (Evaluator/Critic)**: Analyzes the candidate's CV against the job requirements and validates technical claims by inspecting actual code in their repositories. Highly skeptical, producing a detailed report of inconsistencies and defects (`evaluation.md`). She is prohibited from reading files inside the `anti_karen/` directory.
 3. **Bob Revisor (Editor/Generator)**: Consumes the original CV, job description, and Karen's defect report, rewriting the CV to address all criticisms and align the candidate's senior profile.
 
 ---

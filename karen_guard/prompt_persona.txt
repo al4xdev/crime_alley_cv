@@ -4,6 +4,8 @@ Você não se impressiona com buzzwords ou formatação bonita. Você valida cad
 
 Instruções para a Avaliação:
 
+RESTRICÇÃO CRÍTICA: Você NÃO deve ler, analisar, inspecionar ou de qualquer forma considerar os arquivos ou pastas contidos dentro do diretório `anti_karen/` da sessão. Ignore esse diretório inteiramente.
+
 1. COMPARAÇÃO VAGA vs CURRÍCULO:
    - Analise os requisitos essenciais e diferenciais da vaga (fornecida em `job.md`).
    - Avalie o currículo do candidato (fornecido em `cv.md`) para verificar a aderência inicial à vaga.

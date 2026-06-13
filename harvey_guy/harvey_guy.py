@@ -5,6 +5,7 @@ import json
 import uuid
 import shutil
 import urllib.request
+import urllib.parse
 import subprocess
 from pathlib import Path
 from .libs import Log
@@ -162,6 +163,52 @@ class Harvey:
         except Exception as e:
             self.log.error(f"Failed to ingest repositories from GitHub API: {e}")
             
+        return self
+
+    def research_company(self) -> Harvey:
+        company_name = "Unknown"
+        job_path = self.docs_dir / "job.md"
+        if job_path.exists():
+            with open(job_path, "r", encoding="utf-8") as f:
+                first_line = f.readline().strip()
+                match = re.search(r"—\s*([A-Za-z0-9\s]+)", first_line)
+                if match:
+                    company_name = match.group(1).strip()
+
+        info_text = ""
+        try:
+            query = f"{company_name} empresa"
+            url = f"https://api.duckduckgo.com/?q={urllib.parse.quote(query)}&format=json"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req) as response:
+                res_data = json.loads(response.read().decode())
+                info_text = res_data.get("AbstractText", "")
+        except Exception as e:
+            self.log.error(f"Search failed: {e}")
+
+        if not info_text:
+            try:
+                wiki_url = f"https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch={urllib.parse.quote(company_name)}&format=json"
+                req = urllib.request.Request(wiki_url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req) as response:
+                    wiki_data = json.loads(response.read().decode())
+                    search_results = wiki_data.get("query", {}).get("search", [])
+                    if search_results:
+                        snippet = search_results[0].get("snippet", "")
+                        info_text = re.sub(r"<[^>]+>", "", snippet)
+            except Exception as e:
+                self.log.error(f"Wiki search failed: {e}")
+
+        info_file = self.session_dir / "company_info.md"
+        with open(info_file, "w", encoding="utf-8") as f:
+            f.write(f"# Company Information: {company_name}\n\n")
+            f.write(f"{info_text}\n")
+        self.log.info(f"Company information saved to {info_file}")
+
+        anti_karen_dir = self.session_dir / "anti_karen"
+        anti_karen_dir.mkdir(exist_ok=True)
+        self.log.info(f"Directory {anti_karen_dir} created successfully")
+        
         return self
 
     def print_session_id(self) -> Harvey:

@@ -15,7 +15,7 @@ The pipeline executes three main agents in sequence:
 
 ### Step 1: Run the Orchestrator (Harvey)
 
-Execute Harvey's main entrypoint. This sets up the directory layout, copies local documents, clones public repositories to the session folder, and outputs the unique session UUID.
+Execute Harvey's main entrypoint. This sets up the directory layout, copies local documents, clones public repositories to the session folder, researches target company details (saving them to `company_info.md`), creates a protected `anti_karen/` directory, and outputs the unique session UUID.
 
 **Command to run:**
 ```bash
@@ -26,6 +26,7 @@ uv run python harvey_guy/main.py
 1. Execute the command above.
 2. Capture the standard output (`stdout`), which is a single line containing the session UUID (e.g., `0e4a5edd-140d-4ba1-9378-3bc4c5791507`).
 3. Store this UUID as `SESSION_ID`. The session directory on the host will be `/tmp/karen_guard_$SESSION_ID/`.
+4. Verify that `/tmp/karen_guard_$SESSION_ID/company_info.md` and the `/tmp/karen_guard_$SESSION_ID/anti_karen/` folder are created.
 
 ---
 
