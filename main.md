@@ -1,61 +1,102 @@
-# Execution Runbook
+# Execution Runbook: Actor-Critic CV Optimization Loop
 
-This document defines the step-by-step execution plan for running the Job-Stack & Karen Guard multi-agent pipeline. Any clean-slate agent can read this runbook to orchestrate the entire process on the user's system.
-
-## Pipeline Overview
-
-The pipeline executes three main agents in sequence:
-1. **Harvey (Orchestrator)**: Gathers data and maps repositories.
-2. **Karen Guard (Evaluator/Critic)**: Analyzes CV against the job description and repository code quality, generating a defect report.
-3. **Bob Revisor (Editor/Generator)**: Revises the candidate's CV based on Karen's defect report.
+Welcome, Agent! You are entering a multi-agent loop designed to refine a candidate's CV against a job description. 
+Read this runbook sequentially. You must initialize state variables, run tasks in parallel where instructed, and execute the feedback loop until the acceptance criteria are met.
 
 ---
 
-## Step-by-Step Execution Plan
+## 🎮 Phase 0: Initialize State (Interactive Setup)
 
-### Step 1: Run the Orchestrator (Harvey)
+Before executing any commands, you must enter "interactive setup mode". Ask the user the following questions to initialize the loop configuration variables (always reference them in **UPPERCASE**):
 
-Execute Harvey's main entrypoint. This sets up the directory layout, copies local documents, clones public repositories to the session folder, researches target company details (saving them to `company_info.md`), creates a protected `anti_karen/` directory, and outputs the unique session UUID.
+1. **`MAX_LOOPS`**: What is the maximum number of CV refinement iterations allowed? (e.g., `3`)
+2. **`MIN_FIT_SCORE`**: What is the target minimum technical fit score (0-100) needed to accept the CV? (e.g., `80`)
+3. **`JOB_DESCRIPTION_RAW`**: Please paste the raw text of the target job description.
+
+### Initialization Actions:
+- Initialize **`CURRENT_LOOP`** to `0`.
+- Write/update the parsed job description to [data/docs/job.md](file:///home/alex/git/my/meta_2028/data/docs/job.md) based on the **`JOB_DESCRIPTION_RAW`** input.
+
+---
+
+## 🔁 The Optimization Loop (Play Phase)
+
+Execute the following steps inside a loop. The loop continues while **`CURRENT_LOOP`** < **`MAX_LOOPS`** AND the latest **`FIT_SCORE`** < **`MIN_FIT_SCORE`**.
+
+```mermaid
+graph TD
+    Start([Start Loop]) --> Step1[Step 1: Harvey - Parallel Ingestion]
+    Step1 --> Step2[Step 2: Karen - Skeptical Audit]
+    Step2 --> Check{Gatekeeper Check}
+    Check -- "FIT_SCORE >= MIN_FIT_SCORE" --> End([Exit Loop - Success])
+    Check -- "CURRENT_LOOP >= MAX_LOOPS" --> End
+    Check -- "Refine CV" --> Step3[Step 3: Bob - Revision]
+    Step3 --> Increment[Increment CURRENT_LOOP]
+    Increment --> Step1
+```
+
+---
+
+### Step 1: Parallel Context Preparation (Harvey)
+
+Execute Harvey's main entrypoint to setup the directory layout, ingest docs, clone repositories, and research the target company.
 
 **Command to run:**
 ```bash
 uv run python harvey_guy/main.py
 ```
 
-**Action for the Agent:**
-1. Execute the command above.
-2. Capture the standard output (`stdout`), which is a single line containing the session UUID (e.g., `0e4a5edd-140d-4ba1-9378-3bc4c5791507`).
-3. Store this UUID as `SESSION_ID`. The session directory on the host will be `/tmp/karen_guard_$SESSION_ID/`.
-4. Verify that `/tmp/karen_guard_$SESSION_ID/company_info.md` and the `/tmp/karen_guard_$SESSION_ID/anti_karen/` folder are created.
+**⚡ Parallel Execution Instruction for the Agent:**
+While the above command is running (which clones repositories and queries APIs), you should spin up a parallel thread or run commands concurrently to:
+1. **Parallel Task A**: Monitor the progress of repository clones inside `/tmp/karen_guard_<SESSION_ID>/repos/`.
+2. **Parallel Task B**: Inspect the local workspace file [data/docs/cv.md](file:///home/alex/git/my/meta_2028/data/docs/cv.md) to preemptively index the candidate's declared technologies.
+
+**Actions:**
+1. Execute the main pipeline command.
+2. Capture the `stdout` session UUID, and store it as **`SESSION_ID`**.
+3. Verify that `/tmp/karen_guard_$SESSION_ID/company_info.md` and the protected folder `/tmp/karen_guard_$SESSION_ID/anti_karen/` are created successfully.
 
 ---
 
-### Step 2: Run the Evaluator (Karen Guard)
+### Step 2: Skeptical Auditing (Karen Guard)
 
-Run the evaluation environment. This boots the Docker container, starts `agy` inside the sandbox to analyze the CV and cloned repositories, and generates a critical review.
+Run the evaluator docker sandbox using the **`SESSION_ID`** from Step 1.
 
 **Command to run:**
 ```bash
 ./karen_guard/run.sh <SESSION_ID>
 ```
-*(Replace `<SESSION_ID>` with the UUID captured in Step 1).*
 
-**Action for the Agent:**
-1. Execute the command above.
-2. This runs interactively. Once complete, `run.sh` will print the absolute path of the generated evaluation report on `stdout` (e.g., `/tmp/karen_guard_<SESSION_ID>/karen_output.md`).
-3. Capture this path as `KAREN_REPORT_PATH`. A copy of the report is also saved locally at `data/evaluation.md`.
+**Actions:**
+1. Execute the command above. All diagnostic prints are routed to `stderr`. 
+2. Capture the single output line from `stdout`, which is the absolute path to the generated evaluation report: `/tmp/karen_guard_$SESSION_ID/karen_output.md`. Store this as **`KAREN_REPORT_PATH`**.
+3. Open **`KAREN_REPORT_PATH`** (or [data/evaluation.md](file:///home/alex/git/my/meta_2028/data/evaluation.md)) and extract the **`FIT_SCORE`** (parsed from the "Nota de Fit Técnico" / "Technical Fit Score" section).
 
 ---
 
-### Step 3: Run the CV Editor (Bob Revisor)
+### 🛑 The Gatekeeper (Evaluation & Termination Check)
 
-*Note: This step is under planning and will be updated as Bob's entrypoint is implemented.*
+Compare your variables:
+- **IF** **`FIT_SCORE`** >= **`MIN_FIT_SCORE`**:
+  - **Exit Loop**: The CV has successfully met the user's requirements. Print the final CV location: `data/docs/cv.md`.
+- **IF** **`CURRENT_LOOP`** >= **`MAX_LOOPS`**:
+  - **Exit Loop**: Reached maximum cycles. Print a summary of the latest evaluation and output `data/docs/cv.md` as the final draft.
+- **ELSE**:
+  - Proceed to **Step 3 (Bob Revisor)**.
 
-Once Bob's revisor pipeline is set up, run Bob's script to rewrite the candidate's CV using Karen's report:
+---
 
-**Command to run:**
+### Step 3: CV Revision (Bob Revisor)
+
+Engage Bob Revisor to modify the candidate's CV and resolve the gaps listed in the evaluation.
+
+**Planned Command to run:**
 ```bash
-# Planned execution command:
 # ./bob_revisor/run.sh <SESSION_ID> <KAREN_REPORT_PATH>
 ```
-This will produce the final polished CV inside the `data/` directory.
+
+**Actions:**
+1. Run Bob's revision script. It must ingest the CV, Job Description, and **`KAREN_REPORT_PATH`**.
+2. Bob will output the optimized CV, overwriting [data/docs/cv.md](file:///home/alex/git/my/meta_2028/data/docs/cv.md) on the host.
+3. Increment **`CURRENT_LOOP`** by 1.
+4. Restart the loop from **Step 1**.
