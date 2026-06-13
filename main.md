@@ -33,7 +33,7 @@ graph TD
     Step2 --> Check{Gatekeeper Check}
     Check -- "FIT_SCORE >= MIN_FIT_SCORE" --> End([Exit Loop - Success])
     Check -- "CURRENT_LOOP >= MAX_LOOPS" --> End
-    Check -- "Refine CV" --> Step3[Step 3: Bob - Delegate Revision]
+    Check -- "Refine CV" --> Step3[Step 3: Bill - Delegate Revision]
     Step3 --> Increment[Increment CURRENT_LOOP]
     Increment --> Step1
 ```
@@ -85,17 +85,17 @@ Compare your variables:
 - **IF** **`CURRENT_LOOP`** >= **`MAX_LOOPS`**:
   - **Exit Loop**: Reached maximum cycles. Copy the last iteration's CV from `/tmp/karen_guard_$SESSION_ID/docs/cv.md` back to the local repository at [data/docs/cv.md](file:///home/alex/git/my/meta_2028/data/docs/cv.md) and report the final status.
 - **ELSE**:
-  - Proceed to **Step 3 (Bob Revisor)**.
+  - Proceed to **Step 3 (Bill)**.
 
 ---
 
-### Step 3: CV Revision (Bob Revisor)
+### Step 3: CV Revision (Bill)
 
 Delegate the CV revision to a specialized subagent. This isolates the editing logic and prevents cluttering the main orchestrator's context.
 
 **Actions:**
-1. Spawn a subagent (Bob Revisor) to optimize the CV.
-2. Instruct the subagent to read and execute the instructions defined in [bob_revisor/main.md](file:///home/alex/git/my/meta_2028/bob_revisor/main.md) using the active **`SESSION_ID`** and **`KAREN_REPORT_PATH`**.
+1. Spawn a subagent (Bill) to optimize the CV.
+2. Instruct the subagent to read and execute the instructions defined in [billf/main.md](file:///home/alex/git/my/meta_2028/billf/main.md) using the active **`SESSION_ID`** and **`KAREN_REPORT_PATH`**.
 3. Wait for the subagent to complete the revision. (The subagent will modify `/tmp/karen_guard_$SESSION_ID/docs/cv.md` directly).
 4. Increment **`CURRENT_LOOP`** by 1.
 5. Restart the loop from **Step 1**.

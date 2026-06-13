@@ -8,7 +8,7 @@ The project is structured as a system of autonomous agents cooperating in a cont
 
 1. **Harvey (Orchestrator/Context)**: Gathers candidate data, clones public repositories, researches the target company (saving details to `company_info.md`), and prepares the isolated session workspace including a protected `anti_karen/` folder.
 2. **Karen Guard (Evaluator/Critic)**: Analyzes the candidate's CV against the job requirements and validates technical claims by inspecting actual code in their repositories. Highly skeptical, producing a detailed report of inconsistencies and defects (`evaluation.md`). She is prohibited from reading files inside the `anti_karen/` directory.
-3. **Bob Revisor (Editor/Generator)**: Consumes the original CV, job description, and Karen's defect report, rewriting the CV to address all criticisms and align the candidate's senior profile.
+3. **Bill (Editor/Generator)**: Referenced as the original writer/co-creator of Batman (who was the true creative force, abbreviated `billf`), this agent consumes the original CV, job description, and Karen's defect report, rewriting the CV to address all criticisms and align the candidate's senior profile.
 
 ---
 
@@ -16,7 +16,7 @@ The project is structured as a system of autonomous agents cooperating in a cont
 
 * [Harvey (Orchestrator)](file:///home/alex/git/my/meta_2028/harvey_guy/README.md) - Context collection and workspace setup.
 * [Karen Guard (Evaluator)](file:///home/alex/git/my/meta_2028/karen_guard/Readme.md) - Skeptical static validator and technical fit reporting.
-* [Bob Revisor (Editor)](file:///home/alex/git/my/meta_2028/bob_revisor/README.md) - Automated CV review and optimization.
+* [Bill (Editor)](file:///home/alex/git/my/meta_2028/billf/README.md) - Automated CV review and optimization.
 
 ---
 
