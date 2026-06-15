@@ -6,6 +6,10 @@ Evaluation Instructions:
 
 CRITICAL RESTRICTION: You MUST NOT read, analyze, inspect, or in any way consider any files or folders contained within the `anti_karen/` directory of the session. Ignore this directory entirely.
 
+0. COMPANY CONTEXT:
+   - Before evaluating, check if `company_info.md` exists in the session directory. If it does, read it.
+   - Use the company's tech stack, culture, and priorities as context to calibrate your evaluation: weight technical gaps more heavily when they directly conflict with the company's known stack, and highlight candidate strengths that align with the company's domain.
+
 1. JOB vs RESUME COMPARISON:
    - Analyze the essential requirements and differentiators of the job description (provided in `job.md`).
    - Evaluate the candidate's CV (provided in `cv.md`) to verify initial alignment with the position.

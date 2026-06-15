@@ -109,7 +109,7 @@ Before executing any commands, you must enter "interactive setup mode". Ask the 
 
 ### Initialization Actions:
 - Initialize **`CURRENT_LOOP`** to `0`.
-- Export the environment variable `KAREN_READS_BACKGROUND` based on the user's input (set to `"yes"` or `"no"`), so that the orchestrator uses this choice during ingestion.
+- Store `KAREN_READS_BACKGROUND` as an in-context variable (`"yes"` or `"no"`). It will be injected as an environment variable prefix when calling the Harvey Python script (see Step 1).
 - Write/update `data/docs/job.md` with the following **required format** (so subagents can reliably parse the company name from the first line):
   ```
   # <Position Title> — <Company Name>
@@ -119,7 +119,10 @@ Before executing any commands, you must enter "interactive setup mode". Ask the 
   Example first line: `# Senior Backend Engineer — Acme Corp`
 
 > [!IMPORTANT]
-> **SANDBOXING RULE**: During the loop iterations, do NOT modify the local repository file [data/docs/cv.md](../data/docs/cv.md). All updates and edits must occur exclusively inside the session directory at `/tmp/karen_guard_$SESSION_ID/docs/cv.md`.
+> **SANDBOXING RULE**: During the loop, there are exactly two authorized modifications to `data/docs/cv.md`:
+> 1. **Inter-iteration carry-forward** (Step 3, Action 4): the orchestrator copies the revised CV from the previous session to feed it into the next iteration.
+> 2. **Final exit copy** (Gatekeeper exit): the final optimized CV is copied back to the repo.
+> All other edits to `data/docs/cv.md` are prohibited. Every in-progress revision lives exclusively in `SESSION_DIR/docs/cv.md`.
 
 ---
 
@@ -135,17 +138,21 @@ Execute the Python setup wrapper to initialize the workspace directory and copy 
 
 **Command to run (Orchestration Setup):**
 ```bash
-uv run python harvey_guy/main.py
+KAREN_READS_BACKGROUND=$KAREN_READS_BACKGROUND uv run python harvey_guy/main.py
 ```
+Substitute `$KAREN_READS_BACKGROUND` with the value collected in Phase 1 (`yes` or `no`).
 
 **Actions:**
-1. Execute the setup command above.
-2. Capture the `stdout` session UUID, and store it as **`SESSION_ID`**. Derive **`SESSION_DIR`** as `/tmp/karen_guard_$SESSION_ID/` — use this exact formula everywhere. At this point `job.md` and `cv.md` have already been copied to `SESSION_DIR/docs/` by the Python script.
-3. Spawn a specialized subagent with the role `Harvey Shadow`.
-4. Instruct the subagent to read and execute the instructions defined in **[shadow.md](shadow.md)** using the active **`SESSION_ID`** and **`SESSION_DIR`** (`/tmp/karen_guard_$SESSION_ID/`).
-5. **⚡ Concurrent Task while Subagent runs:** Inspect the temporary session CV file `/tmp/karen_guard_$SESSION_ID/docs/cv.md` (if already created by a previous loop run) or index the local file [data/docs/cv.md](../data/docs/cv.md) on the first iteration to map technologies.
+1. Write the loop state checkpoint **before** running the command:
+   ```bash
+   echo '{"current_loop": '$CURRENT_LOOP', "fit_score": '$FIT_SCORE_OR_NULL', "session_id": "previous_or_null"}' > /tmp/karen_guard_loop_state.json
+   ```
+2. Execute the setup command above.
+3. Capture the `stdout` session UUID, and store it as **`SESSION_ID`**. Derive **`SESSION_DIR`** as `/tmp/karen_guard_$SESSION_ID/` — use this exact formula everywhere. Update the checkpoint with the new `session_id`.
+4. Spawn a specialized subagent with the role `Harvey Shadow`.
+5. Instruct the subagent to read and execute the instructions defined in **[shadow.md](shadow.md)** using the active **`SESSION_ID`** and **`SESSION_DIR`** (`/tmp/karen_guard_$SESSION_ID/`).
 6. Wait for the `Harvey Shadow` subagent to complete all execution tasks.
-7. Verify that `/tmp/karen_guard_$SESSION_ID/company_info.md` and the cloned repos in `/tmp/karen_guard_$SESSION_ID/repos/` are created and populated successfully before proceeding.
+7. Verify that `/tmp/karen_guard_$SESSION_ID/company_info.md` and the cloned repos in `/tmp/karen_guard_$SESSION_ID/repos/` are created and populated before proceeding. If `SESSION_DIR/anti_karen/clone_warnings.txt` exists, read it and report the discrepancy to the user before continuing.
 
 ---
 
@@ -166,17 +173,25 @@ Delegate or follow the instructions defined in [karen_guard/main.md](../karen_gu
 1. Execute the command above to isolate output logs inside the session directory.
 2. Monitor progress by viewing `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.err`.
 3. Retrieve **`KAREN_REPORT_PATH`** from the last line of `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.log`.
-4. Open **`KAREN_REPORT_PATH`** (or the host copy [data/evaluation.md](../data/evaluation.md)) and extract the **`FIT_SCORE`** (parsed from the "Technical Fit Score" section).
+4. Open **`KAREN_REPORT_PATH`** and extract **`FIT_SCORE`** by finding the line matching `## Technical Fit Score: <number>/100` and parsing the integer before `/100`.
+5. **FIT_SCORE fallback**: If the line is absent, malformed, or the file cannot be opened — **stop the loop immediately**. Report to the user: "Karen did not produce a parseable fit score. Inspect `KAREN_REPORT_PATH` manually." Do not proceed to the Gatekeeper with an undefined score.
 
 ---
 
 ### 🛑 The Gatekeeper (Evaluation & Termination Check)
 
 Compare your variables:
+
 - **IF** **`FIT_SCORE`** >= **`MIN_FIT_SCORE`**:
-  - **Exit Loop**: The CV has successfully met the user's requirements. Copy the final optimized CV from `/tmp/karen_guard_$SESSION_ID/docs/cv.md` back to the local repository at [data/docs/cv.md](../data/docs/cv.md).
+  - **Exit Loop — Success**. Copy the final CV: `cp /tmp/karen_guard_$SESSION_ID/docs/cv.md data/docs/cv.md`
+  - **Exit Report** → show to user:
+    > ✅ Target score reached. Final score: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Iterations: `CURRENT_LOOP + 1`. Optimized CV saved to `data/docs/cv.md`. Full evaluation at `data/evaluation.md`.
+
 - **IF** **`CURRENT_LOOP`** >= **`MAX_LOOPS`**:
-  - **Exit Loop**: Reached maximum cycles. Copy the last iteration's CV from `/tmp/karen_guard_$SESSION_ID/docs/cv.md` back to the local repository at [data/docs/cv.md](../data/docs/cv.md) and report the final status.
+  - **Exit Loop — Max cycles reached**. Copy the last CV: `cp /tmp/karen_guard_$SESSION_ID/docs/cv.md data/docs/cv.md`
+  - **Exit Report** → show to user:
+    > ⚠️ Maximum iterations reached (`MAX_LOOPS`). Best score achieved: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Last CV saved to `data/docs/cv.md`. Full evaluation at `data/evaluation.md`. Consider running again with a higher `MAX_LOOPS` or reviewing Karen's recommendations in `data/evaluation.md`.
+
 - **ELSE**:
   - Proceed to **Step 3 (Bill)**.
 
@@ -190,5 +205,13 @@ Delegate the CV revision to a specialized subagent. This isolates the editing lo
 1. Spawn a subagent (Bill) to optimize the CV.
 2. Instruct the subagent to read and execute the instructions defined in [billf/main.md](../billf/main.md) using the active **`SESSION_ID`** and **`KAREN_REPORT_PATH`**.
 3. Wait for the subagent to complete the revision. (The subagent will modify `/tmp/karen_guard_$SESSION_ID/docs/cv.md` directly).
-4. Increment **`CURRENT_LOOP`** by 1.
-5. Restart the loop from **Step 1**.
+4. **CV carry-forward** (authorized inter-iteration modification): copy the revised CV so the next iteration's `ingest_documents()` reads Bill's version instead of the original:
+   ```bash
+   cp /tmp/karen_guard_$SESSION_ID/docs/cv.md data/docs/cv.md
+   ```
+5. Increment **`CURRENT_LOOP`** by 1.
+6. Update the loop state checkpoint:
+   ```bash
+   echo '{"current_loop": '$CURRENT_LOOP', "fit_score": '$FIT_SCORE', "session_id": "'$SESSION_ID'"}' > /tmp/karen_guard_loop_state.json
+   ```
+7. Restart the loop from **Step 1**.
