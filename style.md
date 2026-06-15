@@ -10,7 +10,7 @@ The system uses three agent roles in a feedback loop:
 
 | Role | Agent | Description |
 |---|---|---|
-| **Orchestrator** | Harvey (you) | Drives the loop. Reads runbooks sequentially, manages state variables, spawns subagents, and makes gatekeeper decisions. |
+| **Orchestrator** | Harvey (you) | Drives the loop. Reads runbooks sequentially, manages state variables, spawns agents, and makes gatekeeper decisions. |
 | **Critic** | Karen Guard | Evaluates the CV against real evidence (code, job description). Produces a scored report. Runs in total isolation. |
 | **Actor** | Bill | Rewrites the CV based on Karen's report. Constrained to facts verified in the candidate's background. |
 
@@ -28,21 +28,21 @@ Two **support agents** bracket the core loop without participating in it:
 ## Agent Types
 
 ### 1. Orchestrator (this agent)
-Reads `harvey_guy/main.md` sequentially, line by line. Owns all loop state variables (`SESSION_ID`, `CURRENT_LOOP`, `FIT_SCORE`, etc.). Never delegates control permanently — always waits for subagents to complete before continuing.
+Reads `harvey_guy/main.md` sequentially, line by line. Owns all loop state variables (`SESSION_ID`, `CURRENT_LOOP`, `FIT_SCORE`, etc.). Never delegates control permanently — always waits for agents to complete before continuing.
 
-### 2. Claude Subagents
-Spawned by the orchestrator for tasks that would saturate its context window. Each subagent:
+### 2. Agents
+Spawned by the orchestrator for tasks that would saturate its context window. Each agent:
 - Receives a **runbook path** and a set of **input variables** from the orchestrator.
 - Reads its own `main.md` and executes the steps within it.
 - Writes outputs to `SESSION_DIR` (never to the host repository).
 - Reports completion back to the orchestrator and stops.
 
-Current Claude subagents: **Vera**, **Harvey Shadow**, **Bill**, **Donna**, **Dependency Checker**.
+Current agents: **Vera**, **Harvey Shadow**, **Bill**, **Donna**, **Dependency Checker**.
 
 Note: **Vera** and **Donna** run outside the session loop and write directly to their designated host output in `data/docs/` (`who_are_u.md` and `action_plan.md` respectively), since no `SESSION_DIR` exists pre-loop / the loop is already over post-loop. This is the same legitimate-output pattern as the orchestrator writing `job.md` in Phase 1.
 
 ### 3. External Agent (Karen Guard)
-Runs as a Gemini CLI (`agy`) process inside a Docker container. Not a Claude subagent — it has its own model, authentication, and execution environment. Communicates exclusively via the subpaths mounted into the container:
+Runs as a Gemini CLI (`agy`) process inside a Docker container. Not a spawned agent — it has its own model, authentication, and execution environment. Communicates exclusively via the subpaths mounted into the container:
 - **Reads** (read-only mounts): `SESSION_DIR/docs/`, `SESSION_DIR/repos/`, `SESSION_DIR/company_info.md`
 - **Writes**: `SESSION_DIR/out/evaluation.md` (the only writable mount); `run.sh` then relocates it to `anti_karen/karen_output.md`
 - **Cannot access**: `SESSION_DIR/anti_karen/` — physically, because it is not mounted into the container at all (not merely a prompt restriction)

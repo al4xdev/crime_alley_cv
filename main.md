@@ -15,12 +15,12 @@ This is a multi-agent pipeline that iteratively refines a candidate's CV against
 
 | Agent | Role | Runtime |
 |---|---|---|
-| **Vera** | Onboarding. Roleplay interview that produces the candidate background (`who_are_u.md`). Optional, pre-loop; skipped if a usable file is reused. | Claude subagent |
+| **Vera** | Onboarding. Roleplay interview that produces the candidate background (`who_are_u.md`). Optional, pre-loop; skipped if a usable file is reused. | agent |
 | **Harvey** | Orchestrator. Initializes the session workspace and ingests documents. | Python (`uv run`) |
-| **Harvey Shadow** | Infrastructure subagent. Clones GitHub repos, researches the company, pre-builds the Docker image — in parallel with the orchestrator. | Claude subagent |
+| **Harvey Shadow** | Infrastructure agent. Clones GitHub repos, researches the company, pre-builds the Docker image — in parallel with the orchestrator. | agent |
 | **Karen Guard** | Evaluator/Critic. Reads the CV, job description, and actual repository code. Produces a skeptical technical evaluation with a fit score. | Gemini CLI (`agy`) inside Docker |
-| **Bill** | Editor/Actor. Reads Karen's report and rewrites the CV to address every criticism — without hallucinating credentials. | Claude subagent |
-| **Donna** | Coach. Reads the final evaluation and writes a prioritized action plan (`action_plan.md`). Post-loop. | Claude subagent |
+| **Bill** | Editor/Actor. Reads Karen's report and rewrites the CV to address every criticism — without hallucinating credentials. | agent |
+| **Donna** | Coach. Reads the final evaluation and writes a prioritized action plan (`action_plan.md`). Post-loop. | agent |
 
 ## How to Begin
 

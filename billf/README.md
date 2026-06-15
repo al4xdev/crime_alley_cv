@@ -2,7 +2,7 @@
 
 CV editor agent. Reads Karen's evaluation report and rewrites the candidate's resume to address every criticism, without hallucinating credentials or roles.
 
-Bill operates as a subagent spawned by the orchestrator in Step 3 of each loop iteration.
+Bill operates as a agent spawned by the orchestrator in Step 3 of each loop iteration.
 
 ---
 

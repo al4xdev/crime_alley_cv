@@ -7,7 +7,7 @@ Welcome, Agent! You are entering a multi-agent pipeline that iteratively refines
 ```mermaid
 graph TD
     subgraph Phase0["Phase 0 — Dependency Verification"]
-        DC[Dependency Checker\nsubagent]
+        DC[Dependency Checker\nagent]
     end
 
     subgraph Phase1["Phase 1 — Interactive Setup"]
@@ -15,7 +15,7 @@ graph TD
     end
 
     subgraph Phase15["Phase 1.5 — Onboarding (optional)"]
-        Vera["Vera\nClaude subagent\nroleplay → who_are_u.md\nSKIPPED if file exists & reused"]
+        Vera["Vera\nagent\nroleplay → who_are_u.md\nSKIPPED if file exists & reused"]
     end
 
     subgraph Loop["Optimization Loop"]
@@ -23,7 +23,7 @@ graph TD
 
         subgraph Step1["Step 1 — Context & Environment"]
             HarveyPy["Harvey\nPython script\nsetup_paths · ingest_documents"]
-            Shadow["Harvey Shadow\nClaude subagent\nclone repos · research company\npre-build Docker image"]
+            Shadow["Harvey Shadow\nagent\nclone repos · research company\npre-build Docker image"]
             HarveyPy -- "spawns + runs in parallel" --> Shadow
         end
 
@@ -40,14 +40,14 @@ graph TD
         Gate -- "needs refinement" --> Step3
 
         subgraph Step3["Step 3 — CV Revision"]
-            Bill["Bill\nClaude subagent\nrewrites cv.md in SESSION_DIR"]
+            Bill["Bill\nagent\nrewrites cv.md in SESSION_DIR"]
         end
 
         Step3 -- "CURRENT_LOOP++" --> Step1
     end
 
     subgraph PostLoop["Post-Loop — Coaching"]
-        Donna["Donna\nClaude subagent\nevaluation → action_plan.md"]
+        Donna["Donna\nagent\nevaluation → action_plan.md"]
     end
 
     Phase0 --> Phase1 --> Phase15 --> Loop
@@ -73,7 +73,7 @@ To ensure reliable, safe, and consistent execution on the host machine, you must
   `echo "$(date +%s) $task_description" > /tmp/agt_task_active`
 - On completion (success or failure), clear it:
   `rm -f /tmp/agt_task_active`
-- If a sub-agent or background process is spawned, set a cron to alert if still running after 5 minutes:
+- If a agent or background process is spawned, set a cron to alert if still running after 5 minutes:
   `echo "notify-send 'AGY watchdog' 'Task may be stuck: $task_description'" | at now + 5 minutes`
 - If `/tmp/agt_task_active` already exists when starting a new task, report it immediately to the user.
 
@@ -90,7 +90,7 @@ To ensure reliable, safe, and consistent execution on the host machine, you must
 
 ## 🛠️ Phase 0: Dependency Verification (Subagent Delegation)
 
-Before doing anything else, you must verify that all environment dependencies are installed. To avoid saturating your current context, you must delegate the verification checks and any interactive troubleshooting with the user to a specialized subagent.
+Before doing anything else, you must verify that all environment dependencies are installed. To avoid saturating your current context, you must delegate the verification checks and any interactive troubleshooting with the user to a specialized agent.
 
 ### List of Required Dependencies:
 1. **Python (>=3.13)**
@@ -106,9 +106,9 @@ Before doing anything else, you must verify that all environment dependencies ar
    test -f .dependencies_checked.md && echo verified || echo unverified
    ```
    If `verified`, dependencies were already confirmed on a previous run — skip straight to Phase 1. (Delete `.dependencies_checked.md` to force a re-check.)
-2. Spawn a specialized subagent with the role `Dependency Checker`.
-3. Instruct the subagent to read, execute, and verify all check steps described in **[requirements.md](../requirements.md)**, communicating directly with the user to help them install any missing tools.
-4. Wait for the subagent to complete the task.
+2. Spawn a specialized agent with the role `Dependency Checker`.
+3. Instruct the agent to read, execute, and verify all check steps described in **[requirements.md](../requirements.md)**, communicating directly with the user to help them install any missing tools.
+4. Wait for the agent to complete the task.
 5. Verify that `.dependencies_checked.md` was created at the repository root with a successful status check before proceeding.
 
 ---
@@ -136,7 +136,7 @@ Ask the user the following questions to initialize the loop configuration variab
   RUN_DIR=".runs/$(date +%Y%m%d_%H%M%S)" && mkdir -p "$RUN_DIR" && echo "loop,score" > "$RUN_DIR/scores.csv"
   ```
   Reference `RUN_DIR` throughout the loop. Every per-iteration artifact (CVs, Karen's report, score) is archived under it — this is the audit trail for the whole run.
-- Write/update `data/docs/job.md` with the following **required format** (so subagents can reliably parse the company name from the first line):
+- Write/update `data/docs/job.md` with the following **required format** (so agents can reliably parse the company name from the first line):
   ```
   # <Position Title> — <Company Name>
 
@@ -163,11 +163,11 @@ Ask the user the following questions to initialize the loop configuration variab
    ```
 2. **Branch on the result:**
    - **`missing`**: Ask the user: *"No candidate background found. Run Vera to create one now? (recommended) [yes/no]"*
-     - If **yes** → spawn the `Vera` subagent, instructing it to read and execute [vera_psyco/main.md](../vera_psyco/main.md) with **`MODE=create`**. Wait for completion and verify `data/docs/who_are_u.md` was written.
+     - If **yes** → spawn the `Vera` agent, instructing it to read and execute [vera_psyco/main.md](../vera_psyco/main.md) with **`MODE=create`**. Wait for completion and verify `data/docs/who_are_u.md` was written.
      - If **no** → warn the user that Bill will have a weaker source of truth and anti-hallucination guarantees are reduced, then proceed.
    - **`exists`**: Ask the user: *"A candidate background already exists. Reuse it as-is, or refresh it with Vera? [reuse/refresh]"*
      - **`reuse`** → skip Vera entirely. Proceed to the loop. (This is the default fast path.)
-     - **`refresh`** → spawn the `Vera` subagent with **`MODE=refresh`** and **`EXISTING_BACKGROUND_PATH=data/docs/who_are_u.md`**. Wait for completion.
+     - **`refresh`** → spawn the `Vera` agent with **`MODE=refresh`** and **`EXISTING_BACKGROUND_PATH=data/docs/who_are_u.md`**. Wait for completion.
 3. Once `who_are_u.md` is settled, proceed to the Optimization Loop.
 
 > Vera runs **only here**, before the loop. It never runs during iterations.
@@ -182,7 +182,7 @@ Execute the following steps inside a loop. The loop continues while **`CURRENT_L
 
 ### Step 1: Context Preparation & Environment Setup (Harvey & Harvey Shadow)
 
-Execute the Python setup wrapper to initialize the workspace directory and copy base documents, then delegate all API/cloning background tasks to a specialized subagent to prevent context saturation.
+Execute the Python setup wrapper to initialize the workspace directory and copy base documents, then delegate all API/cloning background tasks to a specialized agent to prevent context saturation.
 
 **Command to run (Orchestration Setup):**
 ```bash
@@ -197,9 +197,9 @@ Substitute `$KAREN_READS_BACKGROUND` with the value collected in Phase 1 (`yes` 
    ```
 2. Execute the setup command above.
 3. Capture the `stdout` session UUID, and store it as **`SESSION_ID`**. Derive **`SESSION_DIR`** as `/tmp/karen_guard_$SESSION_ID/` — use this exact formula everywhere. Update the checkpoint with the new `session_id`.
-4. Spawn a specialized subagent with the role `Harvey Shadow`.
-5. Instruct the subagent to read and execute the instructions defined in **[shadow.md](shadow.md)** using the active **`SESSION_ID`** and **`SESSION_DIR`** (`/tmp/karen_guard_$SESSION_ID/`).
-6. Wait for the `Harvey Shadow` subagent to complete all execution tasks.
+4. Spawn a specialized agent with the role `Harvey Shadow`.
+5. Instruct the agent to read and execute the instructions defined in **[shadow.md](shadow.md)** using the active **`SESSION_ID`** and **`SESSION_DIR`** (`/tmp/karen_guard_$SESSION_ID/`).
+6. Wait for the `Harvey Shadow` agent to complete all execution tasks.
 7. Verify that `/tmp/karen_guard_$SESSION_ID/company_info.md` and the cloned repos in `/tmp/karen_guard_$SESSION_ID/repos/` are created and populated before proceeding. If `SESSION_DIR/anti_karen/clone_warnings.txt` exists, read it and report the discrepancy to the user before continuing.
 
 ---
@@ -261,12 +261,12 @@ Compare your variables:
 
 ### Step 3: CV Revision (Bill)
 
-Delegate the CV revision to a specialized subagent. This isolates the editing logic and prevents cluttering the main orchestrator's context.
+Delegate the CV revision to a specialized agent. This isolates the editing logic and prevents cluttering the main orchestrator's context.
 
 **Actions:**
-1. Spawn a subagent (Bill) to optimize the CV.
-2. Instruct the subagent to read and execute the instructions defined in [billf/main.md](../billf/main.md) using the active **`SESSION_ID`** and **`KAREN_REPORT_PATH`**.
-3. Wait for the subagent to complete the revision. (The subagent will modify `/tmp/karen_guard_$SESSION_ID/docs/cv.md` directly).
+1. Spawn a agent (Bill) to optimize the CV.
+2. Instruct the agent to read and execute the instructions defined in [billf/main.md](../billf/main.md) using the active **`SESSION_ID`** and **`KAREN_REPORT_PATH`**.
+3. Wait for the agent to complete the revision. (The agent will modify `/tmp/karen_guard_$SESSION_ID/docs/cv.md` directly).
 4. **Archive Bill's output** into the same iteration directory (the CV is now the revised version; draft notes are optional):
    ```bash
    ITER_DIR="$RUN_DIR/loop_$(printf '%02d' $CURRENT_LOOP)" && mkdir -p "$ITER_DIR"
@@ -291,9 +291,9 @@ Delegate the CV revision to a specialized subagent. This isolates the editing lo
 Reached only on a Gatekeeper exit (either success or max cycles). The loop is done — now convert Karen's final evaluation into a forward-looking development plan for the candidate.
 
 **Actions:**
-1. Spawn a subagent (Donna) for career coaching.
-2. Instruct the subagent to read and execute the instructions defined in [nana/main.md](../nana/main.md) using the active **`SESSION_ID`**, **`KAREN_REPORT_PATH`**, **`FIT_SCORE`**, and **`MIN_FIT_SCORE`**.
-3. Wait for the subagent to complete. (It writes `data/docs/action_plan.md` and modifies nothing else.)
+1. Spawn a agent (Donna) for career coaching.
+2. Instruct the agent to read and execute the instructions defined in [nana/main.md](../nana/main.md) using the active **`SESSION_ID`**, **`KAREN_REPORT_PATH`**, **`FIT_SCORE`**, and **`MIN_FIT_SCORE`**.
+3. Wait for the agent to complete. (It writes `data/docs/action_plan.md` and modifies nothing else.)
 4. Surface the final summary to the user:
    > 🎓 Action plan ready at `data/docs/action_plan.md` — prioritized technical gaps, interview prep, and public projects to raise your score on the next run.
 5. **End of pipeline.**

@@ -2,7 +2,7 @@
 
 Career coaching agent. After the optimization loop exits, Donna reads Karen's final evaluation and produces a concrete, prioritized development plan (`data/docs/action_plan.md`).
 
-Donna operates as a subagent, invoked **once after the loop** by the orchestrator, on both exit paths (target reached or max loops).
+Donna operates as a agent, invoked **once after the loop** by the orchestrator, on both exit paths (target reached or max loops).
 
 ---
 

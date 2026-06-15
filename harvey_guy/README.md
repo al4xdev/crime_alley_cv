@@ -1,6 +1,6 @@
 # Harvey (Orchestrator)
 
-Harvey is split into two parts: a deterministic Python script that sets up the session workspace, and a subagent (Harvey Shadow) that performs all network and I/O-heavy tasks in parallel.
+Harvey is split into two parts: a deterministic Python script that sets up the session workspace, and a agent (Harvey Shadow) that performs all network and I/O-heavy tasks in parallel.
 
 ---
 

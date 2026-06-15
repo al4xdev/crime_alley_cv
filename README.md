@@ -30,19 +30,19 @@ Before the loop, Vera optionally seeds the candidate background. Each loop itera
 
 | Agent | Directory | Runtime | Role |
 |---|---|---|---|
-| **Vera** | `vera_psyco/` | subagent | Onboarding interview → `who_are_u.md` (optional, pre-loop) |
-| **Harvey** | `harvey_guy/` | Python + subagent | Orchestrator & context collector |
-| **Harvey Shadow** | `harvey_guy/` | subagent | Clones repos, researches company, pre-builds Docker |
+| **Vera** | `vera_psyco/` | agent | Onboarding interview → `who_are_u.md` (optional, pre-loop) |
+| **Harvey** | `harvey_guy/` | Python + agent | Orchestrator & context collector |
+| **Harvey Shadow** | `harvey_guy/` | agent | Clones repos, researches company, pre-builds Docker |
 | **Karen Guard** | `karen_guard/` | Gemini CLI inside Docker | Skeptical evaluator & critic |
-| **Bill** | `billf/` | subagent | CV editor & actor |
-| **Donna** | `nana/` | subagent | Coach → `action_plan.md` (post-loop) |
+| **Bill** | `billf/` | agent | CV editor & actor |
+| **Donna** | `nana/` | agent | Coach → `action_plan.md` (post-loop) |
 
 ---
 
 ## Modules
 
 - [Vera (Onboarding)](vera_psyco/README.md), Roleplay interview that produces the candidate background.
-- [Harvey (Orchestrator)](harvey_guy/README.md), Session setup, document ingestion, subagent orchestration.
+- [Harvey (Orchestrator)](harvey_guy/README.md), Session setup, document ingestion, agent orchestration.
 - [Karen Guard (Evaluator)](karen_guard/README.md), Isolated Docker evaluation environment.
 - [Bill (Editor)](billf/README.md), CV revision based on Karen's report.
 - [Donna (Coach)](nana/README.md), Post-loop action plan from the final evaluation.
@@ -107,7 +107,7 @@ This pipeline is designed to be executed by an autonomous coding agent (such as 
    > **User Prompt:**
    > *(or simply reference: `@main.md`)*
 
-3. **Follow along:** The agent will spawn a subagent to check requirements, ask you the configuration questions (Phase 1), and execute the refinement loops autonomously.
+3. **Follow along:** The agent will spawn a agent to check requirements, ask you the configuration questions (Phase 1), and execute the refinement loops autonomously.
 
 ---
 
