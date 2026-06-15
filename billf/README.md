@@ -1,22 +1,31 @@
 # Bill (Editor)
 
-Module responsible for the critical review and automated optimization of the candidate's resume based on the evaluator's feedback report.
+CV editor agent. Reads Karen's evaluation report and rewrites the candidate's resume to address every criticism — without hallucinating credentials or roles.
 
-## Role in the Multi-Agent Loop (Generator)
+Bill operates as a Claude subagent spawned by the orchestrator in Step 3 of each loop iteration.
 
-While Karen acts as the rigorous validator (Critic) who dissects the resume pointing out gaps and inconsistencies, **Bill** (referenced as the original writer/co-creator of Batman, abbreviated `billf`) acts as the intelligent editor (Generator):
+---
 
-1. **Input Reading**: Ingests the original CV (`cv.md`), the job description (`job.md`), and the gaps and alerts mapped in Karen's report (`evaluation.md`).
-2. **Defect Correction**: Rewrites sections of the resume to address Karen's criticisms (e.g., suggesting phrasing corrections for inflated terms, detailing optimization techniques applied).
-3. **Stack Alignment**: Refines the resume's focus to highlight actual technologies found in the candidate's repositories, ensuring the CV remains highly competitive but 100% truthful.
-4. **Hardening**: Produces an optimized CV ready to pass automated and human screening with higher technical fit scores.
+## Role in the Loop
 
-## Planned Structure
+While Karen acts as the rigorous critic who surfaces gaps and inconsistencies, **Bill** is the intelligent editor who:
 
-```
-billf/
-├── README.md
-├── Dockerfile               ← Isolated environment for editing
-├── run.sh                   ← Starts the CV review process
-└── prompt_revisor.txt       ← Instructions for Bill's technical editor persona
-```
+1. Reads the current CV, job description, Karen's report, and the candidate background (`who_are_u.md`).
+2. Creates a draft analysis in `anti_karen/draft_notes.txt` (hidden from Karen).
+3. Rewrites `SESSION_DIR/docs/cv.md` to address Karen's criticisms using only verified facts.
+4. Never invents technologies, roles, or certifications not present in the candidate's actual background.
+
+---
+
+## Anti-Hallucination Rules
+
+- **Source of truth**: `who_are_u.md` is the only authority on the candidate's background.
+- **No invented credentials**: Technologies and roles must appear in the candidate's public repos or background file.
+- **NDA acknowledgement**: Private corporate work that lacks public code evidence should be marked "Worked under NDA" — a legitimate and professional explanation.
+- **Qualified metrics**: Avoid raw percentages unless supported by the background. Use method-based explanations instead.
+
+---
+
+## Runbook
+
+[`main.md`](main.md)
