@@ -16,6 +16,13 @@ The system uses three agent roles in a feedback loop:
 
 The loop runs until `FIT_SCORE >= MIN_FIT_SCORE` or `CURRENT_LOOP >= MAX_LOOPS`.
 
+Two **support agents** bracket the core loop without participating in it:
+
+| Phase | Agent | Description |
+|---|---|---|
+| **Pre-loop** | Vera | Roleplay onboarding that produces `who_are_u.md` (Bill's source of truth). Optional — skipped if a usable file is reused. |
+| **Post-loop** | Donna | Reads the final evaluation and writes `action_plan.md`: prioritized gaps, interview prep, and projects to raise the next score. |
+
 ---
 
 ## Agent Types
@@ -30,7 +37,9 @@ Spawned by the orchestrator for tasks that would saturate its context window. Ea
 - Writes outputs to `SESSION_DIR` (never to the host repository).
 - Reports completion back to the orchestrator and stops.
 
-Current Claude subagents: **Harvey Shadow**, **Bill**, **Dependency Checker**.
+Current Claude subagents: **Vera**, **Harvey Shadow**, **Bill**, **Donna**, **Dependency Checker**.
+
+Note: **Vera** and **Donna** run outside the session loop and write directly to their designated host output in `data/docs/` (`who_are_u.md` and `action_plan.md` respectively), since no `SESSION_DIR` exists pre-loop / the loop is already over post-loop. This is the same legitimate-output pattern as the orchestrator writing `job.md` in Phase 1.
 
 ### 3. External Agent (Karen Guard)
 Runs as a Gemini CLI (`agy`) process inside a Docker container. Not a Claude subagent — it has its own model, authentication, and execution environment. Communicates exclusively via files mounted into the container:
@@ -70,6 +79,8 @@ The orchestrator reads `SESSION_DIR` to extract outputs after each agent complet
 | Bill cannot modify host repository | Explicit rule in `billf/main.md` |
 | CV in repo is never modified during loop | SANDBOXING RULE in `harvey_guy/main.md` |
 | Karen's `agy` config is isolated per session | `.gemini/` copied into `SESSION_DIR/.gemini/` |
+| Vera writes only `data/docs/who_are_u.md` | Single-output rule in `vera_guy/main.md` |
+| Donna writes only `data/docs/action_plan.md` | Single-output rule in `donna_guy/main.md` |
 
 ---
 
