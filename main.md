@@ -1,11 +1,27 @@
-# Actor-Critic CV Optimization Loop Starter
+# Actor-Critic CV Optimization Loop
 
 > [!IMPORTANT]
 > **SEQUENTIAL EXECUTION RULE:**
-> You must read and execute the instructions inside the runbook **[core.md](core.md)** in a strict sequential, line-by-line manner. 
-> Do **NOT** read the entire `core.md` file at once or attempt to analyze the whole process beforehand. This is critical to maintain architectural sanity and the interactive feedback loop during setup.
+> Read and execute **[harvey_guy/main.md](harvey_guy/main.md)** in strict sequential, line-by-line order.
+> Do **NOT** read the entire file at once or pre-analyze the whole process. This preserves the interactive feedback loop and architectural sanity.
 
-To begin the loop:
-1. Open **[core.md](core.md)**.
-2. Read the global rules at the beginning.
-3. Start executing **Phase 0: Initialize State (Interactive Setup)** step-by-step.
+---
+
+## What This System Does
+
+This is a multi-agent pipeline that iteratively refines a candidate's CV against a job description until a minimum technical fit score is achieved. It uses an Actor-Critic architecture: one agent edits (Bill), one agent criticizes (Karen), and a deterministic gatekeeper decides whether to loop or exit.
+
+## Agent Roster
+
+| Agent | Role | Runtime |
+|---|---|---|
+| **Harvey** | Orchestrator. Initializes the session workspace and ingests documents. | Python (`uv run`) |
+| **Harvey Shadow** | Infrastructure subagent. Clones GitHub repos, researches the company, pre-builds the Docker image — in parallel with the orchestrator. | Claude subagent |
+| **Karen Guard** | Evaluator/Critic. Reads the CV, job description, and actual repository code. Produces a skeptical technical evaluation with a fit score. | Gemini CLI (`agy`) inside Docker |
+| **Bill** | Editor/Actor. Reads Karen's report and rewrites the CV to address every criticism — without hallucinating credentials. | Claude subagent |
+
+## How to Begin
+
+1. Open **[harvey_guy/main.md](harvey_guy/main.md)**.
+2. Read the Global Agent Execution Rules at the top.
+3. Execute **Phase 0: Dependency Verification**, then **Phase 1: Initialize State**, step-by-step.

@@ -33,7 +33,13 @@ docker ps
 - If this command fails or returns a permission error, check if the user is in the `docker` group or run it via `sg docker -c "docker ps"`.
 - If Docker is not installed or the user lacks permissions, help them install Docker and add their user to the `docker` group (`sudo usermod -aG docker $USER` followed by shell re-entry).
 
-### 3. at Utility Check
+### 3. Git Check
+```bash
+git --version
+```
+- Verify Git is installed and reports a version. If missing, instruct the user to install it (e.g., `sudo apt install git` on Debian/Ubuntu or `brew install git` on macOS).
+
+### 4. at Utility Check
 ```bash
 which at
 ```
@@ -43,7 +49,7 @@ which at
 - Ensure the `atd` service is enabled and running:
   - Linux: `sudo systemctl enable --now atd`
 
-### 4. Display Server & wl-copy Check
+### 5. Display Server & wl-copy Check
 - Check if Wayland is used:
 ```bash
 echo $WAYLAND_DISPLAY

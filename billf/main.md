@@ -8,7 +8,7 @@ Welcome, Bill! You are the editor agent in this Actor-Critic loop (referenced as
 
 The parent orchestrator agent will provide you with the following inputs:
 - **`SESSION_ID`**: The active session UUID.
-- **`KAREN_REPORT_PATH`**: The absolute path to the evaluation report on the host (e.g., `/tmp/karen_guard_$SESSION_ID/karen_output.md`).
+- **`KAREN_REPORT_PATH`**: The absolute path to the evaluation report on the host (e.g., `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_output.md`).
 
 You must read the following files from the session workspace:
 1. **CV**: `/tmp/karen_guard_$SESSION_ID/docs/cv.md`

@@ -8,20 +8,13 @@ from .libs import Log
 
 class Harvey:
     def __init__(self) -> None:
-        import os
-        import getpass
-        self.host_user = getpass.getuser()
-        self.host_uid = os.getuid()
-        self.github_username = ""
-        self.repos = []
         if TYPE_CHECKING:
             self.root_dir: Path
             self.data_dir: Path
-            self.documentation_dir: Path
             self.docs_dir: Path
             self.repos_dir: Path
             self.session_docs_dir: Path
-            self.session_dir: Path 
+            self.session_dir: Path
             self.session_id: str
             self.log: Log
 
@@ -53,19 +46,16 @@ class Harvey:
         log.info(f"Session directory created: {session_dir}")
         return session_id, session_dir, log
 
-    def _get_paths(self, root_dir: str | None = None):
+    def _get_paths(self, root_dir: str | None = None) -> Harvey:
         self.root_dir = self._get_root_dir(root_dir)
         self.data_dir = self.root_dir / "data"
-        self.documentation_dir = self.data_dir / "documentation"
         self.docs_dir = self.data_dir / "docs"
-        self.repos = []
+        return self
 
     def setup_paths(self) -> Harvey:
         self.data_dir.mkdir(exist_ok=True)
-        self.documentation_dir.mkdir(exist_ok=True)
         self.docs_dir.mkdir(exist_ok=True)
         self.repos_dir.mkdir(exist_ok=True)
-        
         self.log.info(f"Directories initialized under {self.data_dir}")
         return self
 
@@ -74,9 +64,15 @@ class Harvey:
         self.session_docs_dir.mkdir(parents=True, exist_ok=True)
         anti_karen_dir = self.session_dir / "anti_karen"
         anti_karen_dir.mkdir(exist_ok=True)
-        
+
+        required = {"cv.md", "job.md"}
+        present = {item.name for item in self.docs_dir.iterdir() if item.is_file()}
+        missing = required - present
+        if missing:
+            raise FileNotFoundError(f"Missing required documents in data/docs/: {', '.join(sorted(missing))}")
+
         karen_reads = os.environ.get("KAREN_READS_BACKGROUND", "yes").lower() == "yes"
-        
+
         for item in self.docs_dir.iterdir():
             if item.is_file():
                 if item.name == "who_are_u.md" and not karen_reads:
@@ -89,17 +85,13 @@ class Harvey:
 
     def check_dependencies(self) -> Harvey:
         try:
-            result = subprocess.run(
-                ["which", "at"],
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(["which", "at"], capture_output=True, text=True)
             if result.returncode != 0:
-                self.log.warning("WARNING: 'at' utility is not installed. Long-running task watchdog cron checks may fail. Please install 'at' on your system (e.g. 'sudo apt install at' or 'brew install at').")
+                self.log.warning("'at' utility not found. Long-running task watchdog will not function.")
             else:
-                self.log.info("'at' utility is installed and available.")
+                self.log.info("'at' utility is available.")
         except Exception as e:
-            self.log.warning(f"Could not verify 'at' utility presence: {e}")
+            self.log.warning(f"Could not verify 'at' utility: {e}")
         return self
 
     def print_session_id(self) -> Harvey:

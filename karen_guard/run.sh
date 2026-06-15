@@ -4,7 +4,7 @@ cd "$DIR"
 
 if ! docker ps >/dev/null 2>&1; then
   echo "No permission to access Docker socket. Retrying command via 'sg docker'..." >&2
-  exec sg docker -c "$0 $*"
+  exec sg docker -c "$0 $(printf '%q ' "$@")"
 fi
 
 if [ -z "$1" ]; then
@@ -22,11 +22,16 @@ fi
 
 HOST_USER=$(whoami)
 HOST_UID=$(id -u)
+HOST_GID=$(id -g)
 
-echo "Building Karen Guard docker image for user ${HOST_USER} (UID ${HOST_UID})..." >&2
-docker build -t karen_guard \
-  --build-arg USERNAME="${HOST_USER}" \
-  --build-arg USER_ID="${HOST_UID}" . >&2
+if ! docker image inspect karen_guard >/dev/null 2>&1; then
+  echo "Building Karen Guard docker image for user ${HOST_USER} (UID ${HOST_UID})..." >&2
+  docker build -t karen_guard \
+    --build-arg USERNAME="${HOST_USER}" \
+    --build-arg USER_ID="${HOST_UID}" . >&2 || { echo "Error: Docker build failed." >&2; exit 1; }
+else
+  echo "Karen Guard docker image already exists, skipping build." >&2
+fi
 
 SESSION_GEMINI_DIR="${SESSION_DIR}/.gemini"
 mkdir -p "${SESSION_GEMINI_DIR}/config"
@@ -60,7 +65,7 @@ cat << 'EOF' > "${SESSION_GEMINI_DIR}/config/config.json"
 }
 EOF
 
-chown -R "${HOST_UID}:${HOST_UID}" "${SESSION_GEMINI_DIR}"
+chown -R "${HOST_UID}:${HOST_GID}" "${SESSION_GEMINI_DIR}"
 
 echo "Checking Antigravity CLI authentication..." >&2
 if docker run --rm -v "${SESSION_GEMINI_DIR}:/home/${HOST_USER}/.gemini" \
@@ -76,7 +81,7 @@ if docker run --rm -v "${SESSION_GEMINI_DIR}:/home/${HOST_USER}/.gemini" \
 fi
 
 echo "Starting Karen Guard evaluation process for session ${SESSION_ID}..." >&2
-docker run -it --rm \
+docker run --rm \
   -v "${SESSION_DIR}:/app/session" \
   -v "${SESSION_GEMINI_DIR}:/home/${HOST_USER}/.gemini" \
   karen_guard su - "${HOST_USER}" -c "run_evaluator"
@@ -87,4 +92,7 @@ if [ -f "${SESSION_DIR}/evaluation.md" ]; then
     cp "${SESSION_DIR}/anti_karen/evaluation.md" "${SESSION_DIR}/anti_karen/karen_output.md"
     cp "${SESSION_DIR}/anti_karen/evaluation.md" "${DIR}/../data/evaluation.md"
     echo "${SESSION_DIR}/anti_karen/karen_output.md"
+else
+    echo "Error: Karen did not produce evaluation.md. Check ${SESSION_DIR}/anti_karen/karen_run.err for details." >&2
+    exit 1
 fi
