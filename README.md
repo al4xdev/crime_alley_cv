@@ -2,13 +2,13 @@
 
 Automated CV optimization system based on a multi-agent Actor-Critic architecture. An orchestrator drives a feedback loop where a critic agent (Karen) scores the CV against real code evidence, and an editor agent (Bill) rewrites it until the score meets the acceptance threshold.
 
-> **Portfolio note — what this demonstrates.** This is a study project on orchestrating a
+> **Portfolio note: what this demonstrates.** This is a study project on orchestrating a
 > multi-agent system primarily in **natural language**, with deterministic code only where it
 > earns its place. It is intentionally **framework-free** (no LangGraph / CrewAI / etc.): the
 > orchestration lives in readable runbooks, and the
 > [Design Decisions & Philosophy](#-design-decisions--philosophy) section documents *why* each
 > boundary between code and prose was drawn where it is. The artifact worth reviewing here is
-> the reasoning — the code/language boundary, the isolation model, the explicit contracts —
+> the reasoning, the code/language boundary, the isolation model, the explicit contracts,
 > not the CV it produces.
 
 ---
@@ -41,18 +41,20 @@ Before the loop, Vera optionally seeds the candidate background. Each loop itera
 
 ## Modules
 
-- [Vera (Onboarding)](vera_guy/README.md) — Roleplay interview that produces the candidate background.
-- [Harvey (Orchestrator)](harvey_guy/README.md) — Session setup, document ingestion, subagent orchestration.
-- [Karen Guard (Evaluator)](karen_guard/README.md) — Isolated Docker evaluation environment.
-- [Bill (Editor)](billf/README.md) — CV revision based on Karen's report.
-- [Donna (Coach)](donna_guy/README.md) — Post-loop action plan from the final evaluation.
+- [Vera (Onboarding)](vera_guy/README.md), Roleplay interview that produces the candidate background.
+- [Harvey (Orchestrator)](harvey_guy/README.md), Session setup, document ingestion, subagent orchestration.
+- [Karen Guard (Evaluator)](karen_guard/README.md), Isolated Docker evaluation environment.
+- [Bill (Editor)](billf/README.md), CV revision based on Karen's report.
+- [Donna (Coach)](donna_guy/README.md), Post-loop action plan from the final evaluation.
 
 ---
 
 ## Architecture
 
-- [Agent Architecture Guide](style.md) — How agents communicate, isolation model, state variables, and how to add new agents.
-- [Orchestrator Runbook](harvey_guy/main.md) — The full execution runbook (start here after `main.md`).
+> In this project, `.md` files are executables, not documentation. The agent runtime reads and follows them the same way a Python interpreter runs `.py` files. The READMEs (what you're reading now) are the human-facing layer; the `main.md` runbooks are the actual program.
+
+- [Agent Architecture Guide](style.md), How agents communicate, isolation model, state variables, and how to add new agents.
+- [Orchestrator Runbook](harvey_guy/main.md), The full execution runbook (start here after `main.md`).
 
 ---
 
@@ -78,12 +80,12 @@ Per-iteration history is also archived on the host at `.runs/<timestamp>/` (inpu
 ## Prerequisites
 
 `data/docs/` must contain at minimum:
-- `cv.md` — candidate's resume in Markdown
-- `job.md` — job description (written by the orchestrator in Phase 1)
-- `who_are_u.md` — candidate background (recommended; Vera can generate it in Phase 1.5 if missing)
+- `cv.md`, candidate's resume in Markdown
+- `job.md`, job description (written by the orchestrator in Phase 1)
+- `who_are_u.md`, candidate background (recommended; Vera can generate it in Phase 1.5 if missing)
 
 Pipeline-generated outputs in `data/docs/`:
-- `action_plan.md` — written by Donna after the loop
+- `action_plan.md`, written by Donna after the loop
 
 See [requirements.md](requirements.md) for system dependencies.
 
@@ -112,7 +114,7 @@ This pipeline is designed to be executed by an autonomous coding agent (such as 
 ## ✅ Testing
 
 The agents themselves are LLM-driven and validated by running the pipeline and inspecting the
-session trail — not unit-testable in the usual sense. The **deterministic code** that backs
+session trail, not unit-testable in the usual sense. The **deterministic code** that backs
 them *is* covered by unit tests:
 
 ```bash
@@ -127,7 +129,7 @@ Tests live in `tests/` and cover Harvey's repo-root/path derivation, session cre
 
 ## 🧪 Design Decisions & Philosophy
 
-> **This is a study project.** Its real subject is not CV optimization — that is the
+> **This is a study project.** Its real subject is not CV optimization, that is the
 > excuse. The subject is **orchestrating a multi-agent system primarily in natural
 > language**, with deterministic code only where it genuinely earns its place. The
 > decisions below are the lessons that shaped the architecture; they are written down so
@@ -139,7 +141,7 @@ The pipeline is orchestrated by an LLM reading runbooks (`harvey_guy/main.md` an
 per-agent `main.md` files) as prose instructions, not by a program calling functions.
 This is deliberately the opposite of a hardcoded workflow engine. The bet is that a capable
 agent runtime (Claude Code, `agy`) is a good-enough "interpreter" for an orchestration
-written in prose — and that the flexibility this buys (easy to read, easy to change, no
+written in prose, and that the flexibility this buys (easy to read, easy to change, no
 brittle glue) outweighs the guarantees you give up. The rest of this section is about
 *which* guarantees you give up, and when that matters.
 
@@ -153,7 +155,7 @@ that isn't written to disk doesn't really exist. Hence the loop-state checkpoint
 file-based session layout.
 
 **2. "Sequential execution" is a preference, not a guarantee.** The runbooks ask the agent
-to execute step by step and not read ahead — but the model loads the whole file into context
+to execute step by step and not read ahead, but the model loads the whole file into context
 at once. You cannot *force* sequencing the way an interpreter does. This is a fundamental
 limit of the medium, not a bug to fix. The mitigation is to make steps gated by checked
 preconditions (a file exists, a value is set) so order is enforced by data dependencies, not
@@ -163,20 +165,20 @@ by reading discipline.
 memory and no types, the "protocol" is literally *"Karen writes `## Technical Fit Score: N/100`
 and the orchestrator parses that line."* That is brittle exactly where a typed function call
 would be rigid. So a large part of the work is making these contracts **explicit and
-parseable** — the mandated `job.md` first-line format, the exact score line, the
+parseable**, the mandated `job.md` first-line format, the exact score line, the
 `company_info.md` section template. A contract that isn't written down drifts.
 
 ### The governing heuristic: migrate only what fails *silently*
 
 The instinct from classic engineering is "move invariants into code." That instinct is
-**wrong here**, because the runtime is not dumb — it is a reasoning agent that self-heals.
+**wrong here**, because the runtime is not dumb, it is a reasoning agent that self-heals.
 When a failure announces itself (a score doesn't parse, a file is missing, a path is
 malformed), the agent notices and recovers; hardcoding those cases trades graceful
 degradation for rigid failure. A regex score-parser *breaks* on a format the LLM would have
 read fine.
 
 The failures worth making deterministic are the ones that produce a **plausible, wrong
-result with no error signal** — because self-healing needs an error to react to, and there is
+result with no error signal**, because self-healing needs an error to react to, and there is
 none. The original broken feedback loop was exactly this: Karen kept scoring the *original*
 CV every iteration, produced perfectly normal-looking scores, and nothing appeared broken.
 
@@ -185,17 +187,17 @@ CV every iteration, produced perfectly normal-looking scores, and nothing appear
 
 | Concern | Fails how? | Lives where |
 |---|---|---|
-| Score parsing, file paths, retries | Loudly (visible error) | Prose — the agent heals it |
-| Vera/Karen/Bill/Donna judgment | "Worse result", recoverable | Prose — this *is* the value |
+| Score parsing, file paths, retries | Loudly (visible error) | Prose, the agent heals it |
+| Vera/Karen/Bill/Donna judgment | "Worse result", recoverable | Prose, this *is* the value |
 | CV carry-forward, loop semantics | Silently (plausible but wrong) | Lean toward code |
-| Reading files Karen must not see | Silently (report looks normal) | Code — physical, not instruction |
+| Reading files Karen must not see | Silently (report looks normal) | Code, physical, not instruction |
 
 ### Isolation is graduated, and the mechanism should match the stakes
 
-There are two kinds of boundary in this system: **physical** (strong — Karen runs in Docker
-and can only see what is mounted) and **instructional** (weak, best-effort — "you MUST NOT
+There are two kinds of boundary in this system: **physical** (strong, Karen runs in Docker
+and can only see what is mounted) and **instructional** (weak, best-effort, "you MUST NOT
 read `anti_karen/`" in the prompt). Both are legitimate, but they are not interchangeable.
-A boundary protecting something that matters — and whose violation would be *silent* — should
+A boundary protecting something that matters, and whose violation would be *silent*, should
 be physical. This is why `run.sh` mounts only `docs/`, `repos/`, `company_info.md`, and a
 writable `out/` into Karen's container: `anti_karen/` is not present in the container at all,
 so the boundary is structural, not a prompt she could ignore. The prompt restriction remains
@@ -207,12 +209,12 @@ Every run writes a full trail to its session directory under `/tmp/karen_guard_<
 (logs, reports, intermediate CVs), and a consolidated, comparable history to
 `.runs/<timestamp>/` on the host (per-iteration CVs, Karen's report, and a `scores.csv`
 progression). Because a human inspects these, "silent" failures are not truly silent to the
-operator — which further justifies *not* over-engineering deterministic scaffolding.
+operator, which further justifies *not* over-engineering deterministic scaffolding.
 
 ### Where this matures
 
 The honest trajectory: invariants critical to correctness tend to migrate to the
-deterministic side **over time, as the pain is felt** — not front-loaded. Prose keeps the
+deterministic side **over time, as the pain is felt**, not front-loaded. Prose keeps the
 judgment; code gradually absorbs the invariants. That is the natural maturation of this kind
 of system, and treating it as a destination to rush toward would defeat the point of the
 study. The boundary between code and language is itself the thing being learned here.

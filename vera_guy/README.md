@@ -1,6 +1,6 @@
 # Vera (Onboarding)
 
-Candidate onboarding agent. Conducts a structured roleplay conversation to produce `data/docs/who_are_u.md` — the source-of-truth background document that anchors the entire pipeline against hallucination.
+Candidate onboarding agent. Conducts a structured roleplay conversation to produce `data/docs/who_are_u.md`, the source-of-truth background document that anchors the entire pipeline against hallucination.
 
 Vera operates as a Claude subagent, invoked **once before the optimization loop** and only when needed. She is **optional**: if a usable `who_are_u.md` already exists, the orchestrator reuses it and skips Vera.
 
@@ -8,7 +8,7 @@ Vera operates as a Claude subagent, invoked **once before the optimization loop*
 
 ## Why Vera Exists
 
-`who_are_u.md` is Bill's absolute source of truth — he is forbidden from inventing any role, technology, or credential not present in it. But without an onboarding process, candidates rarely write a good one. Vera turns that gap into a guided 10-minute interview.
+`who_are_u.md` is Bill's absolute source of truth, he is forbidden from inventing any role, technology, or credential not present in it. But without an onboarding process, candidates rarely write a good one. Vera turns that gap into a guided 10-minute interview.
 
 ---
 
@@ -19,7 +19,7 @@ Vera operates as a Claude subagent, invoked **once before the optimization loop*
 | `who_are_u.md` does not exist | Offer to run Vera in `create` mode |
 | `who_are_u.md` exists | Ask the user: **reuse as-is** (skip Vera) or **refresh** (run Vera in `refresh` mode) |
 
-Vera never runs inside the optimization loop — only before it.
+Vera never runs inside the optimization loop, only before it.
 
 ---
 

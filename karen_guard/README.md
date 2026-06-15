@@ -1,6 +1,6 @@
 # Karen Guard (Evaluator)
 
-Isolated candidate evaluator. Simulates a highly skeptical Senior Technical Recruiter. Runs as a Gemini CLI (`agy`) process inside a Docker container — fully isolated from the host and from the orchestrator's context.
+Isolated candidate evaluator. Simulates a highly skeptical Senior Technical Recruiter. Runs as a Gemini CLI (`agy`) process inside a Docker container, fully isolated from the host and from the orchestrator's context.
 
 Karen does not know she is part of a loop. She receives a session workspace, evaluates the candidate, and writes a report.
 
@@ -9,7 +9,7 @@ Karen does not know she is part of a loop. She receives a session workspace, eva
 ## How Karen Evaluates
 
 1. **Job vs Resume**: Reads `job.md` and `cv.md`, assesses initial alignment.
-2. **Code Evidence**: Inspects cloned repositories in `repos/` — architecture, patterns, Git hygiene, test coverage.
+2. **Code Evidence**: Inspects cloned repositories in `repos/`, architecture, patterns, Git hygiene, test coverage.
 3. **Skeptical Correlation**: Cross-references every CV claim against actual code. Flags inconsistencies and exaggerations.
 4. **Report**: Writes `evaluation.md` with a structured report including a `## Technical Fit Score: N/100` line parsed by the orchestrator.
 
@@ -36,7 +36,7 @@ Always run from the **repository root**:
   2> /tmp/karen_guard_<session_id>/anti_karen/karen_run.err
 ```
 
-> **Pre-flight**: `agy` must be authenticated before calling this command — output is fully redirected and interactive login will not work. Run `agy` interactively on the host first if credentials are missing.
+> **Pre-flight**: `agy` must be authenticated before calling this command, output is fully redirected and interactive login will not work. Run `agy` interactively on the host first if credentials are missing.
 
 ---
 
