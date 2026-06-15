@@ -10,6 +10,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ""):
 
 from .harvey_guy import Harvey
 
+
 def main():
     Harvey.setup()\
         .setup_paths()\

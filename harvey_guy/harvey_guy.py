@@ -1,10 +1,13 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-import uuid
+
 import shutil
 import subprocess
+import uuid
 from pathlib import Path
+from typing import TYPE_CHECKING
+
 from .libs import Log
+
 
 class Harvey:
     def __init__(self) -> None:
@@ -69,7 +72,9 @@ class Harvey:
         present = {item.name for item in self.docs_dir.iterdir() if item.is_file()}
         missing = required - present
         if missing:
-            raise FileNotFoundError(f"Missing required documents in data/docs/: {', '.join(sorted(missing))}")
+            raise FileNotFoundError(
+                f"Missing required documents in data/docs/: {', '.join(sorted(missing))}"
+            )
 
         karen_reads = os.environ.get("KAREN_READS_BACKGROUND", "yes").lower() == "yes"
 
@@ -77,7 +82,9 @@ class Harvey:
             if item.is_file():
                 if item.name == "who_are_u.md" and not karen_reads:
                     shutil.copy2(item, anti_karen_dir / item.name)
-                    self.log.info(f"Ingested document {item.name} exclusively for Bill (anti_karen)")
+                    self.log.info(
+                        f"Ingested document {item.name} exclusively for Bill (anti_karen)"
+                    )
                 else:
                     shutil.copy2(item, self.session_docs_dir / item.name)
                     self.log.info(f"Ingested document {item.name} to session docs")
@@ -87,7 +94,9 @@ class Harvey:
         try:
             result = subprocess.run(["which", "at"], capture_output=True, text=True)
             if result.returncode != 0:
-                self.log.warning("'at' utility not found. Long-running task watchdog will not function.")
+                self.log.warning(
+                    "'at' utility not found. Long-running task watchdog will not function."
+                )
             else:
                 self.log.info("'at' utility is available.")
         except Exception as e:

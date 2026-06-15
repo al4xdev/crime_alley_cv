@@ -1,7 +1,10 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Callable, Any
+
 import logging
+from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
 
 def _log_method(func: Callable[[Log, str], Log]) -> Callable[[Log, str], Log]:
     def wrapper(self: Log, msg: str, *args: Any, **kwargs: Any) -> Log:
