@@ -29,20 +29,16 @@ The parent agent will provide you with the following inputs:
 - Save the resolved username.
 
 ### 2. Ingest and Clone Repositories
-- Check if `GITHUB_TOKEN` is set in the environment (`echo $GITHUB_TOKEN`). If available, include it as an auth header in all GitHub API calls:
+- Query the **unauthenticated** GitHub API to retrieve only public repositories (this is intentional — the evaluation must reflect what is publicly visible):
   ```bash
-  curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "https://api.github.com/users/<username>/repos?per_page=100"
+  curl -s "https://api.github.com/users/<username>/repos?per_page=100" > SESSION_DIR/repos.json
   ```
-  If not available, proceed without auth (60 req/hour limit applies — warn if the profile has many repos).
-- Query the GitHub API to retrieve the list of public repositories and save to `SESSION_DIR/repos.json`:
-  ```bash
-  curl -s [auth_header] "https://api.github.com/users/<username>/repos?per_page=100" > SESSION_DIR/repos.json
-  ```
-- Parse clone URLs from the JSON using `jq`: `jq -r '.[].clone_url' SESSION_DIR/repos.json`
-- Save the expected repo count: `jq length SESSION_DIR/repos.json > SESSION_DIR/repos_expected_count.txt`
-- Clone each repository inside `SESSION_DIR/repos/`.
-  - **⚡ Parallelization Requirement:** Clone the repositories concurrently (e.g. using `xargs -P 5` or spawning multiple background `git clone` processes in bash) to speed up execution.
-- **Validation:** After all clones complete, compare `ls SESSION_DIR/repos/ | wc -l` against the expected count. If they differ, log the discrepancy to `SESSION_DIR/anti_karen/clone_warnings.txt` and report it to the parent agent.
+- If the API returns an error (e.g. rate limit exceeded or user not found), stop and report the error to the parent agent. Do not proceed with an empty or malformed `repos.json`.
+- Parse clone URLs: `jq -r '.[].clone_url' SESSION_DIR/repos.json`
+- Save expected count: `jq length SESSION_DIR/repos.json > SESSION_DIR/repos_expected_count.txt`
+- Clone each repository inside `SESSION_DIR/repos/` using standard `git clone` (no auth required for public repos):
+  - **⚡ Parallelization Requirement:** Clone concurrently (e.g. `xargs -P 5`).
+- **Validation:** After clones complete, compare `ls SESSION_DIR/repos/ | wc -l` against the expected count. If they differ, log to `SESSION_DIR/anti_karen/clone_warnings.txt` and report to the parent agent.
 
 ### 3. Research Target Company
 - Read the first line of `SESSION_DIR/docs/job.md`. It follows this guaranteed format: `# <Position Title> — <Company Name>` (e.g., `# Senior Backend Engineer — Acme Corp`).

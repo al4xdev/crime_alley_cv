@@ -23,7 +23,7 @@ Step 2 Action 5: se score não for extraível, loop para e reporta ao usuário c
 Karen agora lê `company_info.md` antes de avaliar (instrução 0 no `prompt_persona.txt`). Shadow atualizado com estrutura obrigatória do arquivo e nota de que Karen o consome.
 
 ### ~~GAP-02: GitHub API sem autenticação~~ ✅
-Shadow Step 2 usa `GITHUB_TOKEN` se disponível, salva contagem esperada de repos e valida após os clones. `requirements.md` inclui recomendação de configurar o token para perfis grandes.
+Shadow Step 2 usa apenas a API pública sem token (intencional — a avaliação deve refletir o que é visível publicamente). Repos públicos não precisam de auth para clonar. Se houver erro (rate limit, user não encontrado), Shadow reporta ao orchestrator e para. Contagem esperada salva e validada após os clones.
 
 ### ~~GAP-03: Estado do orchestrator sem checkpoint~~ ✅
 Checkpoint escrito em `/tmp/karen_guard_loop_state.json` no início de cada Step 1 e atualizado após cada Bill revision no Step 3.
