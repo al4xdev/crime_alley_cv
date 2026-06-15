@@ -29,27 +29,53 @@ The parent agent will provide you with the following inputs:
 - Save the resolved username.
 
 ### 2. Ingest and Clone Repositories
-- Query the GitHub API to retrieve the list of public repositories for the username:
-  `curl -s "https://api.github.com/users/<username>/repos?per_page=100"`
-- Parse the repository names and clone URLs (e.g. using `jq`).
-- Save the repository list in JSON format to `SESSION_DIR/repos.json`.
+- Check if `GITHUB_TOKEN` is set in the environment (`echo $GITHUB_TOKEN`). If available, include it as an auth header in all GitHub API calls:
+  ```bash
+  curl -s -H "Authorization: Bearer $GITHUB_TOKEN" "https://api.github.com/users/<username>/repos?per_page=100"
+  ```
+  If not available, proceed without auth (60 req/hour limit applies — warn if the profile has many repos).
+- Query the GitHub API to retrieve the list of public repositories and save to `SESSION_DIR/repos.json`:
+  ```bash
+  curl -s [auth_header] "https://api.github.com/users/<username>/repos?per_page=100" > SESSION_DIR/repos.json
+  ```
+- Parse clone URLs from the JSON using `jq`: `jq -r '.[].clone_url' SESSION_DIR/repos.json`
+- Save the expected repo count: `jq length SESSION_DIR/repos.json > SESSION_DIR/repos_expected_count.txt`
 - Clone each repository inside `SESSION_DIR/repos/`.
   - **⚡ Parallelization Requirement:** Clone the repositories concurrently (e.g. using `xargs -P 5` or spawning multiple background `git clone` processes in bash) to speed up execution.
+- **Validation:** After all clones complete, compare `ls SESSION_DIR/repos/ | wc -l` against the expected count. If they differ, log the discrepancy to `SESSION_DIR/anti_karen/clone_warnings.txt` and report it to the parent agent.
 
 ### 3. Research Target Company
 - Read the first line of `SESSION_DIR/docs/job.md`. It follows this guaranteed format: `# <Position Title> — <Company Name>` (e.g., `# Senior Backend Engineer — Acme Corp`).
 - Extract the company name as the text after the last ` — ` (em-dash with spaces) on that line.
-- Query DuckDuckGo API or Wikipedia API (via `curl`) to find background info on the company:
+- Query DuckDuckGo API and Wikipedia API (via `curl`) to find background info on the company:
   - DDG: `https://api.duckduckgo.com/?q=<company_name>+empresa&format=json`
   - Wikipedia: `https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch=<company_name>&format=json`
-- Save the gathered description to `SESSION_DIR/company_info.md`.
+- Write the gathered information to `SESSION_DIR/company_info.md` using the following structure:
+  ```markdown
+  # Company Research: <Company Name>
+
+  ## Overview
+  (description from DDG/Wikipedia)
+
+  ## Tech Stack (public signals)
+  (any tech stack information found: job descriptions, GitHub org, engineering blog)
+
+  ## Culture & Values
+  (stated values, Glassdoor data if accessible via curl)
+
+  ## Recent News
+  (relevant articles from the last 6 months if found)
+  ```
+- **Note:** `company_info.md` is consumed by Karen Guard during evaluation. Write it even if data is sparse — an empty section is better than a missing file.
 
 ### 4. Build Karen Guard Docker Image
-- Build the docker image `karen_guard` in background so it's ready when Step 2 executes.
-- Get the host username (`whoami`) and user ID (`id -u`).
-- Run the build:
+- Check if the image already exists before building:
   ```bash
-  docker build -t karen_guard --build-arg USERNAME=$(whoami) --build-arg USER_ID=$(id -u) ./karen_guard
+  if docker image inspect karen_guard >/dev/null 2>&1; then
+    echo "karen_guard image already exists, skipping build."
+  else
+    docker build -t karen_guard --build-arg USERNAME=$(whoami) --build-arg USER_ID=$(id -u) ./karen_guard
+  fi
   ```
 
 ### 5. Signal Completion
