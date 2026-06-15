@@ -14,6 +14,10 @@ graph TD
         Setup[Orchestrator collects\nMAX_LOOPS · MIN_FIT_SCORE\nJOB_DESCRIPTION · KAREN_READS_BACKGROUND]
     end
 
+    subgraph Phase15["Phase 1.5 — Onboarding (optional)"]
+        Vera["Vera\nClaude subagent\nroleplay → who_are_u.md\nSKIPPED if file exists & reused"]
+    end
+
     subgraph Loop["Optimization Loop"]
         direction TB
 
@@ -42,7 +46,12 @@ graph TD
         Step3 -- "CURRENT_LOOP++" --> Step1
     end
 
-    Phase0 --> Phase1 --> Loop
+    subgraph PostLoop["Post-Loop — Coaching"]
+        Donna["Donna\nClaude subagent\nevaluation → action_plan.md"]
+    end
+
+    Phase0 --> Phase1 --> Phase15 --> Loop
+    Exit --> Donna
 ```
 
 ---
@@ -126,6 +135,28 @@ Before executing any commands, you must enter "interactive setup mode". Ask the 
 
 ---
 
+## 🧭 Phase 1.5: Candidate Onboarding (Vera — Optional)
+
+`data/docs/who_are_u.md` is the **source of truth** that Bill uses to rewrite the CV without hallucinating. Before starting the loop, ensure it exists. This phase is optional and is skipped when a usable file is reused.
+
+**Actions:**
+1. Check whether the background file already exists:
+   ```bash
+   test -f data/docs/who_are_u.md && echo exists || echo missing
+   ```
+2. **Branch on the result:**
+   - **`missing`**: Ask the user: *"No candidate background found. Run Vera to create one now? (recommended) [yes/no]"*
+     - If **yes** → spawn the `Vera` subagent, instructing it to read and execute [vera_guy/main.md](../vera_guy/main.md) with **`MODE=create`**. Wait for completion and verify `data/docs/who_are_u.md` was written.
+     - If **no** → warn the user that Bill will have a weaker source of truth and anti-hallucination guarantees are reduced, then proceed.
+   - **`exists`**: Ask the user: *"A candidate background already exists. Reuse it as-is, or refresh it with Vera? [reuse/refresh]"*
+     - **`reuse`** → skip Vera entirely. Proceed to the loop. (This is the default fast path.)
+     - **`refresh`** → spawn the `Vera` subagent with **`MODE=refresh`** and **`EXISTING_BACKGROUND_PATH=data/docs/who_are_u.md`**. Wait for completion.
+3. Once `who_are_u.md` is settled, proceed to the Optimization Loop.
+
+> Vera runs **only here**, before the loop. It never runs during iterations.
+
+---
+
 ## 🔁 The Optimization Loop (Play Phase)
 
 Execute the following steps inside a loop. The loop continues while **`CURRENT_LOOP`** < **`MAX_LOOPS`** AND the latest **`FIT_SCORE`** < **`MIN_FIT_SCORE`**.
@@ -186,11 +217,13 @@ Compare your variables:
   - **Exit Loop — Success**. Copy the final CV: `cp /tmp/karen_guard_$SESSION_ID/docs/cv.md data/docs/cv.md`
   - **Exit Report** → show to user:
     > ✅ Target score reached. Final score: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Iterations: `CURRENT_LOOP + 1`. Optimized CV saved to `data/docs/cv.md`. Full evaluation at `data/evaluation.md`.
+  - Then run **Post-Loop Coaching (Donna)** below.
 
 - **IF** **`CURRENT_LOOP`** >= **`MAX_LOOPS`**:
   - **Exit Loop — Max cycles reached**. Copy the last CV: `cp /tmp/karen_guard_$SESSION_ID/docs/cv.md data/docs/cv.md`
   - **Exit Report** → show to user:
     > ⚠️ Maximum iterations reached (`MAX_LOOPS`). Best score achieved: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Last CV saved to `data/docs/cv.md`. Full evaluation at `data/evaluation.md`. Consider running again with a higher `MAX_LOOPS` or reviewing Karen's recommendations in `data/evaluation.md`.
+  - Then run **Post-Loop Coaching (Donna)** below.
 
 - **ELSE**:
   - Proceed to **Step 3 (Bill)**.
@@ -215,3 +248,17 @@ Delegate the CV revision to a specialized subagent. This isolates the editing lo
    echo '{"current_loop": '$CURRENT_LOOP', "fit_score": '$FIT_SCORE', "session_id": "'$SESSION_ID'"}' > /tmp/karen_guard_loop_state.json
    ```
 7. Restart the loop from **Step 1**.
+
+---
+
+## 🎓 Post-Loop Coaching (Donna)
+
+Reached only on a Gatekeeper exit (either success or max cycles). The loop is done — now convert Karen's final evaluation into a forward-looking development plan for the candidate.
+
+**Actions:**
+1. Spawn a subagent (Donna) for career coaching.
+2. Instruct the subagent to read and execute the instructions defined in [donna_guy/main.md](../donna_guy/main.md) using the active **`SESSION_ID`**, **`KAREN_REPORT_PATH`**, **`FIT_SCORE`**, and **`MIN_FIT_SCORE`**.
+3. Wait for the subagent to complete. (It writes `data/docs/action_plan.md` and modifies nothing else.)
+4. Surface the final summary to the user:
+   > 🎓 Action plan ready at `data/docs/action_plan.md` — prioritized technical gaps, interview prep, and public projects to raise your score on the next run.
+5. **End of pipeline.**
