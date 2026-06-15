@@ -2,6 +2,15 @@
 
 Automated CV optimization system based on a multi-agent Actor-Critic architecture. An orchestrator drives a feedback loop where a critic agent (Karen) scores the CV against real code evidence, and an editor agent (Bill) rewrites it until the score meets the acceptance threshold.
 
+> **Portfolio note — what this demonstrates.** This is a study project on orchestrating a
+> multi-agent system primarily in **natural language**, with deterministic code only where it
+> earns its place. It is intentionally **framework-free** (no LangGraph / CrewAI / etc.): the
+> orchestration lives in readable runbooks, and the
+> [Design Decisions & Philosophy](#-design-decisions--philosophy) section documents *why* each
+> boundary between code and prose was drawn where it is. The artifact worth reviewing here is
+> the reasoning — the code/language boundary, the isolation model, the explicit contracts —
+> not the CV it produces.
+
 ---
 
 ## How It Works
@@ -97,6 +106,22 @@ This pipeline is designed to be executed by an autonomous coding agent (such as 
    > *(or simply reference: `@main.md`)*
 
 3. **Follow along:** The agent will spawn a subagent to check requirements, ask you the configuration questions (Phase 1), and execute the refinement loops autonomously.
+
+---
+
+## ✅ Testing
+
+The agents themselves are LLM-driven and validated by running the pipeline and inspecting the
+session trail — not unit-testable in the usual sense. The **deterministic code** that backs
+them *is* covered by unit tests:
+
+```bash
+uv run pytest
+```
+
+Tests live in `tests/` and cover Harvey's repo-root/path derivation, session creation, the
+`ingest_documents` contract (required `cv.md`/`job.md`, and `who_are_u.md` routing by
+`KAREN_READS_BACKGROUND`), and the fluent logger's counter and chaining.
 
 ---
 
