@@ -64,3 +64,24 @@ Each run creates an isolated session directory:
 - `who_are_u.md` — candidate background (optional but recommended)
 
 See [requirements.md](requirements.md) for system dependencies.
+
+---
+
+## 🚀 How to Run
+
+This pipeline is designed to be executed by an autonomous coding agent (such as **Antigravity CLI / `agy`** or **Claude Code**) running directly in your terminal at the root of this repository.
+
+### Setup and Start:
+
+1. **Open your agent client** in the repository root:
+   ```bash
+   agy
+   ```
+   *(or use `claude` / your preferred agent CLI).*
+
+2. **Trigger the loop** by asking the agent to read and follow the instructions in the main starter file:
+   > **User Prompt:**
+   > "Leia o main.md e inicie o loop de otimização de CV."
+   > *(or simply reference: `@main.md`)*
+
+3. **Follow along:** The agent will spawn a subagent to check requirements, ask you the configuration questions (Phase 1), and execute the refinement loops autonomously.
