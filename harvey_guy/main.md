@@ -1,7 +1,49 @@
 # Execution Runbook: Actor-Critic CV Optimization Loop
 
-Welcome, Agent! You are entering a multi-agent loop designed to refine a candidate's CV against a job description. 
-Read this runbook sequentially. You must initialize state variables, run tasks in parallel where instructed, and execute the feedback loop until the acceptance criteria are met.
+Welcome, Agent! You are entering a multi-agent pipeline that iteratively refines a candidate's CV against a job description until an acceptance threshold is met. Read this runbook sequentially. Initialize state variables, execute parallel tasks where instructed, and drive the feedback loop until the termination criteria are satisfied.
+
+## 🗺️ Architecture Overview
+
+```mermaid
+graph TD
+    subgraph Phase0["Phase 0 — Dependency Verification"]
+        DC[Dependency Checker\nsubagent]
+    end
+
+    subgraph Phase1["Phase 1 — Interactive Setup"]
+        Setup[Orchestrator collects\nMAX_LOOPS · MIN_FIT_SCORE\nJOB_DESCRIPTION · KAREN_READS_BACKGROUND]
+    end
+
+    subgraph Loop["Optimization Loop"]
+        direction TB
+
+        subgraph Step1["Step 1 — Context & Environment"]
+            HarveyPy["Harvey\nPython script\nsetup_paths · ingest_documents"]
+            Shadow["Harvey Shadow\nClaude subagent\nclone repos · research company\npre-build Docker image"]
+            HarveyPy -- "spawns + runs in parallel" --> Shadow
+        end
+
+        Step1 --> Step2
+
+        subgraph Step2["Step 2 — Skeptical Audit"]
+            Karen["Karen Guard\nGemini CLI via Docker\nevaluates CV vs code vs job"]
+        end
+
+        Step2 --> Gate
+
+        Gate{Gatekeeper}
+        Gate -- "FIT_SCORE ≥ MIN_FIT_SCORE\nor CURRENT_LOOP ≥ MAX_LOOPS" --> Exit([Exit — copy CV to repo])
+        Gate -- "needs refinement" --> Step3
+
+        subgraph Step3["Step 3 — CV Revision"]
+            Bill["Bill\nClaude subagent\nrewrites cv.md in SESSION_DIR"]
+        end
+
+        Step3 -- "CURRENT_LOOP++" --> Step1
+    end
+
+    Phase0 --> Phase1 --> Loop
+```
 
 ---
 
@@ -50,7 +92,7 @@ Before doing anything else, you must verify that all environment dependencies ar
 
 ### Actions:
 1. Spawn a specialized subagent with the role `Dependency Checker`.
-2. Instruct the subagent to read, execute, and verify all check steps described in **[requirements.md](requirements.md)**, communicating directly with the user to help them install any missing tools.
+2. Instruct the subagent to read, execute, and verify all check steps described in **[requirements.md](../requirements.md)**, communicating directly with the user to help them install any missing tools.
 3. Wait for the subagent to complete the task.
 4. Verify that `/tmp/dependencies_checked.md` was created with a successful status check before proceeding.
 
@@ -64,34 +106,26 @@ Before executing any commands, you must enter "interactive setup mode". Ask the 
 2. **`MIN_FIT_SCORE`**: What is the target minimum technical fit score (0-100) needed to accept the CV? (e.g., `80`)
 3. **`JOB_DESCRIPTION_RAW`**: Please paste the raw text of the target job description.
 4. **`KAREN_READS_BACKGROUND`**: Should Karen Guard be allowed to read the candidate's detailed background (`who_are_u.md`)? (e.g., `yes` / `no`).
-5. **`DEPENDENCY_CHECK_AT`**: Verify if the `at` command-line utility is installed (e.g., run `which at` or `at -V`). If it is not found, instruct the user to install it (e.g., `sudo apt install at` on Debian/Ubuntu, `brew install at` on macOS, or equivalent) and confirm before proceeding.
 
 ### Initialization Actions:
 - Initialize **`CURRENT_LOOP`** to `0`.
-- Verify the presence of the `at` utility. If missing, block and ask the user to install it.
 - Export the environment variable `KAREN_READS_BACKGROUND` based on the user's input (set to `"yes"` or `"no"`), so that the orchestrator uses this choice during ingestion.
-- Write/update the parsed job description to [data/docs/job.md](data/docs/job.md) based on the **`JOB_DESCRIPTION_RAW`** input.
+- Write/update `data/docs/job.md` with the following **required format** (so subagents can reliably parse the company name from the first line):
+  ```
+  # <Position Title> — <Company Name>
+
+  <JOB_DESCRIPTION_RAW verbatim>
+  ```
+  Example first line: `# Senior Backend Engineer — Acme Corp`
 
 > [!IMPORTANT]
-> **SANDBOXING RULE**: During the loop iterations, do NOT modify the local repository file `data/docs/cv.md`. All updates and edits must occur exclusively inside the session directory at `/tmp/karen_guard_$SESSION_ID/docs/cv.md`.
+> **SANDBOXING RULE**: During the loop iterations, do NOT modify the local repository file [data/docs/cv.md](../data/docs/cv.md). All updates and edits must occur exclusively inside the session directory at `/tmp/karen_guard_$SESSION_ID/docs/cv.md`.
 
 ---
 
 ## 🔁 The Optimization Loop (Play Phase)
 
 Execute the following steps inside a loop. The loop continues while **`CURRENT_LOOP`** < **`MAX_LOOPS`** AND the latest **`FIT_SCORE`** < **`MIN_FIT_SCORE`**.
-
-```mermaid
-graph TD
-    Start([Start Loop]) --> Step1[Step 1: Harvey - Parallel Ingestion]
-    Step1 --> Step2[Step 2: Karen - Skeptical Audit]
-    Step2 --> Check{Gatekeeper Check}
-    Check -- "FIT_SCORE >= MIN_FIT_SCORE" --> End([Exit Loop - Success])
-    Check -- "CURRENT_LOOP >= MAX_LOOPS" --> End
-    Check -- "Refine CV" --> Step3[Step 3: Bill - Delegate Revision]
-    Step3 --> Increment[Increment CURRENT_LOOP]
-    Increment --> Step1
-```
 
 ---
 
@@ -106,10 +140,10 @@ uv run python harvey_guy/main.py
 
 **Actions:**
 1. Execute the setup command above.
-2. Capture the `stdout` session UUID, and store it as **`SESSION_ID`**.
+2. Capture the `stdout` session UUID, and store it as **`SESSION_ID`**. Derive **`SESSION_DIR`** as `/tmp/karen_guard_$SESSION_ID/` — use this exact formula everywhere. At this point `job.md` and `cv.md` have already been copied to `SESSION_DIR/docs/` by the Python script.
 3. Spawn a specialized subagent with the role `Harvey Shadow`.
-4. Instruct the subagent to read and execute the instructions defined in **[harvey_guy/shadow.md](harvey_guy/shadow.md)** using the active **`SESSION_ID`** and **`SESSION_DIR`** (`/tmp/karen_guard_$SESSION_ID/`).
-5. **⚡ Concurrent Task while Subagent runs:** Inspect the temporary session CV file `/tmp/karen_guard_$SESSION_ID/docs/cv.md` (if already created by a previous loop run) or index the local file [data/docs/cv.md](data/docs/cv.md) on the first iteration to map technologies.
+4. Instruct the subagent to read and execute the instructions defined in **[shadow.md](shadow.md)** using the active **`SESSION_ID`** and **`SESSION_DIR`** (`/tmp/karen_guard_$SESSION_ID/`).
+5. **⚡ Concurrent Task while Subagent runs:** Inspect the temporary session CV file `/tmp/karen_guard_$SESSION_ID/docs/cv.md` (if already created by a previous loop run) or index the local file [data/docs/cv.md](../data/docs/cv.md) on the first iteration to map technologies.
 6. Wait for the `Harvey Shadow` subagent to complete all execution tasks.
 7. Verify that `/tmp/karen_guard_$SESSION_ID/company_info.md` and the cloned repos in `/tmp/karen_guard_$SESSION_ID/repos/` are created and populated successfully before proceeding.
 
@@ -117,7 +151,11 @@ uv run python harvey_guy/main.py
 
 ### Step 2: Skeptical Auditing (Karen Guard)
 
-Delegate or follow the instructions defined in [karen_guard/main.md](karen_guard/main.md) to execute the evaluator docker sandbox using the active **`SESSION_ID`**.
+Delegate or follow the instructions defined in [karen_guard/main.md](../karen_guard/main.md) to execute the evaluator docker sandbox using the active **`SESSION_ID`**.
+
+> [!WARNING]
+> **Pre-flight: Antigravity CLI Authentication**
+> The evaluation runs `agy` inside Docker with output fully redirected — interactive login is not possible during the run. Before executing the command below, verify that the host `~/.gemini` directory contains valid credentials. If not authenticated, have the user run `agy` interactively on the host first to complete the login flow, then proceed.
 
 **Command to run:**
 ```bash
@@ -128,7 +166,7 @@ Delegate or follow the instructions defined in [karen_guard/main.md](karen_guard
 1. Execute the command above to isolate output logs inside the session directory.
 2. Monitor progress by viewing `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.err`.
 3. Retrieve **`KAREN_REPORT_PATH`** from the last line of `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.log`.
-4. Open **`KAREN_REPORT_PATH`** (or the host copy [data/evaluation.md](data/evaluation.md)) and extract the **`FIT_SCORE`** (parsed from the "Technical Fit Score" section).
+4. Open **`KAREN_REPORT_PATH`** (or the host copy [data/evaluation.md](../data/evaluation.md)) and extract the **`FIT_SCORE`** (parsed from the "Technical Fit Score" section).
 
 ---
 
@@ -136,9 +174,9 @@ Delegate or follow the instructions defined in [karen_guard/main.md](karen_guard
 
 Compare your variables:
 - **IF** **`FIT_SCORE`** >= **`MIN_FIT_SCORE`**:
-  - **Exit Loop**: The CV has successfully met the user's requirements. Copy the final optimized CV from `/tmp/karen_guard_$SESSION_ID/docs/cv.md` back to the local repository at [data/docs/cv.md](data/docs/cv.md).
+  - **Exit Loop**: The CV has successfully met the user's requirements. Copy the final optimized CV from `/tmp/karen_guard_$SESSION_ID/docs/cv.md` back to the local repository at [data/docs/cv.md](../data/docs/cv.md).
 - **IF** **`CURRENT_LOOP`** >= **`MAX_LOOPS`**:
-  - **Exit Loop**: Reached maximum cycles. Copy the last iteration's CV from `/tmp/karen_guard_$SESSION_ID/docs/cv.md` back to the local repository at [data/docs/cv.md](data/docs/cv.md) and report the final status.
+  - **Exit Loop**: Reached maximum cycles. Copy the last iteration's CV from `/tmp/karen_guard_$SESSION_ID/docs/cv.md` back to the local repository at [data/docs/cv.md](../data/docs/cv.md) and report the final status.
 - **ELSE**:
   - Proceed to **Step 3 (Bill)**.
 
@@ -150,7 +188,7 @@ Delegate the CV revision to a specialized subagent. This isolates the editing lo
 
 **Actions:**
 1. Spawn a subagent (Bill) to optimize the CV.
-2. Instruct the subagent to read and execute the instructions defined in [billf/main.md](billf/main.md) using the active **`SESSION_ID`** and **`KAREN_REPORT_PATH`**.
+2. Instruct the subagent to read and execute the instructions defined in [billf/main.md](../billf/main.md) using the active **`SESSION_ID`** and **`KAREN_REPORT_PATH`**.
 3. Wait for the subagent to complete the revision. (The subagent will modify `/tmp/karen_guard_$SESSION_ID/docs/cv.md` directly).
 4. Increment **`CURRENT_LOOP`** by 1.
 5. Restart the loop from **Step 1**.

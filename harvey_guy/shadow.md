@@ -37,7 +37,8 @@ The parent agent will provide you with the following inputs:
   - **⚡ Parallelization Requirement:** Clone the repositories concurrently (e.g. using `xargs -P 5` or spawning multiple background `git clone` processes in bash) to speed up execution.
 
 ### 3. Research Target Company
-- Find the company name from the first line of the job description file at `SESSION_DIR/docs/job.md` (or the host file `data/docs/job.md`). The line usually starts with a dash or job title (e.g. "Software Engineer — Acme Corp").
+- Read the first line of `SESSION_DIR/docs/job.md`. It follows this guaranteed format: `# <Position Title> — <Company Name>` (e.g., `# Senior Backend Engineer — Acme Corp`).
+- Extract the company name as the text after the last ` — ` (em-dash with spaces) on that line.
 - Query DuckDuckGo API or Wikipedia API (via `curl`) to find background info on the company:
   - DDG: `https://api.duckduckgo.com/?q=<company_name>+empresa&format=json`
   - Wikipedia: `https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch=<company_name>&format=json`

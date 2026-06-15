@@ -28,9 +28,12 @@ Write the final evaluation report in Markdown format (`evaluation.md`) containin
 
 # Technical Evaluation Report — Karen Guard
 
+## Technical Fit Score: <number>/100
+
+Replace `<number>` with your realistic and rigorous rating (e.g., `## Technical Fit Score: 72/100`). This line must appear exactly as shown — it is parsed programmatically.
+
 ## 1. Overview and Job Fit
-- **Technical Fit Score (0 to 100)**: A realistic and rigorous rating.
-- **Executive Summary**: Your direct, professional assessment of the candidate against the Omie Tech Lead position requirements.
+- **Executive Summary**: Your direct, professional assessment of the candidate against the position requirements described in `job.md`.
 
 ## 2. Evidence Dossier (Repository Analysis)
 - For each relevant repository analyzed:
