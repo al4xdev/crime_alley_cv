@@ -16,7 +16,7 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-exclude = ["stable_version_results"]
+exclude = [".stable_version_results"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
