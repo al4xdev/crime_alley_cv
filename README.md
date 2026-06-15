@@ -14,9 +14,9 @@ The project is structured as a system of autonomous agents cooperating in a cont
 
 ## Modules Glossary
 
-* [Harvey (Orchestrator)](file:///home/alex/git/my/meta_2028/harvey_guy/README.md) - Context collection and workspace setup.
-* [Karen Guard (Evaluator)](file:///home/alex/git/my/meta_2028/karen_guard/Readme.md) - Skeptical static validator and technical fit reporting.
-* [Bill (Editor)](file:///home/alex/git/my/meta_2028/billf/README.md) - Automated CV review and optimization.
+* [Harvey (Orchestrator)](harvey_guy/README.md) - Context collection and workspace setup.
+* [Karen Guard (Evaluator)](karen_guard/Readme.md) - Skeptical static validator and technical fit reporting.
+* [Bill (Editor)](billf/README.md) - Automated CV review and optimization.
 
 ---
 
@@ -29,7 +29,7 @@ A dedicated folder for the current session is created in the system's temporary 
 `/tmp/karen_guard_<UUID>/`
 
 ### Log Location
-The log file of the current run is stored directly inside this session folder:
-`/tmp/karen_guard_<UUID>/karen_guard_core.log`
+The log file of the current run is stored inside the protected session folder:
+`/tmp/karen_guard_<UUID>/anti_karen/karen_guard_core.log`
 
 Logs contain detailed timestamps and a sequential message counter (`[count]`) for precise tracking of the pipeline execution.

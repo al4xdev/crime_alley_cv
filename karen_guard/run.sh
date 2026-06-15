@@ -82,7 +82,9 @@ docker run -it --rm \
   karen_guard su - "${HOST_USER}" -c "run_evaluator"
 
 if [ -f "${SESSION_DIR}/evaluation.md" ]; then
-    cp "${SESSION_DIR}/evaluation.md" "${SESSION_DIR}/karen_output.md"
-    cp "${SESSION_DIR}/evaluation.md" "${DIR}/../data/evaluation.md"
-    echo "${SESSION_DIR}/karen_output.md"
+    mkdir -p "${SESSION_DIR}/anti_karen"
+    mv "${SESSION_DIR}/evaluation.md" "${SESSION_DIR}/anti_karen/evaluation.md"
+    cp "${SESSION_DIR}/anti_karen/evaluation.md" "${SESSION_DIR}/anti_karen/karen_output.md"
+    cp "${SESSION_DIR}/anti_karen/evaluation.md" "${DIR}/../data/evaluation.md"
+    echo "${SESSION_DIR}/anti_karen/karen_output.md"
 fi

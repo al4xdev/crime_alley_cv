@@ -14,6 +14,7 @@ You must read the following files from the session workspace:
 1. **CV**: `/tmp/karen_guard_$SESSION_ID/docs/cv.md`
 2. **Job Description**: `/tmp/karen_guard_$SESSION_ID/docs/job.md`
 3. **Evaluation Report**: `KAREN_REPORT_PATH`
+4. **Candidate Background (Source of Truth)**: `/tmp/karen_guard_$SESSION_ID/anti_karen/who_are_u.md` (if present) or `/tmp/karen_guard_$SESSION_ID/docs/who_are_u.md`
 
 ---
 
@@ -23,20 +24,34 @@ To prevent biasing the critic agent (Karen), leaking intermediate reasoning step
 
 1. **Do NOT Modify Host Repository Files**: Do not write to `data/docs/cv.md` directly. All updates must be made to `/tmp/karen_guard_$SESSION_ID/docs/cv.md`.
 2. **Use the Protected Workspace**: Write all intermediate draft versions, comparison tables, brainstorm logs, and notes inside `/tmp/karen_guard_$SESSION_ID/anti_karen/`. Karen's prompt instructs her to ignore this folder completely, keeping your draft process private.
-3. **Strict Scope Discipline (No Code Modifications)**: Your sole responsibility is editing and optimizing the candidate's resume (`cv.md`). You must **NEVER** modify source code files, refactor the application codebase, or write changes to the candidate's cloned repositories. Repositories must be treated strictly as read-only references.
+3. **Strict Scope Discipline (No Code Modifications)**: Your sole responsibility is editing and optimizing the candidate's resume (`cv.md`). You must **NEVER** modify source code files, refactor the application codebase, or write/commit changes to the candidate's cloned repositories. Repositories must be treated strictly as read-only references.
+
+---
+
+## 🎯 Content Rules & Anti-Hallucination Guidelines
+
+To ensure the CV remains highly professional, realistic, and factual, you must obey the following directives:
+
+1. **No Hallucinated Technologies or Roles**: Never invent roles (e.g. "Independent ML & Data Developer" if the user has no such history) or list technologies that are not present in the candidate's code repositories or the `who_are_u.md` profile (e.g. do not add Scikit-learn, XGBoost, Prophet, LangChain unless they are verified in the candidate's background).
+2. **Accurate Headline**: Set the professional headline to **"GenAI Platform Engineer"** (or a title clearly highlighting platform engineering for Generative AI/LLMs) instead of generic terms like "Cloud & Automation Engineer".
+3. **Verified Credentials**: Do not list certifications (e.g. Stanford ML, goFLUENT C2) unless they are explicitly verified in the `who_are_u.md` file.
+4. **Primary Source of Truth**: The `who_are_u.md` file and retrospects are your absolute sources of truth. Treat the job description and repository code strictly as context to refine how existing skills are highlighted, never as an excuse to invent new credentials.
+5. **Acknowledge NDAs**: Use professional NDA warnings (e.g., "Worked under NDA") to explain the absence of public source code for private corporate projects (like frameworks at Accenture), which is a valid and professional reason that explains lack of public repository evidence to the critic.
+6. **Qualify Metrics**: Do not use raw, inflated percentages (e.g., "80% faster deployments") unless supported by the background file. Instead, qualify them professionally by explaining the method used (e.g., "Optimized base Docker images and restructured multi-stage builds").
 
 ---
 
 ## 🛠️ Step-by-Step Editor Execution Plan
 
-1. **Read Inputs**: Read the Job Description (`job.md`) and Karen's evaluation report. Note down:
+1. **Read Inputs**: Read the Job Description (`job.md`), the Candidate Background (`who_are_u.md` from `anti_karen/who_are_u.md` if present, otherwise from `docs/who_are_u.md`), and Karen's evaluation report. Note down:
    - Inconsistencies and exaggerations highlighted (e.g., title inflation, lack of public code support for claimed technologies).
    - Core technology requirements of the job.
    - Recommended adjustments for the CV.
 2. **Draft Modifications**:
    - Create a draft analysis inside `/tmp/karen_guard_$SESSION_ID/anti_karen/draft_notes.txt`.
-   - Align the CV's senior title to match the candidate's actual years of experience.
-   - Replace generic metrics with concrete explanations of how those metrics were achieved.
-   - De-emphasize or remove technologies that are claimed in the CV but have no evidence in the public repositories, unless they can be justified or reframed.
+   - Align the CV's headline and senior title to match the candidate's actual profile ("GenAI Platform Engineer") and years of experience.
+   - Replace generic or unverified metrics with qualified, professional explanations.
+   - Ensure any private corporate experience that cannot have public code is labeled with appropriate NDA remarks.
+   - De-emphasize or remove technologies that are claimed in the CV but have no evidence in the public repositories and are not in `who_are_u.md`.
 3. **Write Final Draft**: Overwrite the temporary session CV file at `/tmp/karen_guard_$SESSION_ID/docs/cv.md` with the new optimized resume text.
 4. **Signal Completion**: Report to the parent agent that the revision is complete.
