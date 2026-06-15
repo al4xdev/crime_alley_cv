@@ -68,8 +68,9 @@ To ensure reliable, safe, and consistent execution on the host machine, you must
 - **Silent Commands**: For commands with no natural output (e.g., `mv`, `mkdir`, `chmod`, `git add`), verify success by appending success indicators (like `&& echo ok` or equivalent).
 
 ### 2. Long-Running Task Watchdog
+- Use **POSIX-compatible** command substitution (`$(...)`, not fish's `(...)`) in these helper commands, so they run identically whether the host shell is bash or fish.
 - Before starting any task expected to take >30 seconds, register it:
-  `echo (date +%s) $task_description > /tmp/agt_task_active`
+  `echo "$(date +%s) $task_description" > /tmp/agt_task_active`
 - On completion (success or failure), clear it:
   `rm -f /tmp/agt_task_active`
 - If a sub-agent or background process is spawned, set a cron to alert if still running after 5 minutes:
@@ -220,8 +221,12 @@ Delegate or follow the instructions defined in [karen_guard/main.md](../karen_gu
 1. Execute the command above to isolate output logs inside the session directory.
 2. Monitor progress by viewing `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.err`.
 3. Retrieve **`KAREN_REPORT_PATH`** from the last line of `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.log`.
-4. Open **`KAREN_REPORT_PATH`** and extract **`FIT_SCORE`** by finding the line matching `## Technical Fit Score: <number>/100` and parsing the integer before `/100`.
-5. **FIT_SCORE fallback**: If the line is absent, malformed, or the file cannot be opened — **stop the loop immediately**. Report to the user: "Karen did not produce a parseable fit score. Inspect `KAREN_REPORT_PATH` manually." Do not proceed to the Gatekeeper with an undefined score.
+4. Extract **`FIT_SCORE`** with a deterministic, format-tolerant command — do **not** read it "by eye". Karen's exact wording drifts in practice (`## Technical Fit Score: 72/100`, `- **Technical Fit Score (0 to 100)**: **72/100**`, etc.), so match the *number before `/100` on the score line* rather than an exact heading:
+   ```bash
+   FIT_SCORE=$(grep -i 'technical fit score' "$KAREN_REPORT_PATH" | grep -oE '[0-9]+/100' | head -1 | cut -d/ -f1)
+   echo "$FIT_SCORE"
+   ```
+5. **FIT_SCORE fallback**: If the command prints nothing (no line containing "Technical Fit Score" with an `N/100` value, or the file is unreadable) — **stop the loop immediately**. Report to the user: "Karen did not produce a parseable fit score. Inspect `KAREN_REPORT_PATH` manually." Do not proceed to the Gatekeeper with an undefined score.
 6. **Archive this iteration's input + evaluation** into the run history (the CV at `SESSION_DIR/docs/cv.md` is still the version Karen just evaluated — Bill has not run yet):
    ```bash
    ITER_DIR="$RUN_DIR/loop_$(printf '%02d' $CURRENT_LOOP)" && mkdir -p "$ITER_DIR"

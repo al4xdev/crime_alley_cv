@@ -34,7 +34,7 @@ Write the final evaluation report in Markdown format to the `out/` directory (i.
 
 ## Technical Fit Score: <number>/100
 
-Replace `<number>` with your realistic and rigorous rating (e.g., `## Technical Fit Score: 72/100`). This line must appear exactly as shown — it is parsed programmatically.
+Output your realistic, rigorous rating here. This is parsed programmatically: the pipeline finds the line containing the text `Technical Fit Score` and reads the integer immediately before `/100`. Therefore you MUST: (a) keep the score on a single line, (b) write the value in the form `<number>/100`, and (c) not place any other `N/100` figure earlier in the report. Canonical form: `## Technical Fit Score: 72/100`.
 
 ## 1. Overview and Job Fit
 - **Executive Summary**: Your direct, professional assessment of the candidate against the position requirements described in `job.md`.
