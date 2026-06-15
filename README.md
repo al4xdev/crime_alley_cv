@@ -81,7 +81,6 @@ This pipeline is designed to be executed by an autonomous coding agent (such as 
 
 2. **Trigger the loop** by asking the agent to read and follow the instructions in the main starter file:
    > **User Prompt:**
-   > "Leia o main.md e inicie o loop de otimização de CV."
    > *(or simply reference: `@main.md`)*
 
 3. **Follow along:** The agent will spawn a subagent to check requirements, ask you the configuration questions (Phase 1), and execute the refinement loops autonomously.
