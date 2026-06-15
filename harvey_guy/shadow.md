@@ -43,26 +43,32 @@ The parent agent will provide you with the following inputs:
 ### 3. Research Target Company
 - Read the first line of `SESSION_DIR/docs/job.md`. It follows this guaranteed format: `# <Position Title> — <Company Name>` (e.g., `# Senior Backend Engineer — Acme Corp`).
 - Extract the company name as the text after the last ` — ` (em-dash with spaces) on that line.
-- Query DuckDuckGo API and Wikipedia API (via `curl`) to find background info on the company:
-  - DDG: `https://api.duckduckgo.com/?q=<company_name>+empresa&format=json`
-  - Wikipedia: `https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch=<company_name>&format=json`
+- Gather signal from multiple public sources via `curl`. Run the queries that apply; skip silently any that return nothing. Aim for breadth across these axes:
+  - **Overview & size**: Wikipedia (`https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch=<company_name>&format=json`) and DuckDuckGo (`https://api.duckduckgo.com/?q=<company_name>+empresa&format=json`). Capture sector, rough headcount, and funding/maturity if stated.
+  - **Public tech stack**: look for the company's GitHub org, engineering blog, and the technologies named in their own job postings — these are the strongest public signals of the real stack.
+  - **Culture & values**: stated company values, and Glassdoor/review snippets if reachable via `curl`.
+  - **Recent open roles** (targeted DDG/web query): `<company_name> vagas site:linkedin.com OR site:gupy.io` — note roles related to this position, as they reveal stack and team priorities.
+  - **Recent news** (last ~6 months): `<company_name> notícias` — funding, launches, layoffs, direction.
 - Write the gathered information to `SESSION_DIR/company_info.md` using the following structure:
   ```markdown
   # Company Research: <Company Name>
 
-  ## Overview
-  (description from DDG/Wikipedia)
+  ## Profile & Size
+  (sector, rough headcount, funding/maturity)
 
   ## Tech Stack (public signals)
-  (any tech stack information found: job descriptions, GitHub org, engineering blog)
+  (GitHub org, engineering blog, technologies named in their job postings)
 
   ## Culture & Values
-  (stated values, Glassdoor data if accessible via curl)
+  (stated values, Glassdoor/review snippets if reachable)
+
+  ## Open Roles (recent)
+  (roles related to this position; what they reveal about stack and priorities)
 
   ## Recent News
-  (relevant articles from the last 6 months if found)
+  (relevant items from the last ~6 months)
   ```
-- **Note:** `company_info.md` is consumed by Karen Guard during evaluation. Write it even if data is sparse — an empty section is better than a missing file.
+- **Note:** `company_info.md` is consumed by Karen Guard during evaluation to calibrate scoring against the company's real stack and priorities. Write it even if data is sparse — an empty section is better than a missing file.
 
 ### 4. Build Karen Guard Docker Image
 - Check if the image already exists before building:

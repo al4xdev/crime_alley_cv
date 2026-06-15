@@ -53,13 +53,16 @@ Each run creates an isolated session directory:
 
 ```
 /tmp/karen_guard_<UUID>/
-├── docs/           ← cv.md, job.md, who_are_u.md
-├── repos/          ← cloned candidate repositories
-├── company_info.md ← company research
-└── anti_karen/     ← protected zone (Karen cannot read)
+├── docs/           ← cv.md, job.md, who_are_u.md   (mounted read-only to Karen)
+├── repos/          ← cloned candidate repositories   (mounted read-only to Karen)
+├── company_info.md ← company research                (mounted read-only to Karen)
+├── out/            ← Karen's only writable mount (out/evaluation.md)
+└── anti_karen/     ← protected zone (NOT mounted into Karen's container)
     ├── karen_output.md
     └── karen_guard_core.log
 ```
+
+Per-iteration history is also archived on the host at `.runs/<timestamp>/` (input/output CVs, Karen's report per loop, and a `scores.csv` progression), so a full run can be reviewed and compared across iterations.
 
 ---
 
@@ -168,17 +171,18 @@ There are two kinds of boundary in this system: **physical** (strong — Karen r
 and can only see what is mounted) and **instructional** (weak, best-effort — "you MUST NOT
 read `anti_karen/`" in the prompt). Both are legitimate, but they are not interchangeable.
 A boundary protecting something that matters — and whose violation would be *silent* — should
-be physical. (See `backlog.md` FEAT-B: today `anti_karen/` is still inside Karen's mount, so
-that boundary is currently instructional; making it physical is the one hardening worth
-doing.)
+be physical. This is why `run.sh` mounts only `docs/`, `repos/`, `company_info.md`, and a
+writable `out/` into Karen's container: `anti_karen/` is not present in the container at all,
+so the boundary is structural, not a prompt she could ignore. The prompt restriction remains
+as a redundant second layer.
 
 ### Observability is the human safety net
 
 Every run writes a full trail to its session directory under `/tmp/karen_guard_<uuid>/`
-(logs, reports, intermediate CVs). Because a human inspects that directory, "silent" failures
-are not truly silent to the operator — which further justifies *not* over-engineering
-deterministic scaffolding. The planned run-versioning (`backlog.md` FEAT-A) exists to make
-this trail consolidated and comparable across iterations rather than scattered.
+(logs, reports, intermediate CVs), and a consolidated, comparable history to
+`.runs/<timestamp>/` on the host (per-iteration CVs, Karen's report, and a `scores.csv`
+progression). Because a human inspects these, "silent" failures are not truly silent to the
+operator — which further justifies *not* over-engineering deterministic scaffolding.
 
 ### Where this matures
 

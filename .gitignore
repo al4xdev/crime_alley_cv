@@ -15,3 +15,6 @@ data/
 # Local run-state markers
 .dependencies_checked.md
 
+# Versioned run history (contains CV/evaluation copies — sensitive)
+.runs/
+

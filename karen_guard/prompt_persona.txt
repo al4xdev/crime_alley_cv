@@ -28,7 +28,7 @@ CRITICAL RESTRICTION: You MUST NOT read, analyze, inspect, or in any way conside
    - Is there evidence of copied code, pure tutorial projects, or basic templates?
    - Do the technologies the candidate claims to master in the CV appear substantially and well-implemented in real projects?
 
-Write the final evaluation report in Markdown format (`evaluation.md`) containing the following structure:
+Write the final evaluation report in Markdown format to the `out/` directory (i.e. the file `out/evaluation.md`), containing the following structure:
 
 # Technical Evaluation Report — Karen Guard
 

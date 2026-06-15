@@ -42,10 +42,10 @@ Current Claude subagents: **Vera**, **Harvey Shadow**, **Bill**, **Donna**, **De
 Note: **Vera** and **Donna** run outside the session loop and write directly to their designated host output in `data/docs/` (`who_are_u.md` and `action_plan.md` respectively), since no `SESSION_DIR` exists pre-loop / the loop is already over post-loop. This is the same legitimate-output pattern as the orchestrator writing `job.md` in Phase 1.
 
 ### 3. External Agent (Karen Guard)
-Runs as a Gemini CLI (`agy`) process inside a Docker container. Not a Claude subagent — it has its own model, authentication, and execution environment. Communicates exclusively via files mounted into the container:
-- **Reads**: `SESSION_DIR/docs/` and `SESSION_DIR/repos/`
-- **Writes**: `SESSION_DIR/evaluation.md`
-- **Cannot access**: `SESSION_DIR/anti_karen/` (enforced via prompt restriction)
+Runs as a Gemini CLI (`agy`) process inside a Docker container. Not a Claude subagent — it has its own model, authentication, and execution environment. Communicates exclusively via the subpaths mounted into the container:
+- **Reads** (read-only mounts): `SESSION_DIR/docs/`, `SESSION_DIR/repos/`, `SESSION_DIR/company_info.md`
+- **Writes**: `SESSION_DIR/out/evaluation.md` (the only writable mount); `run.sh` then relocates it to `anti_karen/karen_output.md`
+- **Cannot access**: `SESSION_DIR/anti_karen/` — physically, because it is not mounted into the container at all (not merely a prompt restriction)
 
 ---
 
@@ -55,18 +55,19 @@ Agents do not share memory or pass data via function arguments. All state is com
 
 ```
 /tmp/karen_guard_<SESSION_ID>/
-├── docs/               ← input documents (cv.md, job.md, who_are_u.md)
-├── repos/              ← cloned candidate repositories (read-only for all)
-├── company_info.md     ← company research output from Harvey Shadow
-├── evaluation.md       ← Karen's raw output (moved to anti_karen/ by run.sh)
-└── anti_karen/         ← protected zone: Karen cannot read this
+├── docs/               ← input documents (cv.md, job.md, who_are_u.md) — mounted read-only to Karen
+├── repos/              ← cloned candidate repositories — mounted read-only to Karen
+├── company_info.md     ← company research output from Harvey Shadow — mounted read-only to Karen
+├── out/                ← Karen's only writable mount; she writes out/evaluation.md here
+└── anti_karen/         ← protected zone: NOT mounted into Karen's container
     ├── karen_guard_core.log
+    ├── evaluation.md   ← relocated from out/ by run.sh
     ├── karen_output.md ← final parsed evaluation report
     ├── draft_notes.txt ← Bill's internal scratchpad
     └── who_are_u.md    ← candidate background (if KAREN_READS_BACKGROUND=no)
 ```
 
-The orchestrator reads `SESSION_DIR` to extract outputs after each agent completes.
+Per-iteration artifacts are also archived to a host-side run history at `.runs/<timestamp>/loop_NN/` (input/output CVs, Karen's report, score) with a `scores.csv` progression — see the orchestrator runbook. The orchestrator reads `SESSION_DIR` to extract outputs after each agent completes.
 
 ---
 
@@ -74,8 +75,9 @@ The orchestrator reads `SESSION_DIR` to extract outputs after each agent complet
 
 | Boundary | Mechanism |
 |---|---|
-| Karen cannot read `anti_karen/` | Prompt restriction in `prompt_persona.txt` |
-| Karen cannot read host files | Docker volume mount: only `SESSION_DIR` is exposed |
+| Karen cannot read `anti_karen/` | **Physical**: `run.sh` mounts only `docs/`, `repos/`, `company_info.md`, `out/` into the container — `anti_karen/` is never present. Prompt restriction in `prompt_persona.txt` is a redundant second layer. |
+| Karen cannot read host files | Docker volume mounts: only the subpaths above are exposed (`docs/`/`repos/` read-only) |
+| Karen writes only her report | Only `out/` is mounted writable; she writes `out/evaluation.md`, which `run.sh` relocates to `anti_karen/` |
 | Bill cannot modify host repository | Explicit rule in `billf/main.md` |
 | CV in repo is never modified during loop | SANDBOXING RULE in `harvey_guy/main.md` |
 | Karen's `agy` config is isolated per session | `.gemini/` copied into `SESSION_DIR/.gemini/` |

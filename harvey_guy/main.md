@@ -130,6 +130,11 @@ Ask the user the following questions to initialize the loop configuration variab
 ### Initialization Actions:
 - Initialize **`CURRENT_LOOP`** to `0`.
 - Store `KAREN_READS_BACKGROUND` as an in-context variable (`"yes"` or `"no"`). It will be injected as an environment variable prefix when calling the Harvey Python script (see Step 1).
+- Establish the **run history directory** on the host (it persists across iterations and survives `/tmp` cleanup). Store it as **`RUN_DIR`** and seed the score log:
+  ```bash
+  RUN_DIR=".runs/$(date +%Y%m%d_%H%M%S)" && mkdir -p "$RUN_DIR" && echo "loop,score" > "$RUN_DIR/scores.csv"
+  ```
+  Reference `RUN_DIR` throughout the loop. Every per-iteration artifact (CVs, Karen's report, score) is archived under it — this is the audit trail for the whole run.
 - Write/update `data/docs/job.md` with the following **required format** (so subagents can reliably parse the company name from the first line):
   ```
   # <Position Title> — <Company Name>
@@ -217,6 +222,14 @@ Delegate or follow the instructions defined in [karen_guard/main.md](../karen_gu
 3. Retrieve **`KAREN_REPORT_PATH`** from the last line of `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.log`.
 4. Open **`KAREN_REPORT_PATH`** and extract **`FIT_SCORE`** by finding the line matching `## Technical Fit Score: <number>/100` and parsing the integer before `/100`.
 5. **FIT_SCORE fallback**: If the line is absent, malformed, or the file cannot be opened — **stop the loop immediately**. Report to the user: "Karen did not produce a parseable fit score. Inspect `KAREN_REPORT_PATH` manually." Do not proceed to the Gatekeeper with an undefined score.
+6. **Archive this iteration's input + evaluation** into the run history (the CV at `SESSION_DIR/docs/cv.md` is still the version Karen just evaluated — Bill has not run yet):
+   ```bash
+   ITER_DIR="$RUN_DIR/loop_$(printf '%02d' $CURRENT_LOOP)" && mkdir -p "$ITER_DIR"
+   cp /tmp/karen_guard_$SESSION_ID/docs/cv.md "$ITER_DIR/cv_in.md"
+   cp "$KAREN_REPORT_PATH" "$ITER_DIR/karen_report.md"
+   echo "$FIT_SCORE" > "$ITER_DIR/score.txt"
+   echo "$CURRENT_LOOP,$FIT_SCORE" >> "$RUN_DIR/scores.csv"
+   ```
 
 ---
 
@@ -227,13 +240,13 @@ Compare your variables:
 - **IF** **`FIT_SCORE`** >= **`MIN_FIT_SCORE`**:
   - **Exit Loop — Success**. Copy the final CV: `cp /tmp/karen_guard_$SESSION_ID/docs/cv.md data/docs/cv.md`
   - **Exit Report** → show to user:
-    > ✅ Target score reached. Final score: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Iterations: `CURRENT_LOOP + 1`. Optimized CV saved to `data/docs/cv.md`. Full evaluation at `data/evaluation.md`.
+    > ✅ Target score reached. Final score: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Iterations: `CURRENT_LOOP + 1`. Optimized CV saved to `data/docs/cv.md`. Full evaluation at `data/evaluation.md`. Run history (per-iteration CVs, reports, `scores.csv`) at `RUN_DIR`.
   - Then run **Post-Loop Coaching (Donna)** below.
 
 - **IF** **`CURRENT_LOOP`** >= **`MAX_LOOPS`**:
   - **Exit Loop — Max cycles reached**. Copy the last CV: `cp /tmp/karen_guard_$SESSION_ID/docs/cv.md data/docs/cv.md`
   - **Exit Report** → show to user:
-    > ⚠️ Maximum iterations reached (`MAX_LOOPS`). Best score achieved: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Last CV saved to `data/docs/cv.md`. Full evaluation at `data/evaluation.md`. Consider running again with a higher `MAX_LOOPS` or reviewing Karen's recommendations in `data/evaluation.md`.
+    > ⚠️ Maximum iterations reached (`MAX_LOOPS`). Best score achieved: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Last CV saved to `data/docs/cv.md`. Full evaluation at `data/evaluation.md`. Run history (per-iteration CVs, reports, `scores.csv`) at `RUN_DIR`. Consider running again with a higher `MAX_LOOPS` or reviewing Karen's recommendations in `data/evaluation.md`.
   - Then run **Post-Loop Coaching (Donna)** below.
 
 - **ELSE**:
@@ -249,16 +262,22 @@ Delegate the CV revision to a specialized subagent. This isolates the editing lo
 1. Spawn a subagent (Bill) to optimize the CV.
 2. Instruct the subagent to read and execute the instructions defined in [billf/main.md](../billf/main.md) using the active **`SESSION_ID`** and **`KAREN_REPORT_PATH`**.
 3. Wait for the subagent to complete the revision. (The subagent will modify `/tmp/karen_guard_$SESSION_ID/docs/cv.md` directly).
-4. **CV carry-forward** (authorized inter-iteration modification): copy the revised CV so the next iteration's `ingest_documents()` reads Bill's version instead of the original:
+4. **Archive Bill's output** into the same iteration directory (the CV is now the revised version; draft notes are optional):
+   ```bash
+   ITER_DIR="$RUN_DIR/loop_$(printf '%02d' $CURRENT_LOOP)" && mkdir -p "$ITER_DIR"
+   cp /tmp/karen_guard_$SESSION_ID/docs/cv.md "$ITER_DIR/cv_out.md"
+   cp /tmp/karen_guard_$SESSION_ID/anti_karen/draft_notes.txt "$ITER_DIR/draft_notes.txt" 2>/dev/null || true
+   ```
+5. **CV carry-forward** (authorized inter-iteration modification): copy the revised CV so the next iteration's `ingest_documents()` reads Bill's version instead of the original:
    ```bash
    cp /tmp/karen_guard_$SESSION_ID/docs/cv.md data/docs/cv.md
    ```
-5. Increment **`CURRENT_LOOP`** by 1.
-6. Update the loop state checkpoint:
+6. Increment **`CURRENT_LOOP`** by 1.
+7. Update the loop state checkpoint:
    ```bash
    echo '{"current_loop": '$CURRENT_LOOP', "fit_score": '$FIT_SCORE', "session_id": "'$SESSION_ID'"}' > /tmp/karen_guard_loop_state.json
    ```
-7. Restart the loop from **Step 1**.
+8. Restart the loop from **Step 1**.
 
 ---
 

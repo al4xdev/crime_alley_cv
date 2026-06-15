@@ -81,18 +81,29 @@ if docker run --rm -v "${SESSION_GEMINI_DIR}:/home/${HOST_USER}/.gemini" \
 fi
 
 echo "Starting Karen Guard evaluation process for session ${SESSION_ID}..." >&2
+
+# Physical isolation: mount ONLY what Karen needs to see, never the whole session
+# directory. anti_karen/ is therefore not present inside the container at all — Bill's
+# draft notes and a blind who_are_u.md are physically out of reach, not merely forbidden
+# by a prompt instruction. docs/ and repos/ are read-only; out/ is Karen's only writable path.
+mkdir -p "${SESSION_DIR}/out" "${SESSION_DIR}/docs" "${SESSION_DIR}/repos"
+[ -f "${SESSION_DIR}/company_info.md" ] || touch "${SESSION_DIR}/company_info.md"
+
 docker run --rm \
-  -v "${SESSION_DIR}:/app/session" \
+  -v "${SESSION_DIR}/docs:/app/session/docs:ro" \
+  -v "${SESSION_DIR}/repos:/app/session/repos:ro" \
+  -v "${SESSION_DIR}/company_info.md:/app/session/company_info.md:ro" \
+  -v "${SESSION_DIR}/out:/app/session/out" \
   -v "${SESSION_GEMINI_DIR}:/home/${HOST_USER}/.gemini" \
   karen_guard su - "${HOST_USER}" -c "run_evaluator"
 
-if [ -f "${SESSION_DIR}/evaluation.md" ]; then
+if [ -f "${SESSION_DIR}/out/evaluation.md" ]; then
     mkdir -p "${SESSION_DIR}/anti_karen"
-    mv "${SESSION_DIR}/evaluation.md" "${SESSION_DIR}/anti_karen/evaluation.md"
+    mv "${SESSION_DIR}/out/evaluation.md" "${SESSION_DIR}/anti_karen/evaluation.md"
     cp "${SESSION_DIR}/anti_karen/evaluation.md" "${SESSION_DIR}/anti_karen/karen_output.md"
     cp "${SESSION_DIR}/anti_karen/evaluation.md" "${DIR}/../data/evaluation.md"
     echo "${SESSION_DIR}/anti_karen/karen_output.md"
 else
-    echo "Error: Karen did not produce evaluation.md. Check ${SESSION_DIR}/anti_karen/karen_run.err for details." >&2
+    echo "Error: Karen did not produce out/evaluation.md. Check ${SESSION_DIR}/anti_karen/karen_run.err for details." >&2
     exit 1
 fi
