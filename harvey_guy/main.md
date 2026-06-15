@@ -163,7 +163,7 @@ Ask the user the following questions to initialize the loop configuration variab
    ```
 2. **Branch on the result:**
    - **`missing`**: Ask the user: *"No candidate background found. Run Vera to create one now? (recommended) [yes/no]"*
-     - If **yes** → spawn the `Vera` subagent, instructing it to read and execute [vera_guy/main.md](../vera_guy/main.md) with **`MODE=create`**. Wait for completion and verify `data/docs/who_are_u.md` was written.
+     - If **yes** → spawn the `Vera` subagent, instructing it to read and execute [vera_psyco/main.md](../vera_psyco/main.md) with **`MODE=create`**. Wait for completion and verify `data/docs/who_are_u.md` was written.
      - If **no** → warn the user that Bill will have a weaker source of truth and anti-hallucination guarantees are reduced, then proceed.
    - **`exists`**: Ask the user: *"A candidate background already exists. Reuse it as-is, or refresh it with Vera? [reuse/refresh]"*
      - **`reuse`** → skip Vera entirely. Proceed to the loop. (This is the default fast path.)
@@ -292,7 +292,7 @@ Reached only on a Gatekeeper exit (either success or max cycles). The loop is do
 
 **Actions:**
 1. Spawn a subagent (Donna) for career coaching.
-2. Instruct the subagent to read and execute the instructions defined in [donna_guy/main.md](../donna_guy/main.md) using the active **`SESSION_ID`**, **`KAREN_REPORT_PATH`**, **`FIT_SCORE`**, and **`MIN_FIT_SCORE`**.
+2. Instruct the subagent to read and execute the instructions defined in [nana/main.md](../nana/main.md) using the active **`SESSION_ID`**, **`KAREN_REPORT_PATH`**, **`FIT_SCORE`**, and **`MIN_FIT_SCORE`**.
 3. Wait for the subagent to complete. (It writes `data/docs/action_plan.md` and modifies nothing else.)
 4. Surface the final summary to the user:
    > 🎓 Action plan ready at `data/docs/action_plan.md` — prioritized technical gaps, interview prep, and public projects to raise your score on the next run.

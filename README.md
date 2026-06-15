@@ -30,22 +30,22 @@ Before the loop, Vera optionally seeds the candidate background. Each loop itera
 
 | Agent | Directory | Runtime | Role |
 |---|---|---|---|
-| **Vera** | `vera_guy/` | subagent | Onboarding interview → `who_are_u.md` (optional, pre-loop) |
+| **Vera** | `vera_psyco/` | subagent | Onboarding interview → `who_are_u.md` (optional, pre-loop) |
 | **Harvey** | `harvey_guy/` | Python + subagent | Orchestrator & context collector |
 | **Harvey Shadow** | `harvey_guy/` | subagent | Clones repos, researches company, pre-builds Docker |
 | **Karen Guard** | `karen_guard/` | Gemini CLI inside Docker | Skeptical evaluator & critic |
 | **Bill** | `billf/` | subagent | CV editor & actor |
-| **Donna** | `donna_guy/` | subagent | Coach → `action_plan.md` (post-loop) |
+| **Donna** | `nana/` | subagent | Coach → `action_plan.md` (post-loop) |
 
 ---
 
 ## Modules
 
-- [Vera (Onboarding)](vera_guy/README.md), Roleplay interview that produces the candidate background.
+- [Vera (Onboarding)](vera_psyco/README.md), Roleplay interview that produces the candidate background.
 - [Harvey (Orchestrator)](harvey_guy/README.md), Session setup, document ingestion, subagent orchestration.
 - [Karen Guard (Evaluator)](karen_guard/README.md), Isolated Docker evaluation environment.
 - [Bill (Editor)](billf/README.md), CV revision based on Karen's report.
-- [Donna (Coach)](donna_guy/README.md), Post-loop action plan from the final evaluation.
+- [Donna (Coach)](nana/README.md), Post-loop action plan from the final evaluation.
 
 ---
 
