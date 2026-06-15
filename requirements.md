@@ -68,4 +68,4 @@ which wl-copy
 
 1. **Verify Automatically:** Executing the verification commands on the host system.
 2. **Interact with the User:** If any dependency is missing, output clear installation commands and wait for the user to install it.
-3. **Final Report:** Once all checks pass, write a summary status report to `/tmp/dependencies_checked.md` and signal success to the parent agent.
+3. **Final Report:** Once all checks pass, write a summary status report to `.dependencies_checked.md` at the **repository root** (not `/tmp/`, so it persists across runs and the check runs only once) and signal success to the parent agent.

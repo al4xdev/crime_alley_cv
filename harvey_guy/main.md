@@ -100,21 +100,32 @@ Before doing anything else, you must verify that all environment dependencies ar
 6. **Wayland clipboard tools (`wl-copy`)** if Wayland display server is active.
 
 ### Actions:
-1. Spawn a specialized subagent with the role `Dependency Checker`.
-2. Instruct the subagent to read, execute, and verify all check steps described in **[requirements.md](../requirements.md)**, communicating directly with the user to help them install any missing tools.
-3. Wait for the subagent to complete the task.
-4. Verify that `/tmp/dependencies_checked.md` was created with a successful status check before proceeding.
+1. **Skip if already verified**: Check for the persistent marker at the repository root:
+   ```bash
+   test -f .dependencies_checked.md && echo verified || echo unverified
+   ```
+   If `verified`, dependencies were already confirmed on a previous run — skip straight to Phase 1. (Delete `.dependencies_checked.md` to force a re-check.)
+2. Spawn a specialized subagent with the role `Dependency Checker`.
+3. Instruct the subagent to read, execute, and verify all check steps described in **[requirements.md](../requirements.md)**, communicating directly with the user to help them install any missing tools.
+4. Wait for the subagent to complete the task.
+5. Verify that `.dependencies_checked.md` was created at the repository root with a successful status check before proceeding.
 
 ---
 
 ## 🎮 Phase 1: Initialize State (Interactive Setup)
 
-Before executing any commands, you must enter "interactive setup mode". Ask the user the following questions to initialize the loop configuration variables (always reference them in **UPPERCASE**):
+Before executing any commands, you must enter "interactive setup mode".
 
-1. **`MAX_LOOPS`**: What is the maximum number of CV refinement iterations allowed? (e.g., `3`)
-2. **`MIN_FIT_SCORE`**: What is the target minimum technical fit score (0-100) needed to accept the CV? (e.g., `80`)
-3. **`JOB_DESCRIPTION_RAW`**: Please paste the raw text of the target job description.
-4. **`KAREN_READS_BACKGROUND`**: Should Karen Guard be allowed to read the candidate's detailed background (`who_are_u.md`)? (e.g., `yes` / `no`).
+> [!IMPORTANT]
+> **PROMPT INTERACTIVELY — do NOT dump these as plain text.**
+> Use your host CLI's native interactive question/option UI (e.g. Claude Code's question prompt, `agy`'s interactive selector) to ask **one question at a time** and **wait for the answer** before moving to the next. Offer the suggested options/defaults as selectable choices where they exist. Only fall back to a plain-text prompt if no interactive UI is available. Never print all questions at once and assume answers.
+
+Ask the user the following questions to initialize the loop configuration variables (always reference them in **UPPERCASE**):
+
+1. **`MAX_LOOPS`**: What is the maximum number of CV refinement iterations allowed? — suggested options: `1`, `3`, `5` (default `3`).
+2. **`MIN_FIT_SCORE`**: What is the target minimum technical fit score (0-100) needed to accept the CV? — suggested options: `70`, `80`, `90` (default `80`).
+3. **`JOB_DESCRIPTION_RAW`**: Please paste the raw text of the target job description. (free-text input)
+4. **`KAREN_READS_BACKGROUND`**: Should Karen Guard be allowed to read the candidate's detailed background (`who_are_u.md`)? — selectable options: `yes` / `no`.
 
 ### Initialization Actions:
 - Initialize **`CURRENT_LOOP`** to `0`.
