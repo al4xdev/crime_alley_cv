@@ -7,10 +7,13 @@ Automated CV optimization system based on a multi-agent Actor-Critic architectur
 ## How It Works
 
 ```
-main.md → harvey_guy/main.md (runbook) → Phase 0 → Phase 1 → Loop [Harvey → Karen → Gatekeeper → Bill]
+main.md → harvey_guy/main.md (runbook)
+  → Phase 0 → Phase 1 → Phase 1.5 (Vera, optional)
+  → Loop [Harvey → Karen → Gatekeeper → Bill]
+  → Post-Loop (Donna)
 ```
 
-Each loop iteration: Harvey sets up the session workspace, Karen evaluates the CV against the candidate's actual repositories, the Gatekeeper decides whether to exit or refine, and Bill rewrites the CV based on Karen's report.
+Before the loop, Vera optionally seeds the candidate background. Each loop iteration: Harvey sets up the session workspace, Karen evaluates the CV against the candidate's actual repositories, the Gatekeeper decides whether to exit or refine, and Bill rewrites the CV based on Karen's report. After the loop, Donna turns the final evaluation into an action plan.
 
 ---
 
@@ -18,18 +21,22 @@ Each loop iteration: Harvey sets up the session workspace, Karen evaluates the C
 
 | Agent | Directory | Runtime | Role |
 |---|---|---|---|
+| **Vera** | `vera_guy/` | Claude subagent | Onboarding interview → `who_are_u.md` (optional, pre-loop) |
 | **Harvey** | `harvey_guy/` | Python + Claude subagent | Orchestrator & context collector |
 | **Harvey Shadow** | `harvey_guy/` | Claude subagent | Clones repos, researches company, pre-builds Docker |
 | **Karen Guard** | `karen_guard/` | Gemini CLI inside Docker | Skeptical evaluator & critic |
 | **Bill** | `billf/` | Claude subagent | CV editor & actor |
+| **Donna** | `donna_guy/` | Claude subagent | Coach → `action_plan.md` (post-loop) |
 
 ---
 
 ## Modules
 
+- [Vera (Onboarding)](vera_guy/README.md) — Roleplay interview that produces the candidate background.
 - [Harvey (Orchestrator)](harvey_guy/README.md) — Session setup, document ingestion, subagent orchestration.
 - [Karen Guard (Evaluator)](karen_guard/README.md) — Isolated Docker evaluation environment.
 - [Bill (Editor)](billf/README.md) — CV revision based on Karen's report.
+- [Donna (Coach)](donna_guy/README.md) — Post-loop action plan from the final evaluation.
 
 ---
 
@@ -61,7 +68,10 @@ Each run creates an isolated session directory:
 `data/docs/` must contain at minimum:
 - `cv.md` — candidate's resume in Markdown
 - `job.md` — job description (written by the orchestrator in Phase 1)
-- `who_are_u.md` — candidate background (optional but recommended)
+- `who_are_u.md` — candidate background (recommended; Vera can generate it in Phase 1.5 if missing)
+
+Pipeline-generated outputs in `data/docs/`:
+- `action_plan.md` — written by Donna after the loop
 
 See [requirements.md](requirements.md) for system dependencies.
 
