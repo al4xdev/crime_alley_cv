@@ -30,12 +30,12 @@ Before the loop, Vera optionally seeds the candidate background. Each loop itera
 
 | Agent | Directory | Runtime | Role |
 |---|---|---|---|
-| **Vera** | `vera_guy/` | Claude subagent | Onboarding interview → `who_are_u.md` (optional, pre-loop) |
-| **Harvey** | `harvey_guy/` | Python + Claude subagent | Orchestrator & context collector |
-| **Harvey Shadow** | `harvey_guy/` | Claude subagent | Clones repos, researches company, pre-builds Docker |
+| **Vera** | `vera_guy/` | subagent | Onboarding interview → `who_are_u.md` (optional, pre-loop) |
+| **Harvey** | `harvey_guy/` | Python + subagent | Orchestrator & context collector |
+| **Harvey Shadow** | `harvey_guy/` | subagent | Clones repos, researches company, pre-builds Docker |
 | **Karen Guard** | `karen_guard/` | Gemini CLI inside Docker | Skeptical evaluator & critic |
-| **Bill** | `billf/` | Claude subagent | CV editor & actor |
-| **Donna** | `donna_guy/` | Claude subagent | Coach → `action_plan.md` (post-loop) |
+| **Bill** | `billf/` | subagent | CV editor & actor |
+| **Donna** | `donna_guy/` | subagent | Coach → `action_plan.md` (post-loop) |
 
 ---
 

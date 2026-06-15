@@ -1,6 +1,6 @@
 # Harvey (Orchestrator)
 
-Harvey is split into two parts: a deterministic Python script that sets up the session workspace, and a Claude subagent (Harvey Shadow) that performs all network and I/O-heavy tasks in parallel.
+Harvey is split into two parts: a deterministic Python script that sets up the session workspace, and a subagent (Harvey Shadow) that performs all network and I/O-heavy tasks in parallel.
 
 ---
 
@@ -23,7 +23,7 @@ uv run python harvey_guy/main.py
 
 ---
 
-## Harvey Shadow (Claude Subagent)
+## Harvey Shadow (Subagent)
 
 Spawned by the orchestrator immediately after Harvey Python completes. Runs in parallel while the orchestrator does its concurrent CV indexing task.
 
