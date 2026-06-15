@@ -35,7 +35,7 @@ Before the loop, Vera optionally seeds the candidate background. Each loop itera
 | **Harvey Shadow** | `harvey_guy/` | agent | Clones repos, researches company, pre-builds Docker |
 | **Karen Guard** | `karen_guard/` | Gemini CLI inside Docker | Skeptical evaluator & critic |
 | **Bill** | `billf/` | agent | CV editor & actor |
-| **Donna** | `nana/` | agent | Coach → `action_plan.md` (post-loop) |
+| **Donna** | `donna_nana/` | agent | Coach → `action_plan.md` (post-loop) |
 
 ---
 
@@ -45,7 +45,7 @@ Before the loop, Vera optionally seeds the candidate background. Each loop itera
 - [Harvey (Orchestrator)](harvey_guy/README.md), Session setup, document ingestion, agent orchestration.
 - [Karen Guard (Evaluator)](karen_guard/README.md), Isolated Docker evaluation environment.
 - [Bill (Editor)](billf/README.md), CV revision based on Karen's report.
-- [Donna (Coach)](nana/README.md), Post-loop action plan from the final evaluation.
+- [Donna (Coach)](donna_nana/README.md), Post-loop action plan from the final evaluation.
 
 ---
 

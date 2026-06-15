@@ -82,7 +82,7 @@ Per-iteration artifacts are also archived to a host-side run history at `.runs/<
 | CV in repo is never modified during loop | SANDBOXING RULE in `harvey_guy/main.md` |
 | Karen's `agy` config is isolated per session | `.gemini/` copied into `SESSION_DIR/.gemini/` |
 | Vera writes only `data/docs/who_are_u.md` | Single-output rule in `vera_psyco/main.md` |
-| Donna writes only `data/docs/action_plan.md` | Single-output rule in `nana/main.md` |
+| Donna writes only `data/docs/action_plan.md` | Single-output rule in `donna_nana/main.md` |
 
 ---
 

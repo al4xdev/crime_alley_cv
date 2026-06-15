@@ -292,7 +292,7 @@ Reached only on a Gatekeeper exit (either success or max cycles). The loop is do
 
 **Actions:**
 1. Spawn a agent (Donna) for career coaching.
-2. Instruct the agent to read and execute the instructions defined in [nana/main.md](../nana/main.md) using the active **`SESSION_ID`**, **`KAREN_REPORT_PATH`**, **`FIT_SCORE`**, and **`MIN_FIT_SCORE`**.
+2. Instruct the agent to read and execute the instructions defined in [donna_nana/main.md](../donna_donna_nana/main.md) using the active **`SESSION_ID`**, **`KAREN_REPORT_PATH`**, **`FIT_SCORE`**, and **`MIN_FIT_SCORE`**.
 3. Wait for the agent to complete. (It writes `data/docs/action_plan.md` and modifies nothing else.)
 4. Surface the final summary to the user:
    > 🎓 Action plan ready at `data/docs/action_plan.md` — prioritized technical gaps, interview prep, and public projects to raise your score on the next run.
