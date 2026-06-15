@@ -62,6 +62,19 @@ which wl-copy
 
 ---
 
+### 6. GitHub Token (Recommended for profiles with many repos)
+```bash
+echo $GITHUB_TOKEN
+```
+- If empty, the pipeline will use the unauthenticated GitHub API (60 requests/hour limit). For profiles with more than 30 public repositories, this may cause silent truncation during repository cloning.
+- Recommend the user generate a classic Personal Access Token (PAT) with `public_repo` scope at `https://github.com/settings/tokens` and export it:
+  ```bash
+  export GITHUB_TOKEN=ghp_...
+  ```
+- This is optional but strongly recommended. Do not block if absent — just warn.
+
+---
+
 ## 💬 User Interaction & Report
 
 1. **Verify Automatically:** Executing the verification commands on the host system.
