@@ -62,7 +62,7 @@ The core heuristic guiding this codebase is: **what fails loudly should live in 
 * **Fails Loudly**: A missing file, a directory permission error, or a wrong command syntax. The agent runtime detects these errors natively and self-heals by rewriting the command or creating the directory. Hardcoding these scenarios creates brittle code.
 * **Fails Silently**: 
   1. *History Accumulation*: If Bill writes a CV draft but the next iteration forgets to carry it forward, the loop runs with the *original* CV. The system completes without errors, but the scores stall. We migrated this to Python (`harvey_guy.py`) to systematically copy `anti_karen/karen_guard_core.log` and `cv.md` between iterations.
-  2. *Score Extraction*: If Karen writes `Technical Fit Score: 85/100` and Bill changes the layout next run to `Score - 80`, a rigid string-matcher would crash, but a soft LLM check might pass a hallucinated score. We hardened this into a deterministic Python validator ([gatekeeper.py](file:///home/alex/git/my/meta_2028/harvey_guy/gatekeeper.py)) that uses robust regex patterns to extract scores and map exit codes:
+  2. *Score Extraction*: If Karen writes `Technical Fit Score: 85/100` and Bill changes the layout next run to `Score - 80`, a rigid string-matcher would crash, but a soft LLM check might pass a hallucinated score. We hardened this into a deterministic Python validator ([gatekeeper.py](harvey_guy/gatekeeper.py)) that uses robust regex patterns to extract scores and map exit codes:
      - `exit(0)`: Target met (Success).
      - `exit(1)`: Loops exhausted (Max Loops reached).
      - `exit(2)`: Threshold not met (Continue Loop).
@@ -70,8 +70,8 @@ The core heuristic guiding this codebase is: **what fails loudly should live in 
 
 | Concern | Fails How? | Lives Where | Implementation |
 |---|---|---|---|
-| Score parsing, bounds validation | Silently (hallucinated score or runaway loops) | Code | [gatekeeper.py](file:///home/alex/git/my/meta_2028/harvey_guy/gatekeeper.py) |
-| CV carry-forward & workspace layout | Silently (loops evaluate same base resume) | Code | [harvey_guy.py](file:///home/alex/git/my/meta_2028/harvey_guy/harvey_guy.py) |
+| Score parsing, bounds validation | Silently (hallucinated score or runaway loops) | Code | [gatekeeper.py](harvey_guy/gatekeeper.py) |
+| CV carry-forward & workspace layout | Silently (loops evaluate same base resume) | Code | [harvey_guy.py](harvey_guy/harvey_guy.py) |
 | Onboarding, Critic & Editor judgment | "Worse result" (lacks context or style) | Prose | `main.md` runbooks |
 | Sandbox resource visibility | Silently (critic reads protected history) | Physical mount boundary | `run.sh` script |
 
@@ -180,4 +180,4 @@ To validate that changes to path configurations or score regex patterns do not i
 ```bash
 uv run pytest
 ```
-Tests are located in [tests/](file:///home/alex/git/my/meta_2028/tests/) and mock the file system inputs to test directory isolation, history log carry-forward, and score checks.
+Tests are located in [tests/](tests/) and mock the file system inputs to test directory isolation, history log carry-forward, and score checks.
