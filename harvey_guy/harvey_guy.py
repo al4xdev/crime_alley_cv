@@ -51,7 +51,7 @@ class Harvey:
         checkpoint_path = Path("/tmp/karen_guard_loop_state.json")
         if checkpoint_path.exists():
             try:
-                with open(checkpoint_path, "r") as f:
+                with open(checkpoint_path) as f:
                     state = json.load(f)
                 prev_session_id = state.get("session_id")
                 if prev_session_id and prev_session_id != "previous_or_null":

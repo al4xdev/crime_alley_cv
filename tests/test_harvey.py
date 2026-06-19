@@ -81,8 +81,10 @@ def test_init_session_carry_forward():
         try:
             anti_karen_dir = session_dir / "anti_karen"
             assert (anti_karen_dir / "draft_notes.txt").read_text(encoding="utf-8") == "my notes"
-            assert (anti_karen_dir / "karen_guard_core_prev.log").read_text(encoding="utf-8") == "core log"
-            assert (anti_karen_dir / "karen_run_prev.log").read_text(encoding="utf-8") == "run log"
+            core_path = anti_karen_dir / "karen_guard_core_prev.log"
+            assert core_path.read_text(encoding="utf-8") == "core log"
+            run_path = anti_karen_dir / "karen_run_prev.log"
+            assert run_path.read_text(encoding="utf-8") == "run log"
         finally:
             shutil.rmtree(session_dir, ignore_errors=True)
     finally:

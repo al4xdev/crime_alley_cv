@@ -39,8 +39,12 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Deterministic Gatekeeper for Actor-Critic Loop")
     parser.add_argument("--min-fit-score", type=int, required=True, help="Target minimum fit score")
     parser.add_argument("--max-loops", type=int, required=True, help="Maximum number of loops")
-    parser.add_argument("--current-loop", type=int, required=True, help="Current loop iteration index")
-    parser.add_argument("--session-dir", type=str, required=True, help="Path to the session directory")
+    parser.add_argument(
+        "--current-loop", type=int, required=True, help="Current loop iteration index"
+    )
+    parser.add_argument(
+        "--session-dir", type=str, required=True, help="Path to the session directory"
+    )
     parser.add_argument("--karen-report", type=str, help="Path to the Karen report file")
     parser.add_argument("--data-dir", type=str, help="Path to the data/docs directory")
     return parser.parse_args()
@@ -85,7 +89,11 @@ def main():
     # Evaluate gatekeeper exit conditions
     if fit_score >= args.min_fit_score:
         # Success exit
-        print(f"Gatekeeper: SUCCESS. Fit score {fit_score} meets or exceeds target {args.min_fit_score}.")
+        msg = (
+            f"Gatekeeper: SUCCESS. Fit score {fit_score} meets or "
+            f"exceeds target {args.min_fit_score}."
+        )
+        print(msg)
         src_cv = session_dir / "docs" / "cv.md"
         dest_cv = data_docs_dir / "cv.md"
         data_docs_dir.mkdir(parents=True, exist_ok=True)
@@ -97,7 +105,11 @@ def main():
         
     elif args.current_loop >= args.max_loops:
         # Max loops exit
-        print(f"Gatekeeper: MAX LOOPS. Current loop index {args.current_loop} meets or exceeds limit {args.max_loops}.")
+        msg = (
+            f"Gatekeeper: MAX LOOPS. Current loop index {args.current_loop} "
+            f"meets or exceeds limit {args.max_loops}."
+        )
+        print(msg)
         src_cv = session_dir / "docs" / "cv.md"
         dest_cv = data_docs_dir / "cv.md"
         data_docs_dir.mkdir(parents=True, exist_ok=True)
@@ -109,7 +121,11 @@ def main():
         
     else:
         # Refinement loop continues
-        print(f"Gatekeeper: CONTINUE. Fit score {fit_score} is below target {args.min_fit_score}. Loop continues.")
+        msg = (
+            f"Gatekeeper: CONTINUE. Fit score {fit_score} is below target "
+            f"{args.min_fit_score}. Loop continues."
+        )
+        print(msg)
         print(json.dumps({"status": "continue", "fit_score": fit_score}))
         sys.exit(2)
 
