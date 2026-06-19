@@ -1,5 +1,7 @@
 # Job-Stack & Karen Guard: An Actor-Critic CV Optimization & Integrity Engine
 
+![Job-Stack multi-agent pipeline banner](assets/pipeline_meeting.jpg)
+
 Automated CV optimization and verification system based on a multi-agent **Actor-Critic** architecture. An orchestrator drives a feedback loop where a critic agent (**Karen**) audits the CV against real, cloned code evidence, and an editor agent (**Bill**) rewrites it until the score meets a target acceptance threshold.
 
 > **Portfolio note: What this demonstrates.** 
@@ -40,14 +42,14 @@ graph TD
 
 ## 🤖 Agent Roster
 
-| Agent | Directory | Runtime | Responsibility |
-|---|---|---|---|
-| **Vera** | `vera_psyco/` | prose agent | Onboarding interview & context collector $\rightarrow$ `who_are_u.md` |
-| **Harvey** | `harvey_guy/` | Python + prose runbook | Orchestration coordinator, path resolution, and state directory initialization. |
-| **Harvey Shadow** | `harvey_guy/` | prose agent | Parallel task runner: queries DuckDuckGo, clones target repos, pre-builds sandbox. |
-| **Karen Guard** | `karen_guard/` | Gemini CLI in sandbox | Skeptical critic: compares CV claims against cloned code, produces evaluation. |
-| **Bill** | `billf/` | prose agent | CV Actor: revises resume in `anti_karen/` based on Karen's feedback. |
-| **Donna** | `donna_nana/` | prose agent | Post-loop coach: analyzes final score and creates the `action_plan.md`. |
+| Avatar | Agent | Directory | Runtime | Responsibility |
+|---|---|---|---|---|
+| <img src="assets/agents/vera.jpg" width="60" alt="Vera"> | **Vera** | `vera_psyco/` | prose agent | Onboarding interview & context collector $\rightarrow$ `who_are_u.md` |
+| <img src="assets/agents/harvey.jpg" width="60" alt="Harvey"> | **Harvey** | `harvey_guy/` | Python + prose runbook | Orchestration coordinator, path resolution, and state directory initialization. |
+| <img src="assets/agents/harvey.jpg" width="60" alt="Harvey Shadow"> | **Harvey Shadow** | `harvey_guy/` | prose agent | Parallel task runner: queries DuckDuckGo, clones target repos, pre-builds sandbox. |
+| <img src="assets/agents/karen.jpg" width="60" alt="Karen Guard"> | **Karen Guard** | `karen_guard/` | Gemini CLI in sandbox | Skeptical critic: compares CV claims against cloned code, produces evaluation. |
+| <img src="assets/agents/bill.jpg" width="60" alt="Bill"> | **Bill** | `billf/` | prose agent | CV Actor: revises resume in `anti_karen/` based on Karen's feedback. |
+| <img src="assets/agents/donna.jpg" width="60" alt="Donna"> | **Donna** | `donna_nana/` | prose agent | Post-loop coach: analyzes final score and creates the `action_plan.md`. |
 
 ---
 
