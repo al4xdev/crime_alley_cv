@@ -22,7 +22,7 @@ You must read the following files from the session workspace:
 
 To prevent biasing the critic agent (Karen), leaking intermediate reasoning steps, or executing out-of-scope tasks, adhere strictly to these rules:
 
-1. **Do NOT Modify Host Repository Files**: Do not write to `data/docs/cv.md` directly. All updates must be made to `/tmp/karen_guard_$SESSION_ID/docs/cv.md`.
+1. **Do NOT Modify Host Repository Files**: Do not write to `.data/docs/cv.md` directly. All updates must be made to `/tmp/karen_guard_$SESSION_ID/docs/cv.md`.
 2. **Use the Protected Workspace**: Write all intermediate draft versions, comparison tables, brainstorm logs, and notes inside `/tmp/karen_guard_$SESSION_ID/anti_karen/`. Karen's prompt instructs her to ignore this folder completely, keeping your draft process private.
 3. **Strict Scope Discipline (No Code Modifications)**: Your sole responsibility is editing and optimizing the candidate's resume (`cv.md`). You must **NEVER** modify source code files, refactor the application codebase, or write/commit changes to the candidate's cloned repositories. Repositories must be treated strictly as read-only references.
 

@@ -150,7 +150,7 @@ if [ -f "${SESSION_DIR}/out/evaluation.md" ]; then
     mkdir -p "${SESSION_DIR}/anti_karen"
     mv "${SESSION_DIR}/out/evaluation.md" "${SESSION_DIR}/anti_karen/evaluation.md"
     cp "${SESSION_DIR}/anti_karen/evaluation.md" "${SESSION_DIR}/anti_karen/karen_output.md"
-    cp "${SESSION_DIR}/anti_karen/evaluation.md" "${DIR}/../data/evaluation.md"
+    cp "${SESSION_DIR}/anti_karen/evaluation.md" "${DIR}/../.data/evaluation.md"
     echo "${SESSION_DIR}/anti_karen/karen_output.md"
 else
     echo "Error: Karen did not produce out/evaluation.md. Check ${SESSION_DIR}/anti_karen/karen_run.err for details." >&2

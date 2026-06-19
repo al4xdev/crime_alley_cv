@@ -136,7 +136,7 @@ Ask the user the following questions to initialize the loop configuration variab
   RUN_DIR=".runs/$(date +%Y%m%d_%H%M%S)" && mkdir -p "$RUN_DIR" && echo "loop,score" > "$RUN_DIR/scores.csv"
   ```
   Reference `RUN_DIR` throughout the loop. Every per-iteration artifact (CVs, Karen's report, score) is archived under it — this is the audit trail for the whole run.
-- Write/update `data/docs/job.md` with the following **required format** (so agents can reliably parse the company name from the first line):
+- Write/update `.data/docs/job.md` with the following **required format** (so agents can reliably parse the company name from the first line):
   ```
   # <Position Title> — <Company Name>
 
@@ -145,29 +145,29 @@ Ask the user the following questions to initialize the loop configuration variab
   Example first line: `# Senior Backend Engineer — Acme Corp`
 
 > [!IMPORTANT]
-> **SANDBOXING RULE**: During the loop, there are exactly two authorized modifications to `data/docs/cv.md`:
+> **SANDBOXING RULE**: During the loop, there are exactly two authorized modifications to `.data/docs/cv.md`:
 > 1. **Inter-iteration carry-forward** (Step 3, Action 4): the orchestrator copies the revised CV from the previous session to feed it into the next iteration.
 > 2. **Final exit copy** (Gatekeeper exit): the final optimized CV is copied back to the repo.
-> All other edits to `data/docs/cv.md` are prohibited. Every in-progress revision lives exclusively in `SESSION_DIR/docs/cv.md`.
+> All other edits to `.data/docs/cv.md` are prohibited. Every in-progress revision lives exclusively in `SESSION_DIR/docs/cv.md`.
 
 ---
 
 ## 🧭 Phase 1.5: Candidate Onboarding (Vera — Optional)
 
-`data/docs/who_are_u.md` is the **source of truth** that Bill uses to rewrite the CV without hallucinating. Before starting the loop, ensure it exists. This phase is optional and is skipped when a usable file is reused.
+`.data/docs/who_are_u.md` is the **source of truth** that Bill uses to rewrite the CV without hallucinating. Before starting the loop, ensure it exists. This phase is optional and is skipped when a usable file is reused.
 
 **Actions:**
 1. Check whether the background file already exists:
    ```bash
-   test -f data/docs/who_are_u.md && echo exists || echo missing
+   test -f .data/docs/who_are_u.md && echo exists || echo missing
    ```
 2. **Branch on the result:**
    - **`missing`**: Ask the user: *"No candidate background found. Run Vera to create one now? (recommended) [yes/no]"*
-     - If **yes** → spawn the `Vera` agent, instructing it to read and execute [vera_psyco/main.md](../vera_psyco/main.md) with **`MODE=create`**. Wait for completion and verify `data/docs/who_are_u.md` was written.
+     - If **yes** → spawn the `Vera` agent, instructing it to read and execute [vera_psyco/main.md](../vera_psyco/main.md) with **`MODE=create`**. Wait for completion and verify `.data/docs/who_are_u.md` was written.
      - If **no** → warn the user that Bill will have a weaker source of truth and anti-hallucination guarantees are reduced, then proceed.
    - **`exists`**: Ask the user: *"A candidate background already exists. Reuse it as-is, or refresh it with Vera? [reuse/refresh]"*
      - **`reuse`** → skip Vera entirely. Proceed to the loop. (This is the default fast path.)
-     - **`refresh`** → spawn the `Vera` agent with **`MODE=refresh`** and **`EXISTING_BACKGROUND_PATH=data/docs/who_are_u.md`**. Wait for completion.
+     - **`refresh`** → spawn the `Vera` agent with **`MODE=refresh`** and **`EXISTING_BACKGROUND_PATH=.data/docs/who_are_u.md`**. Wait for completion.
 3. Once `who_are_u.md` is settled, proceed to the Optimization Loop.
 
 > Vera runs **only here**, before the loop. It never runs during iterations.
@@ -251,12 +251,12 @@ uv run python harvey_guy/gatekeeper.py --min-fit-score $MIN_FIT_SCORE --max-loop
 
 - **Exit Code 0 (Success)**:
   - **Exit Report** → show to user:
-    > ✅ Target score reached. Final score: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Iterations: `CURRENT_LOOP + 1`. Optimized CV saved to `data/docs/cv.md`. Full evaluation at `data/evaluation.md`. Run history (per-iteration CVs, reports, `scores.csv`) at `RUN_DIR`.
+    > ✅ Target score reached. Final score: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Iterations: `CURRENT_LOOP + 1`. Optimized CV saved to `.data/docs/cv.md`. Full evaluation at `.data/evaluation.md`. Run history (per-iteration CVs, reports, `scores.csv`) at `RUN_DIR`.
   - Then run **Post-Loop Coaching (Donna)** below.
 
 - **Exit Code 1 (Max loops reached)**:
   - **Exit Report** → show to user:
-    > ⚠️ Maximum iterations reached (`MAX_LOOPS`). Best score achieved: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Last CV saved to `data/docs/cv.md`. Full evaluation at `data/evaluation.md`. Run history (per-iteration CVs, reports, `scores.csv`) at `RUN_DIR`. Consider running again with a higher `MAX_LOOPS` or reviewing Karen's recommendations in `data/evaluation.md`.
+    > ⚠️ Maximum iterations reached (`MAX_LOOPS`). Best score achieved: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Last CV saved to `.data/docs/cv.md`. Full evaluation at `.data/evaluation.md`. Run history (per-iteration CVs, reports, `scores.csv`) at `RUN_DIR`. Consider running again with a higher `MAX_LOOPS` or reviewing Karen's recommendations in `.data/evaluation.md`.
   - Then run **Post-Loop Coaching (Donna)** below.
 
 - **Exit Code 2 (Refinement loop continues)**:
@@ -283,7 +283,7 @@ Delegate the CV revision to a specialized agent. This isolates the editing logic
    ```
 5. **CV carry-forward** (authorized inter-iteration modification): copy the revised CV so the next iteration's `ingest_documents()` reads Bill's version instead of the original:
    ```bash
-   cp /tmp/karen_guard_$SESSION_ID/docs/cv.md data/docs/cv.md
+   cp /tmp/karen_guard_$SESSION_ID/docs/cv.md .data/docs/cv.md
    ```
 6. Increment **`CURRENT_LOOP`** by 1.
 7. Update the loop state checkpoint:
@@ -301,7 +301,7 @@ Reached only on a Gatekeeper exit (either success or max cycles). The loop is do
 **Actions:**
 1. Spawn a agent (Donna) for career coaching.
 2. Instruct the agent to read and execute the instructions defined in [donna_nana/main.md](../donna_donna_nana/main.md) using the active **`SESSION_ID`**, **`KAREN_REPORT_PATH`**, **`FIT_SCORE`**, and **`MIN_FIT_SCORE`**.
-3. Wait for the agent to complete. (It writes `data/docs/action_plan.md` and modifies nothing else.)
+3. Wait for the agent to complete. (It writes `.data/docs/action_plan.md` and modifies nothing else.)
 4. Surface the final summary to the user:
-   > 🎓 Action plan ready at `data/docs/action_plan.md` — prioritized technical gaps, interview prep, and public projects to raise your score on the next run.
+   > 🎓 Action plan ready at `.data/docs/action_plan.md` — prioritized technical gaps, interview prep, and public projects to raise your score on the next run.
 5. **End of pipeline.**

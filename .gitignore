@@ -10,7 +10,7 @@ wheels/
 .venv
 
 # User data (contains sensitive CV documents, JDs, and cloned repositories)
-data/
+.data/
 
 # Local run-state markers
 .dependencies_checked.md
@@ -18,3 +18,4 @@ data/
 # Versioned run history (contains CV/evaluation copies — sensitive)
 .runs/
 .stable_version_results/
+.plan/

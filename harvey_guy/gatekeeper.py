@@ -46,7 +46,7 @@ def parse_args():
         "--session-dir", type=str, required=True, help="Path to the session directory"
     )
     parser.add_argument("--karen-report", type=str, help="Path to the Karen report file")
-    parser.add_argument("--data-dir", type=str, help="Path to the data/docs directory")
+    parser.add_argument("--data-dir", type=str, help="Path to the .data/docs directory")
     return parser.parse_args()
 
 
@@ -81,7 +81,7 @@ def main():
     data_docs_dir = (
         Path(args.data_dir)
         if args.data_dir
-        else repo_root / "data" / "docs"
+        else repo_root / ".data" / "docs"
     )
     
     print(f"Successfully extracted FIT_SCORE: {fit_score}")

@@ -55,6 +55,6 @@ Once evaluation completes, the runner moves the generated file from the writable
 | File | Location |
 |---|---|
 | Evaluation report | `SESSION_DIR/anti_karen/karen_output.md` |
-| Host repository copy | `data/evaluation.md` |
+| Host repository copy | `.data/evaluation.md` |
 | Stdout runner log | `SESSION_DIR/anti_karen/karen_run.log` |
 | Stderr builder log | `SESSION_DIR/anti_karen/karen_run.err` |

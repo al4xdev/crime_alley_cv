@@ -13,15 +13,15 @@ The parent orchestrator agent will provide you with:
 - **`MIN_FIT_SCORE`**: The target score the user set in Phase 1.
 
 You must read the following files:
-1. **Evaluation Report (primary)**: `KAREN_REPORT_PATH` (or the host copy `data/evaluation.md`).
-2. **Final CV**: `/tmp/karen_guard_$SESSION_ID/docs/cv.md` (or the host copy `data/docs/cv.md`).
+1. **Evaluation Report (primary)**: `KAREN_REPORT_PATH` (or the host copy `.data/evaluation.md`).
+2. **Final CV**: `/tmp/karen_guard_$SESSION_ID/docs/cv.md` (or the host copy `.data/docs/cv.md`).
 3. **Job Description**: `/tmp/karen_guard_$SESSION_ID/docs/job.md`.
 
 ---
 
 ## 🔒 Security & Data Isolation Rules
 
-1. **Single Output Target**: Your only write target is the host file `data/docs/action_plan.md`. Do NOT modify `cv.md`, `job.md`, the evaluation report, source code, or the candidate's cloned repositories.
+1. **Single Output Target**: Your only write target is the host file `.data/docs/action_plan.md`. Do NOT modify `cv.md`, `job.md`, the evaluation report, source code, or the candidate's cloned repositories.
 2. **Read-Only References**: Repositories and the evaluation report are read-only context. You analyze, you do not edit.
 3. **Grounded Advice Only**: Every recommendation must trace back to a specific gap, red flag, or weakness Karen identified — or to a job requirement the CV does not yet evidence. Do not invent generic career advice that is not anchored in this candidate's actual report.
 
@@ -46,7 +46,7 @@ You must read the following files:
 
 2. **Synthesize the gap analysis**: Group findings into (a) technical gaps to close, (b) interview-prep topics, and (c) public projects to create or improve. Rank each group by impact on the fit score.
 
-3. **Write the output**: Create `data/docs/action_plan.md` with the following structure:
+3. **Write the output**: Create `.data/docs/action_plan.md` with the following structure:
    ```markdown
    # Action Plan — <Candidate> for <Position> @ <Company>
 
@@ -66,4 +66,4 @@ You must read the following files:
    (a short, sequenced checklist the candidate can start this week)
    ```
 
-4. **Signal Completion**: Report to the parent agent that `data/docs/action_plan.md` is ready, and surface the file path to the user.
+4. **Signal Completion**: Report to the parent agent that `.data/docs/action_plan.md` is ready, and surface the file path to the user.

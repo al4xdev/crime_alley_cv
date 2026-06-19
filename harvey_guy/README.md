@@ -11,8 +11,8 @@ The entry point for Step 1 of each loop iteration. Runs deterministically with n
 **What it does:**
 1. Generates a unique `SESSION_ID` (UUID) and creates `/tmp/karen_guard_<UUID>/`.
 2. Creates `docs/`, `repos/`, and `anti_karen/` subdirectories inside the session dir.
-3. Validates that `data/docs/cv.md` and `data/docs/job.md` exist.
-4. Copies all documents from `data/docs/` to `SESSION_DIR/docs/`, routing `who_are_u.md` to `anti_karen/` if `KAREN_READS_BACKGROUND=no`.
+3. Validates that `.data/docs/cv.md` and `.data/docs/job.md` exist.
+4. Copies all documents from `.data/docs/` to `SESSION_DIR/docs/`, routing `who_are_u.md` to `anti_karen/` if `KAREN_READS_BACKGROUND=no`.
 5. Checks that the `at` utility is available for the task watchdog.
 6. Prints the `SESSION_ID` to stdout (captured by the orchestrator).
 

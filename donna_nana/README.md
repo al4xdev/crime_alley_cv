@@ -1,6 +1,6 @@
 # Donna (Coach)
 
-Career coaching agent. After the optimization loop exits, Donna reads Karen's final evaluation and produces a concrete, prioritized development plan (`data/docs/action_plan.md`).
+Career coaching agent. After the optimization loop exits, Donna reads Karen's final evaluation and produces a concrete, prioritized development plan (`.data/docs/action_plan.md`).
 
 Donna operates as a agent, invoked **once after the loop** by the orchestrator, on both exit paths (target reached or max loops).
 
@@ -27,7 +27,7 @@ The loop produces a better CV, but a CV is only a snapshot. The evaluation repor
 
 | File | Description |
 |---|---|
-| `data/docs/action_plan.md` | Prioritized plan: technical gaps, interview prep, public projects to build, sequenced next steps |
+| `.data/docs/action_plan.md` | Prioritized plan: technical gaps, interview prep, public projects to build, sequenced next steps |
 
 Every recommendation is grounded in a specific finding from Karen's report or an unmet job requirement, no generic career advice.
 

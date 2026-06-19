@@ -39,7 +39,7 @@ Spawned by the orchestrator for tasks that would saturate its context window. Ea
 
 Current agents: **Vera**, **Harvey Shadow**, **Bill**, **Donna**, **Dependency Checker**.
 
-Note: **Vera** and **Donna** run outside the session loop and write directly to their designated host output in `data/docs/` (`who_are_u.md` and `action_plan.md` respectively), since no `SESSION_DIR` exists pre-loop / the loop is already over post-loop. This is the same legitimate-output pattern as the orchestrator writing `job.md` in Phase 1.
+Note: **Vera** and **Donna** run outside the session loop and write directly to their designated host output in `.data/docs/` (`who_are_u.md` and `action_plan.md` respectively), since no `SESSION_DIR` exists pre-loop / the loop is already over post-loop. This is the same legitimate-output pattern as the orchestrator writing `job.md` in Phase 1.
 
 ### 3. External Agent (Karen Guard)
 Runs as a Gemini CLI (`agy`) process inside a containerized sandbox. Not a spawned agent — it has its own model, authentication, and execution environment. Communicates exclusively via the subpaths mounted into the container:
@@ -81,8 +81,8 @@ Per-iteration artifacts are also archived to a host-side run history at `.runs/<
 | Bill cannot modify host repository | Explicit rule in `billf/main.md` |
 | CV in repo is never modified during loop | SANDBOXING RULE in `harvey_guy/main.md` |
 | Karen's `agy` config is isolated per session | `.gemini/` copied into `SESSION_DIR/.gemini/` |
-| Vera writes only `data/docs/who_are_u.md` | Single-output rule in `vera_psyco/main.md` |
-| Donna writes only `data/docs/action_plan.md` | Single-output rule in `donna_nana/main.md` |
+| Vera writes only `.data/docs/who_are_u.md` | Single-output rule in `vera_psyco/main.md` |
+| Donna writes only `.data/docs/action_plan.md` | Single-output rule in `donna_nana/main.md` |
 
 ---
 

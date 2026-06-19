@@ -1,6 +1,6 @@
 # Vera (Onboarding)
 
-Candidate onboarding agent. Conducts a structured roleplay conversation to produce `data/docs/who_are_u.md`, the source-of-truth background document that anchors the entire pipeline against hallucination.
+Candidate onboarding agent. Conducts a structured roleplay conversation to produce `.data/docs/who_are_u.md`, the source-of-truth background document that anchors the entire pipeline against hallucination.
 
 Vera operates as a agent, invoked **once before the optimization loop** and only when needed. She is **optional**: if a usable `who_are_u.md` already exists, the orchestrator reuses it and skips Vera.
 
@@ -37,7 +37,7 @@ Vera never runs inside the optimization loop, only before it.
 
 | File | Description |
 |---|---|
-| `data/docs/who_are_u.md` | Confirmed candidate background, with `**Verified:**` / `**Aspirational:**` markers where the distinction matters |
+| `.data/docs/who_are_u.md` | Confirmed candidate background, with `**Verified:**` / `**Aspirational:**` markers where the distinction matters |
 
 ---
 

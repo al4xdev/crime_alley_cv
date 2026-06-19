@@ -29,5 +29,5 @@ Run the containerized evaluation wrapper script. You must redirect the output an
 ### 3. Extract the Report and Fit Score
 Once completed:
 1. Read the last line of `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.log` to retrieve the absolute path to the generated evaluation report. This is **`KAREN_REPORT_PATH`** (typically `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_output.md`).
-2. Open **`KAREN_REPORT_PATH`** (or the host copy at [data/evaluation.md](../data/evaluation.md)).
+2. Open **`KAREN_REPORT_PATH`** (or the host copy at [.data/evaluation.md](../.data/evaluation.md)).
 3. Locate the **"Technical Fit Score"** section (e.g., `## Technical Fit Score: 75/100`) and extract the numeric value as **`FIT_SCORE`**.

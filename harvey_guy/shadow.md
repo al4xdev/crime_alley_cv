@@ -14,7 +14,7 @@ The parent agent will provide you with the following inputs:
 
 ## 🔒 Security & Data Isolation Rules
 
-1. **Do NOT Modify Host Repository Files**: All changes must occur inside `SESSION_DIR`. Do not write to `data/` or any host files.
+1. **Do NOT Modify Host Repository Files**: All changes must occur inside `SESSION_DIR`. Do not write to `.data/` or any host files.
 2. **Access Isolation**: Do not place confidential files or execution logs where Karen Guard can see them. Ensure they are placed under `SESSION_DIR/anti_karen/`.
 3. **Execution Mode**: You are allowed to run shell commands to verify configurations, fetch API data, and clone repositories.
 

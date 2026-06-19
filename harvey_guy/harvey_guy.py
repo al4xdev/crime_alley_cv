@@ -75,7 +75,7 @@ class Harvey:
 
     def _get_paths(self, root_dir: str | None = None) -> Harvey:
         self.root_dir = self._get_root_dir(root_dir)
-        self.data_dir = self.root_dir / "data"
+        self.data_dir = self.root_dir / ".data"
         self.docs_dir = self.data_dir / "docs"
         return self
 
@@ -97,7 +97,7 @@ class Harvey:
         missing = required - present
         if missing:
             raise FileNotFoundError(
-                f"Missing required documents in data/docs/: {', '.join(sorted(missing))}"
+                f"Missing required documents in .data/docs/: {', '.join(sorted(missing))}"
             )
 
         karen_reads = os.environ.get("KAREN_READS_BACKGROUND", "yes").lower() == "yes"
