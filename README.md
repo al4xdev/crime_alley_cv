@@ -84,11 +84,11 @@ The core heuristic guiding this codebase is: **what fails loudly should live in 
 This architecture directly implements the agentic design patterns established in Anthropic's research on effective agent systems [1] and aligns with academic work on multi-agent software engineering and self-feedback loops:
 
 1. **The Orchestrator-Workers Pattern (ChatDev)**:
-   The coordinator **Harvey** acts as the central orchestrator, managing state variables, initializing environments, and delegating specific sub-tasks to specialized worker agents (**Vera**, **Harvey Shadow**, **Karen**, and **Bill**). This role-based isolation aligns with the multi-agent roleplay paradigm explored in *ChatDev* [3], where specialized agents collaborate sequentially to achieve complex goals.
+   The coordinator **Harvey** acts as the central orchestrator, managing state variables, initializing environments, and delegating specific sub-tasks to specialized worker agents (**Vera**, **Harvey Shadow**, **Karen**, and **Bill**). This role-based isolation aligns with the multi-agent roleplay paradigm explored in *ChatDev* [2], where specialized agents collaborate sequentially to achieve complex goals.
 2. **The Evaluator-Optimizer Pattern (Self-Refine)**:
-   The core refinement loop is a classic Evaluator-Optimizer workflow. **Bill** (the Optimizer) proposes modifications to the CV, while **Karen Guard** (the Evaluator) acts as a strict, sandbox-isolated critic. This iterative loop implements the feedback and self-correction principles detailed in the *Self-Refine* framework [4], demonstrating that iterative evaluation and refinement dramatically improve output alignment and precision.
+   The core refinement loop is a classic Evaluator-Optimizer workflow. **Bill** (the Optimizer) proposes modifications to the CV, while **Karen Guard** (the Evaluator) acts as a strict, sandbox-isolated critic. This iterative loop implements the feedback and self-correction principles detailed in the *Self-Refine* framework [3], demonstrating that iterative evaluation and refinement dramatically improve output alignment and precision.
 3. **The Workflows vs. Agents Boundary**:
-   Following Anthropic's recommendations [1, 2], autonomous model-driven routing is used only where judgment is required (e.g. CV auditing and rewrite planning), while deterministic code (Python, shell) is utilized to enforce strict control flows, state carry-over, and parsing boundaries, avoiding silent LLM failures.
+   Following Anthropic's recommendations [1], autonomous model-driven routing is used only where judgment is required (e.g. CV auditing and rewrite planning), while deterministic code (Python, shell) is utilized to enforce strict control flows, state carry-over, and parsing boundaries, avoiding silent LLM failures.
 
 ---
 
@@ -201,10 +201,8 @@ Tests are located in [tests/](tests/) and mock the file system inputs to test di
 
 ## 📚 References
 
-[1] E. Bernhardsson and the Anthropic Developer Relations Team, "Building Effective Agents," *Anthropic Research & Guides*, Dec. 2024. [Online]. Available: https://www.anthropic.com/research/building-effective-agents
+[1] E. Schluntz and B. Zhang, "Building Effective Agents," Anthropic, Dec. 2024. [Online]. Available: https://www.anthropic.com/research/building-effective-agents
 
-[2] Anthropic Masterclass Team, "Architectural Patterns for Production-Ready Agentic Systems," *Anthropic Engineering Guides*, 2025. [Online]. Available: https://docs.anthropic.com/en/docs/agents-and-workflows
+[2] C. Qian et al., "Communicative Agents for Software Development," in *Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL)*, 2024. arXiv preprint arXiv:2307.07924.
 
-[3] C. Qian et al., "Communicative Agents for Software Development," in *Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL)*, 2024. arXiv preprint arXiv:2307.07924.
-
-[4] A. Madaan et al., "Self-Refine: Iterative Refinement with Self-Feedback," *arXiv preprint arXiv:2303.17651*, 2023.
+[3] A. Madaan et al., "Self-Refine: Iterative Refinement with Self-Feedback," *arXiv preprint arXiv:2303.17651*, 2023.
