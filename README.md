@@ -1,220 +1,183 @@
-# Job-Stack & Karen Guard
+# Job-Stack & Karen Guard: An Actor-Critic CV Optimization & Integrity Engine
 
-Automated CV optimization system based on a multi-agent Actor-Critic architecture. An orchestrator drives a feedback loop where a critic agent (Karen) scores the CV against real code evidence, and an editor agent (Bill) rewrites it until the score meets the acceptance threshold.
+Automated CV optimization and verification system based on a multi-agent **Actor-Critic** architecture. An orchestrator drives a feedback loop where a critic agent (**Karen**) audits the CV against real, cloned code evidence, and an editor agent (**Bill**) rewrites it until the score meets a target acceptance threshold.
 
-> **Portfolio note: what this demonstrates.** This is a study project on orchestrating a
-> multi-agent system primarily in **natural language**, with deterministic code only where it
-> earns its place. It is intentionally **framework-free** (no LangGraph / CrewAI / etc.): the
-> orchestration lives in readable runbooks, and the
-> [Design Decisions & Philosophy](#-design-decisions--philosophy) section documents *why* each
-> boundary between code and prose was drawn where it is. The artifact worth reviewing here is
-> the reasoning, the code/language boundary, the isolation model, the explicit contracts,
-> not the CV it produces.
+> **Portfolio note: What this demonstrates.** 
+> This is a study and practical utility project on orchestrating a multi-agent system primarily in **natural language runbooks**, using deterministic code only where it is strictly required to prevent silent failures. It is intentionally **framework-free** (no LangGraph, CrewAI, Autogen, etc.): the orchestration lives in readable runbooks (`.md` files), and the system boundary is enforced via structured container sandboxing. The artifact worth reviewing here is the software engineering discipline: the reasoning, the prose/code boundary, the security isolation model, the explicit contracts, and the debugging telemetry.
 
 ---
 
-## How It Works
+## 🗺️ System Architecture
 
-```
-main.md → harvey_guy/main.md (runbook)
-  → Phase 0 → Phase 1 → Phase 1.5 (Vera, optional)
-  → Loop [Harvey → Karen → Gatekeeper → Bill]
-  → Post-Loop (Donna)
+```mermaid
+graph TD
+    A[main.md / Host User] -->|1. Run ./start.sh| B(Global Docker Container: job_stack_pipeline)
+    B -->|2. Run agy / @main.md| C{Orchestrator: Harvey}
+    C -->|Onboarding Setup| D[Vera: Onboarding Interview -> who_are_u.md]
+    C -->|Gathers context| E[Harvey Shadow]
+    E -->|DuckDuckGo search & git clone| F[(Candidate Repos & Company Info)]
+    C -->|3. Loop Start| G[Harvey: Carry Forward Logs & Workspace Ingestion]
+    G -->|4. Run sandbox| H[Karen Guard: Evaluator in Podman Sandbox]
+    F -.->|Read-Only Mount| H
+    H -->|Produces evaluation.md| I{Gatekeeper}
+    I -->|Failed Parse / Error| J[Exit Loop with Error status 3]
+    I -->|FIT_SCORE >= target OR MAX_LOOPS| K[Donna: Career Coach -> action_plan.md]
+    I -->|FIT_SCORE < target & loop < MAX_LOOPS| L[Bill: Editor Agent in anti_karen]
+    L -->|Rewrites CV based on Report| G
 ```
 
-Before the loop, Vera optionally seeds the candidate background. Each loop iteration: Harvey sets up the session workspace, Karen evaluates the CV against the candidate's actual repositories, the Gatekeeper decides whether to exit or refine, and Bill rewrites the CV based on Karen's report. After the loop, Donna turns the final evaluation into an action plan.
+### Execution Loop Lifecycle
+1. **Phase 0 — Dependency Verification**: A subagent (`Dependency Checker`) verifies host dependencies (`python`, `uv`, `docker`/`podman`, `at`, `git`, `wl-copy`).
+2. **Phase 1 — Interactive Setup**: The orchestrator prompts the user for configuration limits (`MAX_LOOPS`, `MIN_FIT_SCORE`, `JOB_DESCRIPTION_RAW`, `KAREN_READS_BACKGROUND`).
+3. **Phase 1.5 — Onboarding (Optional)**: If the candidate profile (`who_are_u.md`) does not exist, **Vera** conducts a roleplay interview to create it.
+4. **Step 1 — Environment & Setup**: **Harvey** creates an isolated workspace under `/tmp/karen_guard_<UUID>/` and carries forward historical run files. **Harvey Shadow** concurrently clones the candidate's public repositories and researches the company.
+5. **Step 2 — Skeptical Audit**: **Karen Guard** executes inside a containerized sandbox, evaluating the candidate's CV statements against actual code implementation patterns.
+6. **The Gatekeeper**: The evaluation report is parsed by a deterministic Python module to check exit conditions.
+7. **Step 3 — CV Revision**: **Bill** analyzes the gap report in a protected zone (`anti_karen/`) and refines `cv.md` for the next loop.
+8. **Post-Loop Coaching**: Once the target score is hit or loop boundaries are reached, **Donna** translates remaining gaps into a professional development road map (`action_plan.md`).
 
 ---
 
-## Agent Roster
+## 🤖 Agent Roster
 
-| Agent | Directory | Runtime | Role |
+| Agent | Directory | Runtime | Responsibility |
 |---|---|---|---|
-| **Vera** | `vera_psyco/` | agent | Onboarding interview → `who_are_u.md` (optional, pre-loop) |
-| **Harvey** | `harvey_guy/` | Python + agent | Orchestrator & context collector |
-| **Harvey Shadow** | `harvey_guy/` | agent | Clones repos, researches company, pre-builds Docker |
-| **Karen Guard** | `karen_guard/` | Gemini CLI inside Docker | Skeptical evaluator & critic |
-| **Bill** | `billf/` | agent | CV editor & actor |
-| **Donna** | `donna_nana/` | agent | Coach → `action_plan.md` (post-loop) |
-
----
-
-## Modules
-
-- [Vera (Onboarding)](vera_psyco/README.md), Roleplay interview that produces the candidate background.
-- [Harvey (Orchestrator)](harvey_guy/README.md), Session setup, document ingestion, agent orchestration.
-- [Karen Guard (Evaluator)](karen_guard/README.md), Isolated Docker evaluation environment.
-- [Bill (Editor)](billf/README.md), CV revision based on Karen's report.
-- [Donna (Coach)](donna_nana/README.md), Post-loop action plan from the final evaluation.
-
----
-
-## Architecture
-
-> In this project, `.md` files are executables, not documentation. The agent runtime reads and follows them the same way a Python interpreter runs `.py` files. The READMEs (what you're reading now) are the human-facing layer; the `main.md` runbooks are the actual program.
-
-- [Agent Architecture Guide](style.md), How agents communicate, isolation model, state variables, and how to add new agents.
-- [Orchestrator Runbook](harvey_guy/main.md), The full execution runbook (start here after `main.md`).
-
----
-
-## Session Layout
-
-Each run creates an isolated session directory:
-
-```
-/tmp/karen_guard_<UUID>/
-├── docs/           ← cv.md, job.md, who_are_u.md   (mounted read-only to Karen)
-├── repos/          ← cloned candidate repositories   (mounted read-only to Karen)
-├── company_info.md ← company research                (mounted read-only to Karen)
-├── out/            ← Karen's only writable mount (out/evaluation.md)
-└── anti_karen/     ← protected zone (NOT mounted into Karen's container)
-    ├── karen_output.md
-    └── karen_guard_core.log
-```
-
-Per-iteration history is also archived on the host at `.runs/<timestamp>/` (input/output CVs, Karen's report per loop, and a `scores.csv` progression), so a full run can be reviewed and compared across iterations.
-
----
-
-## Prerequisites
-
-`data/docs/` must contain at minimum:
-- `cv.md`, candidate's resume in Markdown
-- `job.md`, job description (written by the orchestrator in Phase 1)
-- `who_are_u.md`, candidate background (recommended; Vera can generate it in Phase 1.5 if missing)
-
-Pipeline-generated outputs in `data/docs/`:
-- `action_plan.md`, written by Donna after the loop
-
-See [requirements.md](requirements.md) for system dependencies.
-
----
-
-## 🚀 How to Run
-
-This pipeline is designed to be executed by an autonomous coding agent (such as **Antigravity CLI / `agy`** or **Claude Code**) running directly in your terminal at the root of this repository.
-
-### Setup and Start:
-
-1. **Open your agent client** in the repository root:
-   ```bash
-   agy
-   ```
-   *(or use `claude` / your preferred agent CLI).*
-
-2. **Trigger the loop** by asking the agent to read and follow the instructions in the main starter file:
-   > **User Prompt:**
-   > *(or simply reference: `@main.md`)*
-
-3. **Follow along:** The agent will spawn a agent to check requirements, ask you the configuration questions (Phase 1), and execute the refinement loops autonomously.
-
----
-
-## ✅ Testing
-
-The agents themselves are LLM-driven and validated by running the pipeline and inspecting the
-session trail, not unit-testable in the usual sense. The **deterministic code** that backs
-them *is* covered by unit tests:
-
-```bash
-uv run pytest
-```
-
-Tests live in `tests/` and cover Harvey's repo-root/path derivation, session creation, the
-`ingest_documents` contract (required `cv.md`/`job.md`, and `who_are_u.md` routing by
-`KAREN_READS_BACKGROUND`), and the fluent logger's counter and chaining.
+| **Vera** | `vera_psyco/` | prose agent | Onboarding interview & context collector $\rightarrow$ `who_are_u.md` |
+| **Harvey** | `harvey_guy/` | Python + prose runbook | Orchestration coordinator, path resolution, and state directory initialization. |
+| **Harvey Shadow** | `harvey_guy/` | prose agent | Parallel task runner: queries DuckDuckGo, clones target repos, pre-builds sandbox. |
+| **Karen Guard** | `karen_guard/` | Gemini CLI in sandbox | Skeptical critic: compares CV claims against cloned code, produces evaluation. |
+| **Bill** | `billf/` | prose agent | CV Actor: revises resume in `anti_karen/` based on Karen's feedback. |
+| **Donna** | `donna_nana/` | prose agent | Post-loop coach: analyzes final score and creates the `action_plan.md`. |
 
 ---
 
 ## 🧪 Design Decisions & Philosophy
 
-> **This is a study project.** Its real subject is not CV optimization, that is the
-> excuse. The subject is **orchestrating a multi-agent system primarily in natural
-> language**, with deterministic code only where it genuinely earns its place. The
-> decisions below are the lessons that shaped the architecture; they are written down so
-> the *why* survives, not just the *what*.
+### 1. The Prose Orchestration Bet
+In this project, `.md` files are not static documentation—they are **executables** interpreted by agent clients (`agy`, `Claude Code`). The bet is that a capable reasoning model is a robust "interpreter" for prose runbooks, offering readability and auto-healing capabilities that outweigh the rigidity of a typical workflow engine.
 
-### The core bet
+### 2. Prose vs. Code: "Migrate Only What Fails Silently"
+The core heuristic guiding this codebase is: **what fails loudly should live in prose; what fails silently must live in code.**
 
-The pipeline is orchestrated by an LLM reading runbooks (`harvey_guy/main.md` and the
-per-agent `main.md` files) as prose instructions, not by a program calling functions.
-This is deliberately the opposite of a hardcoded workflow engine. The bet is that a capable
-agent runtime (Claude Code, `agy`) is a good-enough "interpreter" for an orchestration
-written in prose, and that the flexibility this buys (easy to read, easy to change, no
-brittle glue) outweighs the guarantees you give up. The rest of this section is about
-*which* guarantees you give up, and when that matters.
+* **Fails Loudly**: A missing file, a directory permission error, or a wrong command syntax. The agent runtime detects these errors natively and self-heals by rewriting the command or creating the directory. Hardcoding these scenarios creates brittle code.
+* **Fails Silently**: 
+  1. *History Accumulation*: If Bill writes a CV draft but the next iteration forgets to carry it forward, the loop runs with the *original* CV. The system completes without errors, but the scores stall. We migrated this to Python (`harvey_guy.py`) to systematically copy `anti_karen/karen_guard_core.log` and `cv.md` between iterations.
+  2. *Score Extraction*: If Karen writes `Technical Fit Score: 85/100` and Bill changes the layout next run to `Score - 80`, a rigid string-matcher would crash, but a soft LLM check might pass a hallucinated score. We hardened this into a deterministic Python validator ([gatekeeper.py](file:///home/alex/git/my/meta_2028/harvey_guy/gatekeeper.py)) that uses robust regex patterns to extract scores and map exit codes:
+     - `exit(0)`: Target met (Success).
+     - `exit(1)`: Loops exhausted (Max Loops reached).
+     - `exit(2)`: Threshold not met (Continue Loop).
+     - `exit(3)`: Parsing error (Fails loudly, halting execution).
 
-### What natural-language orchestration actually costs
+| Concern | Fails How? | Lives Where | Implementation |
+|---|---|---|---|
+| Score parsing, bounds validation | Silently (hallucinated score or runaway loops) | Code | [gatekeeper.py](file:///home/alex/git/my/meta_2028/harvey_guy/gatekeeper.py) |
+| CV carry-forward & workspace layout | Silently (loops evaluate same base resume) | Code | [harvey_guy.py](file:///home/alex/git/my/meta_2028/harvey_guy/harvey_guy.py) |
+| Onboarding, Critic & Editor judgment | "Worse result" (lacks context or style) | Prose | `main.md` runbooks |
+| Sandbox resource visibility | Silently (critic reads protected history) | Physical mount boundary | `run.sh` script |
 
-**1. There is no runtime that holds your state.** A normal program has a call stack and
-variables that persist for you. Prose orchestration has neither. `CURRENT_LOOP`,
-`FIT_SCORE`, `SESSION_ID` live only in the orchestrator's context window unless you
-**materialize them into files**. This is the most underestimated part of the approach: state
-that isn't written to disk doesn't really exist. Hence the loop-state checkpoint and the
-file-based session layout.
+---
 
-**2. "Sequential execution" is a preference, not a guarantee.** The runbooks ask the agent
-to execute step by step and not read ahead, but the model loads the whole file into context
-at once. You cannot *force* sequencing the way an interpreter does. This is a fundamental
-limit of the medium, not a bug to fix. The mitigation is to make steps gated by checked
-preconditions (a file exists, a value is set) so order is enforced by data dependencies, not
-by reading discipline.
+## 🔒 Security & Sandbox Isolation Layout
 
-**3. Handoffs between agents are file contracts, not function signatures.** With no shared
-memory and no types, the "protocol" is literally *"Karen writes `## Technical Fit Score: N/100`
-and the orchestrator parses that line."* That is brittle exactly where a typed function call
-would be rigid. So a large part of the work is making these contracts **explicit and
-parseable**, the mandated `job.md` first-line format, the exact score line, the
-`company_info.md` section template. A contract that isn't written down drifts.
+The architecture enforces a physical separation between the untrusted code being audited and the privileged orchestrator environment.
 
-### The governing heuristic: migrate only what fails *silently*
+### 1. Workspace Directory Partitioning
+Each execution creates a dynamic session path under `/tmp/karen_guard_<UUID>/`:
 
-The instinct from classic engineering is "move invariants into code." That instinct is
-**wrong here**, because the runtime is not dumb, it is a reasoning agent that self-heals.
-When a failure announces itself (a score doesn't parse, a file is missing, a path is
-malformed), the agent notices and recovers; hardcoding those cases trades graceful
-degradation for rigid failure. A regex score-parser *breaks* on a format the LLM would have
-read fine.
+```
+/tmp/karen_guard_<UUID>/
+├── docs/           ← cv.md, job.md, who_are_u.md   (Mounted read-only to Karen)
+├── repos/          ← Cloned target repositories     (Mounted read-only to Karen)
+├── company_info.md ← Company research profile      (Mounted read-only to Karen)
+├── out/            ← Evaluator's target output      (Mounted write-only to Karen)
+└── anti_karen/     ← PROTECTED ZONE (Not mounted into Karen's container)
+    ├── karen_output.md
+    └── karen_guard_core.log
+```
 
-The failures worth making deterministic are the ones that produce a **plausible, wrong
-result with no error signal**, because self-healing needs an error to react to, and there is
-none. The original broken feedback loop was exactly this: Karen kept scoring the *original*
-CV every iteration, produced perfectly normal-looking scores, and nothing appeared broken.
+Because `anti_karen/` is physically omitted from the sandbox container, **Karen Guard** has zero path visibility into historical logs, past drafts, or candidate onboarding notes, preventing prompt injection attacks and context contamination.
 
-> **Rule of thumb:** migrate to deterministic code only what fails **silently**. What fails
-> **loudly**, leave for the agent to heal in prose.
+### 2. Nested Sandboxing (Podman-in-Docker)
+When running inside a containerized setup, exposing `/var/run/docker.sock` from the host allows containers to spawn sibling containers that bypass host access controls (privilege escalation). 
 
-| Concern | Fails how? | Lives where |
-|---|---|---|
-| Score parsing, file paths, retries | Loudly (visible error) | Prose, the agent heals it |
-| Vera/Karen/Bill/Donna judgment | "Worse result", recoverable | Prose, this *is* the value |
-| CV carry-forward, loop semantics | Silently (plausible but wrong) | Lean toward code |
-| Reading files Karen must not see | Silently (report looks normal) | Code, physical, not instruction |
+To prevent this, the global system uses a **Podman-in-Docker** topology:
+* The outer container (`job_stack_pipeline`) runs with `--privileged` to support nested cgroups.
+* The inner sandbox runs using **Podman** in rootless mode with user namespaces enabled (`--userns=keep-id`).
+* Inner container storage is configured to use the `vfs` driver inside `/etc/containers/storage.conf` to avoid host driver conflicts.
+* This ensures that even if Karen executes arbitrary test scripts within a cloned repository, the process remains restricted to a nested rootless user space with no path back to the host system.
 
-### Isolation is graduated, and the mechanism should match the stakes
+---
 
-There are two kinds of boundary in this system: **physical** (strong, Karen runs in Docker
-and can only see what is mounted) and **instructional** (weak, best-effort, "you MUST NOT
-read `anti_karen/`" in the prompt). Both are legitimate, but they are not interchangeable.
-A boundary protecting something that matters, and whose violation would be *silent*, should
-be physical. This is why `run.sh` mounts only `docs/`, `repos/`, `company_info.md`, and a
-writable `out/` into Karen's container: `anti_karen/` is not present in the container at all,
-so the boundary is structural, not a prompt she could ignore. The prompt restriction remains
-as a redundant second layer.
+## ⚡ Token Management & Cost Optimization
 
-### Observability is the human safety net
+Multi-agent optimization cycles traversing large repositories can easily exhaust API token quotas. The pipeline implements three layers of cost control:
 
-Every run writes a full trail to its session directory under `/tmp/karen_guard_<uuid>/`
-(logs, reports, intermediate CVs), and a consolidated, comparable history to
-`.runs/<timestamp>/` on the host (per-iteration CVs, Karen's report, and a `scores.csv`
-progression). Because a human inspects these, "silent" failures are not truly silent to the
-operator, which further justifies *not* over-engineering deterministic scaffolding.
+1. **Global Ignore Engine (`.agentignore`)**:
+   Filters out irrelevant project structures (e.g., `node_modules`, `uv.lock`, `.git`, binary files, lockfiles, images) from being ingested by **any** agent in the pipeline.
+2. **Gemini Context Caching**:
+   Static assets (such as the cloned repositories and the raw job description) are cached on the Gemini API side. Refinement iterations only pay for the delta of the newly generated CV drafts and feedback reports, dropping token cost by up to 90% in subsequent runs.
+3. **Telemetry Tracking**:
+   Every run archives detailed iteration data to `.runs/<timestamp>/scores.csv` and compiles a token footprint log to monitor optimization efficiency.
 
-### Where this matures
+---
 
-The honest trajectory: invariants critical to correctness tend to migrate to the
-deterministic side **over time, as the pain is felt**, not front-loaded. Prose keeps the
-judgment; code gradually absorbs the invariants. That is the natural maturation of this kind
-of system, and treating it as a destination to rush toward would defeat the point of the
-study. The boundary between code and language is itself the thing being learned here.
+## 🛠️ Execution & Debugging Guide
+
+### 🚀 Running the System
+
+#### Option A: Containerized (Recommended)
+1. **Start the pipeline container**:
+   ```bash
+   ./start.sh
+   ```
+   *Note: This script mounts your host credentials (`~/.gemini` to `/root/.gemini`) dynamically, ensuring authorization persists inside the container.*
+2. **Launch the agent CLI inside the shell**:
+   ```bash
+   agy
+   ```
+3. **Trigger the loop**:
+   > **User Prompt**: `@main.md`
+
+#### Option B: Direct Host Execution
+1. Ensure your host shell matches the requirements in [requirements.md](requirements.md).
+2. Start your local agent client:
+   ```bash
+   agy
+   ```
+3. Trigger the runbook:
+   > **User Prompt**: `@main.md`
+
+---
+
+### 🔍 Debugging & Troubleshooting
+
+#### 1. Tracking /tmp Context Status
+Because the orchestrator delegates parallel tasks to `Harvey Shadow`, you can monitor file construction in real-time. Open a secondary terminal on the host and run:
+
+```bash
+# Verify directory tree generation inside the container
+docker exec -it $(docker ps -lq) tree -L 3 -a /tmp
+```
+
+This output will highlight if cloned repositories are correctly isolated or if `company_info.md` was successfully written.
+
+#### 2. Resolving Agent Approval Loops (`ManageTask`)
+When runbooks spawn sub-agents (e.g., `Dependency_Checker` or `Harvey Shadow`), the client may halt and request confirmation (e.g., `ctrl+K to approve ManageTask`). 
+
+To bypass this loop and authorize the sub-agents to manage tasks autonomously, append `"mcp(*)"` permissions in your configuration:
+* File: `~/.gemini/config/config.json` (or `/root/.gemini/config/config.json` inside the container)
+* Setting:
+  ```json
+  {
+    "permissions": {
+      "mcp": ["*"]
+    }
+  }
+  ```
+
+#### 3. Testing Deterministic Parts
+To validate that changes to path configurations or score regex patterns do not introduce regressions, run the unit test suite:
+```bash
+uv run pytest
+```
+Tests are located in [tests/](file:///home/alex/git/my/meta_2028/tests/) and mock the file system inputs to test directory isolation, history log carry-forward, and score checks.

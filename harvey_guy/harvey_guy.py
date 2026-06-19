@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import uuid
@@ -42,9 +43,32 @@ class Harvey:
         session_id = str(uuid.uuid4())
         session_dir = Path("/tmp") / f"karen_guard_{session_id}"
         session_dir.mkdir(parents=True, exist_ok=True)
-        (session_dir / "anti_karen").mkdir(parents=True, exist_ok=True)
+        
+        anti_karen_dir = session_dir / "anti_karen"
+        anti_karen_dir.mkdir(parents=True, exist_ok=True)
 
-        log = Log.config(session_dir / "anti_karen" / "karen_guard_core.log", tool="harvey")
+        # Check for previous session state and copy history files into anti_karen
+        checkpoint_path = Path("/tmp/karen_guard_loop_state.json")
+        if checkpoint_path.exists():
+            try:
+                with open(checkpoint_path, "r") as f:
+                    state = json.load(f)
+                prev_session_id = state.get("session_id")
+                if prev_session_id and prev_session_id != "previous_or_null":
+                    prev_anti_karen = Path("/tmp") / f"karen_guard_{prev_session_id}" / "anti_karen"
+                    if prev_anti_karen.exists() and prev_anti_karen.is_dir():
+                        for item in prev_anti_karen.iterdir():
+                            if item.is_file():
+                                if item.name == "karen_guard_core.log":
+                                    shutil.copy2(item, anti_karen_dir / "karen_guard_core_prev.log")
+                                elif item.name == "karen_run.log":
+                                    shutil.copy2(item, anti_karen_dir / "karen_run_prev.log")
+                                else:
+                                    shutil.copy2(item, anti_karen_dir / item.name)
+            except Exception:
+                pass
+
+        log = Log.config(anti_karen_dir / "karen_guard_core.log", tool="harvey")
         log.info(f"Session initialized with ID: {session_id}")
         log.info(f"Session directory created: {session_dir}")
         return session_id, session_dir, log

@@ -31,7 +31,7 @@ Spawned by the orchestrator immediately after Harvey Python completes. Runs in p
 1. Resolves the candidate's GitHub username from `git config remote.origin.url`.
 2. Fetches and clones all public repositories into `SESSION_DIR/repos/` (parallelized with `xargs -P 5`).
 3. Extracts the company name from the first line of `SESSION_DIR/docs/job.md` and queries DuckDuckGo/Wikipedia for background info, saving to `SESSION_DIR/company_info.md`.
-4. Pre-builds the `karen_guard` Docker image so it's ready when Step 2 starts.
+4. Pre-builds the `karen_guard` container image so it's ready when Step 2 starts.
 
 **Runbook:** [`shadow.md`](shadow.md)
 

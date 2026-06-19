@@ -14,7 +14,7 @@ The orchestrator requires:
 ## 🛠️ Step-by-Step Execution & Sandboxing Rules
 
 ### 1. Run the Evaluation Command
-Run the Docker evaluation wrapper script. You must redirect the output and error logs inside the isolated session folder instead of writing them directly under `/tmp/`.
+Run the containerized evaluation wrapper script. You must redirect the output and error logs inside the isolated session folder instead of writing them directly under `/tmp/`.
 
 **Command to run:**
 ```bash
@@ -22,7 +22,7 @@ Run the Docker evaluation wrapper script. You must redirect the output and error
 ```
 
 ### 2. Monitor and Wait
-- The Docker image build and CLI execution logs will be written to `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.err` (stderr) and `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.log` (stdout).
+- The container image build and CLI execution logs will be written to `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.err` (stderr) and `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.log` (stdout).
 - Read `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.err` to check building progress and verify if Antigravity CLI has successfully started the evaluation process inside the container.
 - Wait for the background process to complete.
 

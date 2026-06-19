@@ -1,0 +1,16 @@
+.venv
+.git
+.github
+data
+.runs
+.stable_version_results
+.dependencies_checked.md
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+tests/.pytest_cache
+*.ipynb_checkpoints
+Dockerfile
+start.sh
+apontemds.md

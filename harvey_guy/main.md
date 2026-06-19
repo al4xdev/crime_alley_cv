@@ -23,14 +23,14 @@ graph TD
 
         subgraph Step1["Step 1 — Context & Environment"]
             HarveyPy["Harvey\nPython script\nsetup_paths · ingest_documents"]
-            Shadow["Harvey Shadow\nagent\nclone repos · research company\npre-build Docker image"]
+            Shadow["Harvey Shadow\nagent\nclone repos · research company\npre-build container image"]
             HarveyPy -- "spawns + runs in parallel" --> Shadow
         end
 
         Step1 --> Step2
 
         subgraph Step2["Step 2 — Skeptical Audit"]
-            Karen["Karen Guard\nGemini CLI via Docker\nevaluates CV vs code vs job"]
+            Karen["Karen Guard\nGemini CLI via container\nevaluates CV vs code vs job"]
         end
 
         Step2 --> Gate
@@ -206,11 +206,11 @@ Substitute `$KAREN_READS_BACKGROUND` with the value collected in Phase 1 (`yes` 
 
 ### Step 2: Skeptical Auditing (Karen Guard)
 
-Delegate or follow the instructions defined in [karen_guard/main.md](../karen_guard/main.md) to execute the evaluator docker sandbox using the active **`SESSION_ID`**.
+Delegate or follow the instructions defined in [karen_guard/main.md](../karen_guard/main.md) to execute the evaluator container sandbox using the active **`SESSION_ID`**.
 
 > [!WARNING]
 > **Pre-flight: Antigravity CLI Authentication**
-> The evaluation runs `agy` inside Docker with output fully redirected — interactive login is not possible during the run. Before executing the command below, verify that the host `~/.gemini` directory contains valid credentials. If not authenticated, have the user run `agy` interactively on the host first to complete the login flow, then proceed.
+> The evaluation runs `agy` inside the container with output fully redirected — interactive login is not possible during the run. Before executing the command below, verify that the host `~/.gemini` directory contains valid credentials. If not authenticated, have the user run `agy` interactively on the host first to complete the login flow, then proceed.
 
 **Command to run:**
 ```bash
@@ -221,12 +221,12 @@ Delegate or follow the instructions defined in [karen_guard/main.md](../karen_gu
 1. Execute the command above to isolate output logs inside the session directory.
 2. Monitor progress by viewing `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.err`.
 3. Retrieve **`KAREN_REPORT_PATH`** from the last line of `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.log`.
-4. Extract **`FIT_SCORE`** with a deterministic, format-tolerant command — do **not** read it "by eye". Karen's exact wording drifts in practice (`## Technical Fit Score: 72/100`, `- **Technical Fit Score (0 to 100)**: **72/100**`, etc.), so match the *number before `/100` on the score line* rather than an exact heading:
+4. Extract **`FIT_SCORE`** with a deterministic, format-tolerant command — do **not** read it "by eye". Karen's exact wording drifts in practice (`## Technical Fit Score: 72/100`, etc.), so use the python extractor to ensure parsing robustness:
    ```bash
-   FIT_SCORE=$(grep -i 'technical fit score' "$KAREN_REPORT_PATH" | grep -oE '[0-9]+/100' | head -1 | cut -d/ -f1)
+   FIT_SCORE=$(uv run python -c "import sys; from harvey_guy.gatekeeper import extract_score; print(extract_score(open(sys.argv[1]).read()))" "$KAREN_REPORT_PATH")
    echo "$FIT_SCORE"
    ```
-5. **FIT_SCORE fallback**: If the command prints nothing (no line containing "Technical Fit Score" with an `N/100` value, or the file is unreadable) — **stop the loop immediately**. Report to the user: "Karen did not produce a parseable fit score. Inspect `KAREN_REPORT_PATH` manually." Do not proceed to the Gatekeeper with an undefined score.
+5. **FIT_SCORE fallback**: If the command prints nothing or fails — **stop the loop immediately**. Report to the user: "Karen did not produce a parseable fit score. Inspect `KAREN_REPORT_PATH` manually." Do not proceed to the Gatekeeper with an undefined score.
 6. **Archive this iteration's input + evaluation** into the run history (the CV at `SESSION_DIR/docs/cv.md` is still the version Karen just evaluated — Bill has not run yet):
    ```bash
    ITER_DIR="$RUN_DIR/loop_$(printf '%02d' $CURRENT_LOOP)" && mkdir -p "$ITER_DIR"
@@ -240,22 +240,30 @@ Delegate or follow the instructions defined in [karen_guard/main.md](../karen_gu
 
 ### 🛑 The Gatekeeper (Evaluation & Termination Check)
 
-Compare your variables:
+Evaluate the iteration results deterministically using the gatekeeper python helper:
 
-- **IF** **`FIT_SCORE`** >= **`MIN_FIT_SCORE`**:
-  - **Exit Loop — Success**. Copy the final CV: `cp /tmp/karen_guard_$SESSION_ID/docs/cv.md data/docs/cv.md`
+**Command to run:**
+```bash
+uv run python harvey_guy/gatekeeper.py --min-fit-score $MIN_FIT_SCORE --max-loops $MAX_LOOPS --current-loop $CURRENT_LOOP --session-dir $SESSION_DIR
+```
+
+**Actions based on exit code:**
+
+- **Exit Code 0 (Success)**:
   - **Exit Report** → show to user:
     > ✅ Target score reached. Final score: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Iterations: `CURRENT_LOOP + 1`. Optimized CV saved to `data/docs/cv.md`. Full evaluation at `data/evaluation.md`. Run history (per-iteration CVs, reports, `scores.csv`) at `RUN_DIR`.
   - Then run **Post-Loop Coaching (Donna)** below.
 
-- **IF** **`CURRENT_LOOP`** >= **`MAX_LOOPS`**:
-  - **Exit Loop — Max cycles reached**. Copy the last CV: `cp /tmp/karen_guard_$SESSION_ID/docs/cv.md data/docs/cv.md`
+- **Exit Code 1 (Max loops reached)**:
   - **Exit Report** → show to user:
     > ⚠️ Maximum iterations reached (`MAX_LOOPS`). Best score achieved: `FIT_SCORE`/100 (target: `MIN_FIT_SCORE`). Last CV saved to `data/docs/cv.md`. Full evaluation at `data/evaluation.md`. Run history (per-iteration CVs, reports, `scores.csv`) at `RUN_DIR`. Consider running again with a higher `MAX_LOOPS` or reviewing Karen's recommendations in `data/evaluation.md`.
   - Then run **Post-Loop Coaching (Donna)** below.
 
-- **ELSE**:
+- **Exit Code 2 (Refinement loop continues)**:
   - Proceed to **Step 3 (Bill)**.
+
+- **Any other Exit Code**:
+  - Stop immediately. An unexpected error occurred inside the gatekeeper execution.
 
 ---
 

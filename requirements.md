@@ -7,7 +7,7 @@ Welcome, Dependency Checker Agent! Your goal is to check the host system to ensu
 The Actor-Critic CV Optimization loop requires the following tools:
 1. **Python (>=3.13)**
 2. **`uv` Package Manager** (to run python files inside virtualenv)
-3. **Docker** (and permissions to run docker containers without sudo)
+3. **Podman** or **Docker** (to run the Karen Guard sandbox container rootless)
 4. **`at` command-line utility** (for long-running task watchdog checks)
 5. **Git** (for cloning public repositories)
 6. **Display Server clipboard tools** (like `wl-clipboard` for `wl-copy` if Wayland display server is active)
@@ -26,12 +26,13 @@ uv --version
 - Verify Python version is `3.13` or greater.
 - If `uv` is not installed, instruct the user to install it (e.g., using `curl -LsSf https://astral.sh/uv/install.sh | sh` or standard package manager).
 
-### 2. Docker & Permission Check
+### 2. Container Engine Check (Podman / Docker)
 ```bash
-docker ps
+podman --version || docker ps
 ```
-- If this command fails or returns a permission error, check if the user is in the `docker` group or run it via `sg docker -c "docker ps"`.
-- If Docker is not installed or the user lacks permissions, help them install Docker and add their user to the `docker` group (`sudo usermod -aG docker $USER` followed by shell re-entry).
+- Verify if `podman` is installed. Podman is preferred as it runs in rootless mode by default.
+- If `podman` is missing, verify if `docker` is installed and if the user has permission to run it without sudo (e.g. `docker ps` runs successfully).
+- If neither is installed, help the user install Podman (recommended) or Docker.
 
 ### 3. Git Check
 ```bash

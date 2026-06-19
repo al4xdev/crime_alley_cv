@@ -42,7 +42,7 @@ Current agents: **Vera**, **Harvey Shadow**, **Bill**, **Donna**, **Dependency C
 Note: **Vera** and **Donna** run outside the session loop and write directly to their designated host output in `data/docs/` (`who_are_u.md` and `action_plan.md` respectively), since no `SESSION_DIR` exists pre-loop / the loop is already over post-loop. This is the same legitimate-output pattern as the orchestrator writing `job.md` in Phase 1.
 
 ### 3. External Agent (Karen Guard)
-Runs as a Gemini CLI (`agy`) process inside a Docker container. Not a spawned agent — it has its own model, authentication, and execution environment. Communicates exclusively via the subpaths mounted into the container:
+Runs as a Gemini CLI (`agy`) process inside a containerized sandbox. Not a spawned agent — it has its own model, authentication, and execution environment. Communicates exclusively via the subpaths mounted into the container:
 - **Reads** (read-only mounts): `SESSION_DIR/docs/`, `SESSION_DIR/repos/`, `SESSION_DIR/company_info.md`
 - **Writes**: `SESSION_DIR/out/evaluation.md` (the only writable mount); `run.sh` then relocates it to `anti_karen/karen_output.md`
 - **Cannot access**: `SESSION_DIR/anti_karen/` — physically, because it is not mounted into the container at all (not merely a prompt restriction)
@@ -76,7 +76,7 @@ Per-iteration artifacts are also archived to a host-side run history at `.runs/<
 | Boundary | Mechanism |
 |---|---|
 | Karen cannot read `anti_karen/` | **Physical**: `run.sh` mounts only `docs/`, `repos/`, `company_info.md`, `out/` into the container — `anti_karen/` is never present. Prompt restriction in `prompt_persona.txt` is a redundant second layer. |
-| Karen cannot read host files | Docker volume mounts: only the subpaths above are exposed (`docs/`/`repos/` read-only) |
+| Karen cannot read host files | Container volume mounts: only the subpaths above are exposed (`docs/`/`repos/` read-only) |
 | Karen writes only her report | Only `out/` is mounted writable; she writes `out/evaluation.md`, which `run.sh` relocates to `anti_karen/` |
 | Bill cannot modify host repository | Explicit rule in `billf/main.md` |
 | CV in repo is never modified during loop | SANDBOXING RULE in `harvey_guy/main.md` |

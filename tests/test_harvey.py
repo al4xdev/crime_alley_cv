@@ -59,6 +59,38 @@ def test_init_session_creates_protected_layout():
         shutil.rmtree(session_dir, ignore_errors=True)
 
 
+def test_init_session_carry_forward():
+    import json
+    # Set up a dummy previous session
+    prev_session_id = "test-prev-session-123"
+    prev_session_dir = Path("/tmp") / f"karen_guard_{prev_session_id}"
+    prev_anti_karen = prev_session_dir / "anti_karen"
+    prev_anti_karen.mkdir(parents=True, exist_ok=True)
+    
+    # Create some files in prev_anti_karen
+    (prev_anti_karen / "draft_notes.txt").write_text("my notes", encoding="utf-8")
+    (prev_anti_karen / "karen_guard_core.log").write_text("core log", encoding="utf-8")
+    (prev_anti_karen / "karen_run.log").write_text("run log", encoding="utf-8")
+    
+    # Create the loop state checkpoint
+    checkpoint_path = Path("/tmp/karen_guard_loop_state.json")
+    checkpoint_path.write_text(json.dumps({"session_id": prev_session_id}), encoding="utf-8")
+    
+    try:
+        session_id, session_dir, log = Harvey()._init_session()
+        try:
+            anti_karen_dir = session_dir / "anti_karen"
+            assert (anti_karen_dir / "draft_notes.txt").read_text(encoding="utf-8") == "my notes"
+            assert (anti_karen_dir / "karen_guard_core_prev.log").read_text(encoding="utf-8") == "core log"
+            assert (anti_karen_dir / "karen_run_prev.log").read_text(encoding="utf-8") == "run log"
+        finally:
+            shutil.rmtree(session_dir, ignore_errors=True)
+    finally:
+        shutil.rmtree(prev_session_dir, ignore_errors=True)
+        if checkpoint_path.exists():
+            checkpoint_path.unlink()
+
+
 def test_setup_paths_creates_dirs_and_is_fluent(harvey: Harvey):
     result = harvey.setup_paths()
     assert result is harvey

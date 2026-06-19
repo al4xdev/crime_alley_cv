@@ -70,15 +70,26 @@ The parent agent will provide you with the following inputs:
   ```
 - **Note:** `company_info.md` is consumed by Karen Guard during evaluation to calibrate scoring against the company's real stack and priorities. Write it even if data is sparse — an empty section is better than a missing file.
 
-### 4. Build Karen Guard Docker Image
-- Check if the image already exists before building:
+### 4. Build Karen Guard Sandbox Image
+- Check if the image already exists before building using the active container engine (Podman or Docker):
   ```bash
-  if docker image inspect karen_guard >/dev/null 2>&1; then
-    echo "karen_guard image already exists, skipping build."
+  if command -v podman >/dev/null 2>&1; then
+    if ! podman image exists karen_guard; then
+      podman build -t karen_guard --build-arg USERNAME=$(whoami) --build-arg USER_ID=$(id -u) ./karen_guard
+    else
+      echo "karen_guard image already exists in Podman, skipping build."
+    fi
+  elif command -v docker >/dev/null 2>&1; then
+    if docker image inspect karen_guard >/dev/null 2>&1; then
+      echo "karen_guard image already exists in Docker, skipping build."
+    else
+      docker build -t karen_guard --build-arg USERNAME=$(whoami) --build-arg USER_ID=$(id -u) ./karen_guard
+    fi
   else
-    docker build -t karen_guard --build-arg USERNAME=$(whoami) --build-arg USER_ID=$(id -u) ./karen_guard
+    echo "Error: Neither podman nor docker found." >&2
+    exit 1
   fi
   ```
 
 ### 5. Signal Completion
-- Once all tasks (cloning, research, and docker pre-build) are completed successfully, notify the parent agent and stop.
+- Once all tasks (cloning, research, and container pre-build) are completed successfully, notify the parent agent and stop.
