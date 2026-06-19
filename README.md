@@ -4,7 +4,7 @@
 
 Automated CV optimization and verification system based on a multi-agent **Actor-Critic** architecture. An orchestrator drives a feedback loop where a critic agent (**Karen**) audits the CV against real, cloned code evidence, and an editor agent (**Bill**) rewrites it until the score meets a target acceptance threshold.
 
-> **Portfolio note: What this demonstrates.** 
+> **Study note: What this demonstrates.** 
 > This is a study and practical utility project on orchestrating a multi-agent system primarily in **natural language runbooks**, using deterministic code only where it is strictly required to prevent silent failures. It is intentionally **framework-free** (no LangGraph, CrewAI, Autogen, etc.): the orchestration lives in readable runbooks (`.md` files), and the system boundary is enforced via structured container sandboxing. The artifact worth reviewing here is the software engineering discipline: the reasoning, the prose/code boundary, the security isolation model, the explicit contracts, and the debugging telemetry.
 
 ---
