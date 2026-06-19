@@ -13,4 +13,3 @@ tests/.pytest_cache
 *.ipynb_checkpoints
 Dockerfile
 start.sh
-apontemds.md
