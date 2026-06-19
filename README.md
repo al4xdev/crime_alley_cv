@@ -1,6 +1,6 @@
-# Job-Stack & Karen Guard: An Actor-Critic CV Optimization & Integrity Engine
+# Crime Alley CV: An Actor-Critic CV Optimization & Integrity Engine
 
-![Job-Stack multi-agent pipeline banner](assets/pipeline_meeting.jpg)
+![Crime Alley CV multi-agent pipeline banner](assets/pipeline_meeting.jpg)
 
 Automated CV optimization and verification system based on a multi-agent **Actor-Critic** architecture. An orchestrator drives a feedback loop where a critic agent (**Karen**) audits the CV against real, cloned code evidence, and an editor agent (**Bill**) rewrites it until the score meets a target acceptance threshold.
 
@@ -13,7 +13,7 @@ Automated CV optimization and verification system based on a multi-agent **Actor
 
 ```mermaid
 graph TD
-    A[main.md / Host User] -->|1. Run ./start.sh| B(Global Docker Container: job_stack_pipeline)
+    A[main.md / Host User] -->|1. Run ./start.sh| B(Global Docker Container: crime_alley_pipeline)
     B -->|2. Run agy / @main.md| C{Orchestrator: Harvey}
     C -->|Onboarding Setup| D[Vera: Onboarding Interview -> who_are_u.md]
     C -->|Gathers context| E[Harvey Shadow]
@@ -103,7 +103,7 @@ Because `anti_karen/` is physically omitted from the sandbox container, **Karen 
 When running inside a containerized setup, exposing `/var/run/docker.sock` from the host allows containers to spawn sibling containers that bypass host access controls (privilege escalation). 
 
 To prevent this, the global system uses a **Podman-in-Docker** topology:
-* The outer container (`job_stack_pipeline`) runs with `--privileged` to support nested cgroups.
+* The outer container (`crime_alley_pipeline`) runs with `--privileged` to support nested cgroups.
 * The inner sandbox runs using **Podman** in rootless mode with user namespaces enabled (`--userns=keep-id`).
 * Inner container storage is configured to use the `vfs` driver inside `/etc/containers/storage.conf` to avoid host driver conflicts.
 * This ensures that even if Karen executes arbitrary test scripts within a cloned repository, the process remains restricted to a nested rootless user space with no path back to the host system.

@@ -1,7 +1,7 @@
 #!/bin/bash
-# start.sh — Launch the entire Job-Stack pipeline inside a Docker container (with Podman inside)
+# start.sh — Launch the entire Crime Alley CV pipeline inside a Docker container (with Podman inside)
 
-IMAGE_NAME="job_stack_pipeline"
+IMAGE_NAME="crime_alley_pipeline"
 
 # 1. Build the global orchestrator image
 echo "Building global orchestrator image..." >&2
