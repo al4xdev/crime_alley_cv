@@ -69,3 +69,16 @@ docker exec -it $(docker ps -lq) cat /tmp/karen_guard_loop_state.json | jq -r '.
 ```bash
 docker exec -it $(docker ps -lq) cat /tmp/karen_guard_loop_state.json | jq -r '.session_id' | xargs -I {} docker exec -it $(docker ps -lq) diff -u /app/.data/docs/cv.md /tmp/karen_guard_{}/docs/cv.md
 ```
+
+---
+
+## 🔍 Key Agent Logic & Runbook Paths
+
+- **Vera (Onboarding Agent)**: [vera_psyco/main.md](file:///home/alex/git/my/meta_2028/vera_psyco/main.md)
+- **Harvey (Orchestrator Python Script)**: [harvey_guy/harvey_guy.py](file:///home/alex/git/my/meta_2028/harvey_guy/harvey_guy.py) & [harvey_guy/main.py](file:///home/alex/git/my/meta_2028/harvey_guy/main.py)
+- **Harvey Shadow (Infrastructure/Parallel Agent)**: [harvey_guy/shadow.md](file:///home/alex/git/my/meta_2028/harvey_guy/shadow.md)
+- **Karen Guard (Auditor Run Script)**: [karen_guard/run.sh](file:///home/alex/git/my/meta_2028/karen_guard/run.sh) & [karen_guard/main.md](file:///home/alex/git/my/meta_2028/karen_guard/main.md)
+- **Bill (Editor Agent)**: [billf/main.md](file:///home/alex/git/my/meta_2028/billf/main.md)
+- **Donna (Coach Agent)**: [donna_nana/main.md](file:///home/alex/git/my/meta_2028/donna_nana/main.md)
+- **Watchdog Script (Local Diagnostic)**: [.plan/watchdog.fish](file:///home/alex/git/my/meta_2028/.plan/watchdog.fish)
+

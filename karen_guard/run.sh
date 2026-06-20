@@ -35,9 +35,10 @@ fi
 HOST_USER=$(whoami)
 HOST_UID=$(id -u)
 HOST_GID=$(id -g)
-USER_HOME=$(getent passwd "$HOST_USER" | cut -d: -f6)
-USER_HOME="${USER_HOME:-$HOME}"
+USER_HOME="${HOME}"
+USER_HOME="${USER_HOME:-$(getent passwd "$HOST_USER" | cut -d: -f6)}"
 USER_HOME="${USER_HOME:-/root}"
+
 
 if [ "$CONTAINER_ENGINE" = "podman" ]; then
   if ! podman image exists karen_guard; then
