@@ -14,3 +14,6 @@ tests/.pytest_cache
 *.ipynb_checkpoints
 Dockerfile
 start.sh
+data_example
+README.md
+**/README.md
