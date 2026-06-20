@@ -36,6 +36,8 @@ HOST_USER=$(whoami)
 HOST_UID=$(id -u)
 HOST_GID=$(id -g)
 USER_HOME=$(getent passwd "$HOST_USER" | cut -d: -f6)
+USER_HOME="${USER_HOME:-$HOME}"
+USER_HOME="${USER_HOME:-/root}"
 
 if [ "$CONTAINER_ENGINE" = "podman" ]; then
   if ! podman image exists karen_guard; then
@@ -94,8 +96,8 @@ chown -R "${HOST_UID}:${HOST_GID}" "${SESSION_GEMINI_DIR}"
 
 echo "Checking Antigravity CLI authentication..." >&2
 if [ "$CONTAINER_ENGINE" = "podman" ]; then
-  if podman run --rm --userns=keep-id -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini:z" \
-      karen_guard agy models 2>&1 | grep -q -E "Error|Authentication|sign in"; then
+  if ! podman run --rm --userns=keep-id -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini:z" \
+      karen_guard agy models >/dev/null 2>&1; then
       
       echo "Antigravity CLI is not authenticated. Starting interactive login flow..." >&2
       podman run -it --rm --userns=keep-id \
@@ -106,8 +108,8 @@ if [ "$CONTAINER_ENGINE" = "podman" ]; then
       cp -R "${SESSION_GEMINI_DIR}/"* "${USER_HOME}/.gemini/" 2>/dev/null || true
   fi
 else
-  if docker run --rm -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini" \
-      karen_guard su - "${HOST_USER}" -c "agy models" 2>&1 | grep -q -E "Error|Authentication|sign in"; then
+  if ! docker run --rm -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini" \
+      karen_guard su - "${HOST_USER}" -c "agy models" >/dev/null 2>&1; then
       
       echo "Antigravity CLI is not authenticated. Starting interactive login flow..." >&2
       docker run -it --rm \

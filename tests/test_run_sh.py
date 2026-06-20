@@ -131,8 +131,8 @@ def test_run_sh_auth_false_positive_reproduces_bug(tmp_session, temp_home_dir, m
         check=False
     )
     
-    # Under current code, it triggers interactive login because of the false positive match
-    assert "Starting interactive login flow" in proc.stderr
+    # Verify that the success check does not trigger interactive login flow
+    assert "Starting interactive login flow" not in proc.stderr
     assert proc.returncode == 0
 
 

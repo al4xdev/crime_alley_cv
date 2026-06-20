@@ -23,9 +23,14 @@ The parent agent will provide you with the following inputs:
 ## 🛠️ Step-by-Step Execution Plan
 
 ### 1. Fetch GitHub Username
-- Determine the host developer's GitHub username. Run `git config remote.origin.url` in the host repository.
-- If it contains a URL like `github.com[:/]([^/]+)/`, parse the username.
-- If not found, run `git config github.user` to check for configured users.
+- First, check if the `/app/.git` directory exists.
+- If it does **not** exist (indicating a container environment where `.git` is ignored by `.dockerignore`):
+  - **Do NOT** execute any `git config` or `git remote` commands (they will fail and trigger useless self-healing loops).
+  - Go directly to the fallback strategy: extract the GitHub username from the candidate's curriculum at `SESSION_DIR/docs/cv.md` (e.g., extract the email username prefix `al4xdev` from `al4xdev@gmail.com` or LinkedIn URL).
+- If the `/app/.git` directory **does** exist:
+  - Determine the host developer's GitHub username. Run `git config remote.origin.url` in the host repository.
+  - If it contains a URL like `github.com[:/]([^/]+)/`, parse the username.
+  - If not found, run `git config github.user` to check for configured users.
 - Save the resolved username.
 
 ### 2. Ingest and Clone Repositories

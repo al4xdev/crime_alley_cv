@@ -3,6 +3,7 @@ FROM python:3.13-slim
 # Install system dependencies including podman, fish shell, and tree
 RUN apt-get update && apt-get install -y --no-install-recommends \
     podman \
+    nftables \
     git \
     curl \
     ca-certificates \
@@ -21,9 +22,10 @@ RUN curl -fsSL https://astral.sh/uv/install.sh | sh && \
 RUN curl -fsSL https://antigravity.google/cli/install.sh | bash && \
     mv /root/.local/bin/agy /usr/local/bin/agy
 
-# Set up Podman storage driver to vfs for stability inside Docker/Podman
+# Set up Podman configurations for nested container environment
 RUN mkdir -p /etc/containers && \
-    echo '[storage]\ndriver = "vfs"' > /etc/containers/storage.conf
+    printf '[storage]\ndriver = "vfs"\nrunroot = "/run/containers/storage"\ngraphroot = "/var/lib/containers/storage"\n' > /etc/containers/storage.conf && \
+    printf '[network]\nfirewall_driver = "iptables"\n' > /etc/containers/containers.conf
 
 # Set up working directory
 WORKDIR /app

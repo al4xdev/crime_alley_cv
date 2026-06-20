@@ -4,10 +4,9 @@
 
 Automated CV optimization and verification system based on a multi-agent **Actor-Critic** architecture. An orchestrator drives a feedback loop where a critic agent (**Karen**) audits the CV against real, cloned code evidence, and an editor agent (**Bill**) rewrites it until the score meets a target acceptance threshold.
 
-> [!WARNING]
-> **Active Environment Instability & Podman Migration (June 2026)**
-> We have recently migrated the sandboxed subagent runtime from Docker to nested Podman to prevent socket-exposure security risks inside the container.
-> Due to this migration, there is an active bug in the authentication verification loop inside the `run.sh` script of **Karen Guard** (where normal "signed in" status outputs cause a false positive regex match, forcing the headless process into a hanging interactive login prompt). We are currently stabilizing the nested runtime configuration, storage permissions, and local firewall setups. If you are testing the pipeline, please refer to the active backlog in [.plan/backlog.md](file:///home/alex/git/my/meta_2028/.plan/backlog.md) for details and workarounds.
+> [!NOTE]
+> **Environment Stability & Podman Migration (June 2026) - Resolved ✅**
+> We have successfully migrated the sandboxed subagent runtime from Docker to nested Podman to prevent socket-exposure security risks. All nested runtime configurations (storage, network/firewall, and user permissions) and authentication loop checks have been stabilized and validated via automated unit tests.
 
 > **Study note: What this demonstrates.** 
 > This is a study and practical utility project on orchestrating a multi-agent system primarily in **natural language runbooks**, using deterministic code only where it is strictly required to prevent silent failures. It is intentionally **framework-free** (no LangGraph, CrewAI, Autogen, etc.): the orchestration lives in readable runbooks (`.md` files), and the system boundary is enforced via structured container sandboxing. The artifact worth reviewing here is the software engineering discipline: the reasoning, the prose/code boundary, the security isolation model, the explicit contracts, and the debugging telemetry.

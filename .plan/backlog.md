@@ -18,6 +18,8 @@ O core (loop Actor-Critic + Vera/Donna) está estável e os itens planejados ori
 - **Ignore Global (ex: `.agentignore`)**: Criar um mecanismo de ignore que filtre arquivos desnecessários (como `.lock`, arquivos de configuração de ferramentas, imagens, binários e dependências pesadas) para que **nenhum** agente (não apenas a Karen, mas todos os agentes do pipeline) consuma tokens lendo arquivos irrelevantes durante o processo.
 - **Estratégias de Economia Global**: Pesquisar e planejar formas de otimização adicionais, como o uso de *Gemini Context Caching* para dados estáticos compartilhados (como os repositórios clonados e vaga) e telemetria básica para medir o consumo de tokens por iteração.
 
+## ✅ Concluído (Done)
+
 ### TASK-03: Correção de Rede e Storage do Podman no Dockerfile
 - **Arquivo**: `Dockerfile` principal do projeto
 - **Problema**: O Podman rodando dentro do container Docker principal falha no build/run sem firewall driver (`nftables` ou `iptables`) e sem as configurações de `runroot` em `/etc/containers/storage.conf`.
@@ -55,7 +57,6 @@ O core (loop Actor-Critic + Vera/Donna) está estável e os itens planejados ori
   - Inverter a asserção no teste `test_run_sh_auth_false_positive_reproduces_bug` em [tests/test_run_sh.py](file:///home/alex/git/my/meta_2028/tests/test_run_sh.py) para que ele passe apenas quando o fluxo interativo **não** for disparado por falso positivo.
   - O agente deve revisar a suíte de testes criada. Todos os testes unitários em `tests/test_run_sh.py` devem passar (`pytest tests/test_run_sh.py`) como critério de aceitação de entrega da tarefa.
 
-
 ### TASK-06: Otimização de Entrada de Variáveis (Batch Input)
 - **Arquivo**: `harvey_guy/harvey_guy.py` (ou nos runbooks de setup)
 - **Problema**: O setup interativo do runbook pede que o agente pergunte as 4 variáveis de controle (`MAX_LOOPS`, `MIN_FIT_SCORE`, etc.) individualmente, gerando múltiplas iterações caras e lentas.
@@ -84,7 +85,7 @@ O core (loop Actor-Critic + Vera/Donna) está estável e os itens planejados ori
 
 - **Não Persistência de `.dependencies_checked.md` no Docker**:
   Como `/app/` não é montado no host (apenas `.data` e `.runs` são), a verificação de dependências gera o arquivo `.dependencies_checked.md` na raiz do container. Ao parar/reiniciar o container, o arquivo é perdido, forçando a checagem em todo startup.
-  *Ideia de Correção*: Salvar em `.data/docs/.dependencies_checked.md` ou expor via volume montado.
+  *Ideia de Correção*: Salvar em `.data/docs/.dependencies_checked.md` ou expor via volume montado. (Corrigido ✅ - alterado para salvar em `.data/docs/.dependencies_checked.md`)
 - **Aviso do Podman no Docker (Storage, Network & Build)**:
   1. *Erro de Storage*: O erro `Failed to obtain podman configuration: runroot must be set` ocorre porque o `storage.conf` gerado no Dockerfile é muito esparso. O sub-agente `Dependency Checker` contornou definindo localmente `CONTAINERS_STORAGE_CONF=/root/.config/containers/storage.conf`. Como o `Harvey Shadow` é isolado, ele teve que redescobrir o erro e aplicar o mesmo contorno.
   2. *Erro de Rede (netavark nftables)*: Ao tentar rodar o build no Podman, o `Harvey Shadow` colidiu com o erro `netavark: nftables error: unable to execute nft` porque o pacote `nftables` não está instalado no Dockerfile. Ele contornou o problema fazendo buscas e preparando um arquivo de override `containers.conf` configurando `firewall_driver="iptables"`.

@@ -13,10 +13,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ARG USERNAME=karen
 ARG USER_ID=1000
 
-RUN groupadd -g ${USER_ID} ${USERNAME} && \
-    useradd -u ${USER_ID} -g ${USERNAME} -m -s /bin/bash ${USERNAME} && \
-    echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
-    chown -R ${USERNAME}:${USERNAME} /app
+RUN if [ "${USER_ID}" -ne 0 ] && [ "${USERNAME}" != "root" ]; then \
+        if ! getent group "${USER_ID}" >/dev/null 2>&1; then \
+            groupadd -g ${USER_ID} ${USERNAME}; \
+        fi && \
+        if ! getent passwd "${USER_ID}" >/dev/null 2>&1 && ! getent passwd "${USERNAME}" >/dev/null 2>&1; then \
+            useradd -u ${USER_ID} -g ${USER_ID} -m -s /bin/bash ${USERNAME}; \
+        fi && \
+        echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers; \
+    fi && \
+    chown -R ${USER_ID}:${USER_ID} /app
 
 RUN pip install --no-cache-dir uv
 

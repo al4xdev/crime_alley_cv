@@ -101,15 +101,15 @@ Before doing anything else, you must verify that all environment dependencies ar
 6. **Wayland clipboard tools (`wl-copy`)** if Wayland display server is active.
 
 ### Actions:
-1. **Skip if already verified**: Check for the persistent marker at the repository root:
+1. **Skip if already verified**: Check for the persistent marker in the data docs directory:
    ```bash
-   test -f .dependencies_checked.md && echo verified || echo unverified
+   test -f .data/docs/.dependencies_checked.md && echo verified || echo unverified
    ```
-   If `verified`, dependencies were already confirmed on a previous run — skip straight to Phase 1. (Delete `.dependencies_checked.md` to force a re-check.)
+   If `verified`, dependencies were already confirmed on a previous run — skip straight to Phase 1. (Delete `.data/docs/.dependencies_checked.md` to force a re-check.)
 2. Spawn a specialized agent with the role `Dependency Checker`.
 3. Instruct the agent to read, execute, and verify all check steps described in **[requirements.md](../requirements.md)**, communicating directly with the user to help them install any missing tools.
 4. Wait for the agent to complete the task.
-5. Verify that `.dependencies_checked.md` was created at the repository root with a successful status check before proceeding.
+5. Verify that `.data/docs/.dependencies_checked.md` was created with a successful status check before proceeding.
 
 ---
 
@@ -118,10 +118,10 @@ Before doing anything else, you must verify that all environment dependencies ar
 Before executing any commands, you must enter "interactive setup mode".
 
 > [!IMPORTANT]
-> **PROMPT INTERACTIVELY — do NOT dump these as plain text.**
-> Use your host CLI's native interactive question/option UI (e.g. Claude Code's question prompt, `agy`'s interactive selector) to ask **one question at a time** and **wait for the answer** before moving to the next. Offer the suggested options/defaults as selectable choices where they exist. Only fall back to a plain-text prompt if no interactive UI is available. Never print all questions at once and assume answers.
+> **PROMPT IN BATCH — Collect all inputs at once.**
+> Use your host CLI's native interactive question UI or a single clear form/prompt to ask for all 4 loop configuration variables (`MAX_LOOPS`, `MIN_FIT_SCORE`, `JOB_DESCRIPTION_RAW`, and `KAREN_READS_BACKGROUND`) at the same time in a single interaction. Do not ask for them one by one.
 
-Ask the user the following questions to initialize the loop configuration variables (always reference them in **UPPERCASE**):
+Ask the user to provide all of the following configuration variables at once (always reference them in **UPPERCASE**):
 
 1. **`MAX_LOOPS`**: What is the maximum number of CV refinement iterations allowed? — suggested options: `1`, `3`, `5` (default `3`).
 2. **`MIN_FIT_SCORE`**: What is the target minimum technical fit score (0-100) needed to accept the CV? — suggested options: `70`, `80`, `90` (default `80`).
