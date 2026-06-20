@@ -97,11 +97,11 @@ chown -R "${HOST_UID}:${HOST_GID}" "${SESSION_GEMINI_DIR}"
 
 echo "Checking Antigravity CLI authentication..." >&2
 if [ "$CONTAINER_ENGINE" = "podman" ]; then
-  if ! podman run --rm --userns=keep-id -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini:z" \
+  if ! podman run --rm --userns=keep-id --dns=8.8.8.8 -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini:z" \
       karen_guard agy models >/dev/null 2>&1; then
       
       echo "Antigravity CLI is not authenticated. Starting interactive login flow..." >&2
-      podman run -it --rm --userns=keep-id \
+      podman run -it --rm --userns=keep-id --dns=8.8.8.8 \
         -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini:z" \
         karen_guard agy
         
@@ -132,7 +132,7 @@ mkdir -p "${SESSION_DIR}/out" "${SESSION_DIR}/docs" "${SESSION_DIR}/repos"
 [ -f "${SESSION_DIR}/company_info.md" ] || touch "${SESSION_DIR}/company_info.md"
 
 if [ "$CONTAINER_ENGINE" = "podman" ]; then
-  podman run --rm --userns=keep-id \
+  podman run --rm --userns=keep-id --dns=8.8.8.8 \
     -v "${SESSION_DIR}/docs:/app/session/docs:ro,z" \
     -v "${SESSION_DIR}/repos:/app/session/repos:ro,z" \
     -v "${SESSION_DIR}/company_info.md:/app/session/company_info.md:ro,z" \
