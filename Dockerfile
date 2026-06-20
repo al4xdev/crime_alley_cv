@@ -39,5 +39,9 @@ RUN uv sync --frozen --dev
 # Copy project files
 COPY . .
 
+# Set entrypoint to run atd daemon
+RUN chmod +x entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]
+
 # Default shell
 CMD ["/usr/bin/fish"]

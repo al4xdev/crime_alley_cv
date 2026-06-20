@@ -10,7 +10,6 @@ The Actor-Critic CV Optimization loop requires the following tools:
 3. **Podman** or **Docker** (to run the Karen Guard sandbox container rootless)
 4. **`at` command-line utility** (for long-running task watchdog checks)
 5. **Git** (for cloning public repositories)
-6. **Display Server clipboard tools** (like `wl-clipboard` for `wl-copy` if Wayland display server is active)
 
 ---
 
@@ -49,17 +48,6 @@ which at
   - macOS: `brew install at`
 - Ensure the `atd` service is enabled and running:
   - Linux: `sudo systemctl enable --now atd`
-
-### 5. Display Server & wl-copy Check
-- Check if Wayland is used:
-```bash
-echo $WAYLAND_DISPLAY
-```
-- If Wayland is active, verify that `wl-copy` is installed:
-```bash
-which wl-copy
-```
-- If Wayland is active but `wl-copy` is missing, instruct the user to install it (e.g., `sudo apt install wl-clipboard`).
 
 ---
 
