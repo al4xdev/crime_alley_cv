@@ -11,7 +11,6 @@ wheels/
 
 # User data (contains sensitive CV documents, JDs, and cloned repositories)
 .data/
-repos/
 
 # Local run-state markers
 .dependencies_checked.md
