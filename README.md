@@ -45,6 +45,17 @@ graph TD
 
 ---
 
+## ⚙️ Requirements & System Scope
+
+> [!IMPORTANT]
+> **Operating System & Storage Constraints**
+> - **Linux Only**: The nested container sandbox relies heavily on Linux-specific containerization features (such as user namespaces, nested cgroups, and rootless Podman execution). It **only works on Linux host systems**. macOS and Windows (even under WSL in certain configurations) are not supported.
+> - **Disk Space Requirements**: 
+>   - A minimum of **10 GB of free disk space** is required on the host system.
+>   - The global orchestrator container and the nested Karen Guard sandbox image construction, along with downloaded base image layers and cloned target repositories, require substantial disk space for rootless image storage.
+
+---
+
 ## 🤖 Agent Roster
 
 | Avatar | Agent | Directory | Runtime | Responsibility |

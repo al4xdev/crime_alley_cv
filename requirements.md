@@ -4,6 +4,11 @@ Welcome, Dependency Checker Agent! Your goal is to check the host system to ensu
 
 ## 📋 Required System Dependencies
 
+> [!IMPORTANT]
+> **Operating System & Storage Requirements**
+> - **Linux Host Only**: This system utilizes rootless Podman nested containerization, user namespaces (`keep-id`), and advanced cgroups configurations. It **only runs on Linux host environments** (macOS and Windows/WSL are not supported).
+> - **Disk Space**: A minimum of **10 GB of free disk space** is required on the host system to build and store container image layers, cache dependencies, and accommodate cloned repositories.
+
 The Actor-Critic CV Optimization loop requires the following tools:
 1. **Python (>=3.13)**
 2. **`uv` Package Manager** (to run python files inside virtualenv)
