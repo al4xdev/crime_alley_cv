@@ -63,7 +63,6 @@ To ensure reliable, safe, and consistent execution on the host machine, you must
 ### 1. Shell & Tooling
 - **Shell**: Use the system's default shell (e.g., bash/sh) or the user's preferred shell, ensuring commands are compatible.
 - **Python projects**: Use `uv` with virtual environment at `.venv/`, activated via `source .venv/bin/activate` (or `activate.fish` if using fish).
-- **Display Server**: Use the available display server. If Wayland is active, pipe terminal outputs to `wl-copy` when sharing content for the user.
 - **Command Output Capture**: Every shell command must capture output. Never run a command and assume it succeeded. Always check exit codes or append appropriate error-handling checks compatible with the shell being used.
 - **Silent Commands**: For commands with no natural output (e.g., `mv`, `mkdir`, `chmod`, `git add`), verify success by appending success indicators (like `&& echo ok` or equivalent).
 
@@ -88,9 +87,9 @@ To ensure reliable, safe, and consistent execution on the host machine, you must
 
 ---
 
-## 🛠️ Phase 0: Dependency Verification (Subagent Delegation)
+## 🛠️ Phase 0: Dependency Verification
 
-Before doing anything else, you must verify that all environment dependencies are installed. To avoid saturating your current context, you must delegate the verification checks and any interactive troubleshooting with the user to a specialized agent.
+Before doing anything else, you must verify that all environment dependencies are installed. To prevent terminal stdin corruption bugs (like skipped questions in subsequent phases), do NOT spawn a subagent for this task. Perform the checks directly in the current agent session.
 
 ### List of Required Dependencies:
 1. **Python (>=3.13)**
@@ -98,7 +97,6 @@ Before doing anything else, you must verify that all environment dependencies ar
 3. **Docker** (with permission to run containers without sudo)
 4. **`at` command-line utility**
 5. **Git**
-6. **Wayland clipboard tools (`wl-copy`)** if Wayland display server is active.
 
 ### Actions:
 1. **Skip if already verified**: Check for the persistent marker in the data docs directory:
@@ -106,10 +104,8 @@ Before doing anything else, you must verify that all environment dependencies ar
    test -f .data/docs/.dependencies_checked.md && echo verified || echo unverified
    ```
    If `verified`, dependencies were already confirmed on a previous run — skip straight to Phase 1. (Delete `.data/docs/.dependencies_checked.md` to force a re-check.)
-2. Spawn a specialized agent with the role `Dependency Checker`.
-3. Instruct the agent to read, execute, and verify all check steps described in **[requirements.md](../requirements.md)**, communicating directly with the user to help them install any missing tools.
-4. Wait for the agent to complete the task.
-5. Verify that `.data/docs/.dependencies_checked.md` was created with a successful status check before proceeding.
+2. **Verify directly**: Read, execute, and verify all check steps described in **[requirements.md](../requirements.md)** directly.
+3. **Write final report**: Once all checks pass, write the status report to `.data/docs/.dependencies_checked.md` and proceed.
 
 ---
 
