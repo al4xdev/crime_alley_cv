@@ -104,6 +104,8 @@ class Harvey:
 
         for item in self.docs_dir.iterdir():
             if item.is_file():
+                if item.name.startswith('.'):
+                    continue
                 if item.name == "who_are_u.md" and not karen_reads:
                     shutil.copy2(item, anti_karen_dir / item.name)
                     self.log.info(
