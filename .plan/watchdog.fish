@@ -1,14 +1,22 @@
 #!/usr/bin/env fish
 
+# Determine the correct docker command (with or without sudo)
+set -l docker_cmd docker
+if not docker ps >/dev/null 2>&1
+    if command -v sudo >/dev/null 2>&1
+        set docker_cmd sudo docker
+    end
+end
+
 # Find container ID running crime_alley_pipeline
-set container_id (docker ps --filter "ancestor=crime_alley_pipeline" --format "{{.ID}}" | head -n 1)
+set container_id ($docker_cmd ps --filter "ancestor=crime_alley_pipeline" --format "{{.ID}}" | head -n 1)
 
 if test -n "$container_id"
     echo "=================================================="
     echo "Active Container ID: $container_id"
     
     # Check loop state checkpoint
-    set state_json (docker exec $container_id cat /tmp/karen_guard_loop_state.json 2>/dev/null)
+    set state_json ($docker_cmd exec $container_id cat /tmp/karen_guard_loop_state.json 2>/dev/null)
     if test -n "$state_json"
         echo "Current Loop State Checkpoint:"
         echo $state_json | jq .
@@ -18,19 +26,19 @@ if test -n "$container_id"
             echo "Session ID: $session_id"
             echo "--------------------------------------------------"
             echo "Session directories inside container /tmp:"
-            docker exec $container_id tree -L 3 -a /tmp 2>/dev/null || echo "tree command not found inside container"
+            $docker_cmd exec $container_id tree -L 3 -a /tmp 2>/dev/null || echo "tree command not found inside container"
             
             echo "--------------------------------------------------"
             echo "Tail of Karen run log (stdout):"
-            docker exec $container_id tail -n 10 /tmp/karen_guard_$session_id/anti_karen/karen_run.log 2>/dev/null || echo "No logs yet"
+            $docker_cmd exec $container_id tail -n 10 /tmp/karen_guard_$session_id/anti_karen/karen_run.log 2>/dev/null || echo "No logs yet"
             
             echo "--------------------------------------------------"
             echo "Tail of Karen run error (stderr):"
-            docker exec $container_id tail -n 10 /tmp/karen_guard_$session_id/anti_karen/karen_run.err 2>/dev/null || echo "No stderr yet"
+            $docker_cmd exec $container_id tail -n 10 /tmp/karen_guard_$session_id/anti_karen/karen_run.err 2>/dev/null || echo "No stderr yet"
             
             echo "--------------------------------------------------"
             echo "Tail of Harvey core log:"
-            docker exec $container_id tail -n 10 /tmp/karen_guard_$session_id/anti_karen/karen_guard_core.log 2>/dev/null || echo "No core logs yet"
+            $docker_cmd exec $container_id tail -n 10 /tmp/karen_guard_$session_id/anti_karen/karen_guard_core.log 2>/dev/null || echo "No core logs yet"
         end
     else
         echo "No /tmp/karen_guard_loop_state.json file found inside the container yet."
