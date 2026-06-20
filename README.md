@@ -96,6 +96,13 @@ To prevent wasting LLM tokens and make testing deterministic, we decouple enviro
 
 ---
 
+## 📋 System Requirements & Disk Space
+
+* **Operating System**: **Linux** (required for cgroups v2, user namespaces, and nested rootless Podman container support). Running this pipeline is **not supported on Windows or macOS** (unless run inside a full Linux VM).
+* **Disk Space**: A minimum of **10 GB of free disk space** on the host system is required. This accommodates the global Docker orchestrator image, the nested sandboxed critic image (`karen_guard`), temporary sandbox directories inside `/tmp/`, and downloaded repository artifacts.
+
+---
+
 ## 🎓 Theoretical Alignment & Academic Foundation
 
 This architecture directly implements the agentic design patterns established in Anthropic's research on effective agent systems [1] and aligns with academic work on multi-agent software engineering and self-feedback loops:
