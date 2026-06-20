@@ -1,7 +1,8 @@
 .venv
 .git
 .github
-data
+.data
+repos
 .runs
 .stable_version_results
 .dependencies_checked.md

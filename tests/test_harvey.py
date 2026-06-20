@@ -14,7 +14,7 @@ from harvey_guy.libs import Log
 def harvey(tmp_path: Path) -> Harvey:
     h = Harvey()
     h.root_dir = tmp_path
-    h.data_dir = tmp_path / "data"
+    h.data_dir = tmp_path / ".data"
     h.docs_dir = h.data_dir / "docs"
     h.session_dir = tmp_path / "session"
     h.session_docs_dir = h.session_dir / "docs"
@@ -43,8 +43,8 @@ def test_get_paths_is_fluent_and_derives_layout(tmp_path: Path):
     h = Harvey()
     result = h._get_paths(str(tmp_path))
     assert result is h
-    assert h.data_dir == tmp_path.resolve() / "data"
-    assert h.docs_dir == tmp_path.resolve() / "data" / "docs"
+    assert h.data_dir == tmp_path.resolve() / ".data"
+    assert h.docs_dir == tmp_path.resolve() / ".data" / "docs"
 
 
 def test_init_session_creates_protected_layout():

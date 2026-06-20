@@ -18,4 +18,4 @@ wheels/
 # Versioned run history (contains CV/evaluation copies — sensitive)
 .runs/
 .stable_version_results/
-.plan/
+

@@ -4,10 +4,16 @@
 
 Automated CV optimization and verification system based on a multi-agent **Actor-Critic** architecture. An orchestrator drives a feedback loop where a critic agent (**Karen**) audits the CV against real, cloned code evidence, and an editor agent (**Bill**) rewrites it until the score meets a target acceptance threshold.
 
+> [!WARNING]
+> **Active Environment Instability & Podman Migration (June 2026)**
+> We have recently migrated the sandboxed subagent runtime from Docker to nested Podman to prevent socket-exposure security risks inside the container.
+> Due to this migration, there is an active bug in the authentication verification loop inside the `run.sh` script of **Karen Guard** (where normal "signed in" status outputs cause a false positive regex match, forcing the headless process into a hanging interactive login prompt). We are currently stabilizing the nested runtime configuration, storage permissions, and local firewall setups. If you are testing the pipeline, please refer to the active backlog in [.plan/backlog.md](file:///home/alex/git/my/meta_2028/.plan/backlog.md) for details and workarounds.
+
 > **Study note: What this demonstrates.** 
 > This is a study and practical utility project on orchestrating a multi-agent system primarily in **natural language runbooks**, using deterministic code only where it is strictly required to prevent silent failures. It is intentionally **framework-free** (no LangGraph, CrewAI, Autogen, etc.): the orchestration lives in readable runbooks (`.md` files), and the system boundary is enforced via structured container sandboxing. The artifact worth reviewing here is the software engineering discipline: the reasoning, the prose/code boundary, the security isolation model, the explicit contracts, and the debugging telemetry.
 
 ---
+
 
 ## 🗺️ System Architecture
 
@@ -75,7 +81,8 @@ The core heuristic guiding this codebase is: **what fails loudly should live in 
 | Score parsing, bounds validation | Silently (hallucinated score or runaway loops) | Code | [gatekeeper.py](harvey_guy/gatekeeper.py) |
 | CV carry-forward & workspace layout | Silently (loops evaluate same base resume) | Code | [harvey_guy.py](harvey_guy/harvey_guy.py) |
 | Onboarding, Critic & Editor judgment | "Worse result" (lacks context or style) | Prose | `main.md` runbooks |
-| Sandbox resource visibility | Silently (critic reads protected history) | Physical mount boundary | `run.sh` script |
+### 3. Decoupling Agent Logic: Fast Testing via Mocking
+To prevent wasting LLM tokens and make testing deterministic, we decouple environment and wrapper script validation from the agents themselves. By checking in actual runtime files (e.g. `company_info.md`, `repos.json`, and agent outputs) under [tests/mocks/](file:///home/alex/git/my/meta_2028/tests/mocks/) and utilizing mock wrapper binaries (such as mocking `podman` or `docker` commands in a localized sub-shell `PATH`), we can test the pipeline's control flow, directory structure mappings, and authentication verification rules in Python unit tests. This ensures our non-agent components (like setup scripts, environment validators, and local firewall setups) are completely testable and functional offline, without spawning container daemons or consuming LLM quotas.
 
 ---
 
