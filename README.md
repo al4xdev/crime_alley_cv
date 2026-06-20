@@ -34,7 +34,7 @@ graph TD
 ```
 
 ### Execution Loop Lifecycle
-1. **Phase 0 — Dependency Verification**: A subagent (`Dependency Checker`) verifies host dependencies (`python`, `uv`, `docker`/`podman`, `at`, `git`, `wl-copy`).
+1. **Phase 0 — Dependency Verification**: The orchestrator verifies host dependencies (`python`, `uv`, `docker`/`podman`, `at`, `git`) directly to prevent terminal stdin corruption.
 2. **Phase 1 — Interactive Setup**: The orchestrator prompts the user for configuration limits (`MAX_LOOPS`, `MIN_FIT_SCORE`, `JOB_DESCRIPTION_RAW`, `KAREN_READS_BACKGROUND`).
 3. **Phase 1.5 — Onboarding (Optional)**: If the candidate profile (`who_are_u.md`) does not exist, **Vera** conducts a roleplay interview to create it.
 4. **Step 1 — Environment & Setup**: **Harvey** creates an isolated workspace under `/tmp/karen_guard_<UUID>/` and carries forward historical run files. **Harvey Shadow** concurrently clones the candidate's public repositories and researches the company.

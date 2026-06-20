@@ -66,6 +66,18 @@ This file stores the completed tasks history to keep the main `.plan/backlog.md`
 - **Critérios de Aceitação**:
   - O subagente não executa `git config` nem `git remote` se `/app/.git` estiver ausente, indo direto para a carga do profile de onboarding.
 
+### TASK-08: Remoção de Dependência de Wayland & Ativação do atd no Docker
+- **Problema**: Remover os requisitos de Wayland e configurar inicialização automática do `atd` no container.
+- **Resolução**: Removemos todas as menções e requisitos do Wayland (`wl-copy`/`wl-clipboard`) do pipeline e documentos. Criamos o `entrypoint.sh` e atualizamos o `Dockerfile` para iniciar o daemon `/usr/sbin/atd` automaticamente no container.
+
+### TASK-09: Correção de Pulo de Perguntas pós-retorno do Pager agy
+- **Problema**: Terminal stdin corrompido ao suspender ou retornar de subprocessos interativos/pagers como o do `agy`.
+- **Resolução**: Substituímos a delegação para o subagente `Dependency Checker` por uma execução direta no fluxo do orquestrador principal, evitando a corrupção do terminal e permitindo a coleta de inputs iterativos com segurança.
+
+### TASK-10: Restrições de Prompt e Rede da Karen Guard
+- **Problema**: A Karen tentava acessar a internet/clonar repositórios e fazia buscas globais no filesystem root (`/`), causando lentidão e timeouts.
+- **Resolução**: Ajustamos a persona em `karen_guard/prompt_persona.txt` impondo restrições rígidas: sem acesso à internet, buscas de arquivos limitadas estritamente aos repositórios pré-clonados localizados em `/app/session/repos/`.
+
 ---
 
 ## 🔍 Novas Descobertas Históricas
