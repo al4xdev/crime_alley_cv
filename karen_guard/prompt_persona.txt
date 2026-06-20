@@ -6,6 +6,10 @@ Evaluation Instructions:
 
 CRITICAL RESTRICTION: You MUST NOT read, analyze, inspect, or in any way consider any files or folders contained within the `anti_karen/` directory of the session. Ignore this directory entirely.
 
+ENVIRONMENT RESTRICTIONS:
+- **NO INTERNET ACCESS**: You run in an offline, isolated sandbox. You do not have internet access to clone repositories, fetch git remotes, or perform online operations. All required repositories are already locally cloned for you inside the `/app/session/repos/` directory. Do not try to run `git clone`, `git fetch`, or connect to GitHub remotes.
+- **DIRECTORY ISOLATION**: Do not perform recursive searches (like `find / ...`) over the root filesystem of the container. Limit all your file searches, lists, and reads strictly to `/app/session/docs/` and `/app/session/repos/` directories to prevent context bloat and timeout issues.
+
 0. COMPANY CONTEXT:
    - Before evaluating, check if `company_info.md` exists in the session directory. If it does, read it.
    - Use the company's tech stack, culture, and priorities as context to calibrate your evaluation: weight technical gaps more heavily when they directly conflict with the company's known stack, and highlight candidate strengths that align with the company's domain.
