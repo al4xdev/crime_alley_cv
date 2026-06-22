@@ -1,120 +1,128 @@
 # Plano de Implementação: Scripts de Fronteira e Contratos entre Agentes
 
-Este plano detalha como as fronteiras entre os agentes do pipeline **Crime Alley CV** serão formalizadas e validadas de forma determinística por meio de scripts de fronteira (`boundaries/*.fish`) executados no shell `fish` do host/container. Isso substitui a confiança instrucional (soft constraints) por asserções rígidas e testáveis em código.
+Este plano detalha como as fronteiras entre os agentes do pipeline **Crime Alley CV** serão formalizadas e validadas de forma determinística por meio de ganchos de validação (Assertive Hooks) pré e pós-execução (`boundaries/*.fish`) executados no shell `fish` do host/container. Isso substitui a confiança instrucional (soft constraints) por asserções rígidas e testáveis em código.
 
 ---
 
-## 🗺️ Mapa de Transições e Contratos de Fronteira
+## 🗺️ Arquitetura de "Assertive Hooks" (Pré e Pós-Condições)
 
-Criaremos um diretório `boundaries/` no qual cada transição de agente será encapsulada em um script `boundaries/<origem>_<destino>.fish` (ou nome similar indicando a transição). Cada script terá três fases claras:
-1. **Pré-condições**: Validação determinística de variáveis de ambiente, arquivos de entrada obrigatórios e esquemas básicos de dados.
-2. **Execução**: Chamada da ação real (execução do script Python, container ou sinalização para o usuário/agente interagir).
-3. **Pós-condições**: Verificação de que as saídas esperadas foram geradas com sucesso, estão no local correto, não violam permissões e não introduziram modificações indevidas no host.
+Em vez de os scripts controlarem a execução dos agentes (o que geraria problemas de interatividade e controle de subagentes cognitivos), os scripts de fronteira funcionarão como **Assertive Hooks** síncronos. 
 
-Abaixo está o mapeamento detalhado das transições planejadas:
+O runbook principal (`harvey_guy/main.md`) invocará as validações antes e depois da execução de cada agente da seguinte forma:
+```fish
+# Antes de rodar o agente
+boundaries/<origem>_<destino>.fish --pre $SESSION_ID
+
+# [Execução do agente coordenada pelo Orquestrador]
+
+# Depois de rodar o agente
+boundaries/<origem>_<destino>.fish --post $SESSION_ID
+```
+
+Se qualquer validação falhar, o script de fronteira retornará um status code de erro (`exit 1` ou superior), interrompendo o pipeline imediatamente (loud failure).
+
+---
+
+## 🗺️ Detalhamento dos Scripts de Fronteira
+
+Criaremos um diretório `boundaries/` no qual cada transição será encapsulada em um script `.fish`.
 
 ### 1. `boundaries/harvey_depchecker.fish` (Fronteira com Dependency Checker)
 * **Objetivo**: Garantir que as dependências do host estejam instaladas e válidas.
-* **Pré-condição**: Nenhuma (script executa a checagem do zero se forçar re-run, ou pula se o marker existir).
-* **Ação**: Executa as verificações descritas em `requirements.md` (ou delega para o subagente).
-* **Pós-condição**: Verifica se o arquivo [.data/docs/.dependencies_checked.md](file:///home/alex/git/my/meta_2028/.data/docs/.dependencies_checked.md) existe, é não-vazio e reporta "PASS" para todos os itens.
+* **Modo `--pre`**: Nenhuma.
+* **Modo `--post`**:
+  * Verifica se o arquivo [.data/docs/.dependencies_checked.md](file:///home/alex/git/my/meta_2028/.data/docs/.dependencies_checked.md) existe.
+  * Valida se o conteúdo do arquivo é não-vazio e reporta "PASS" para os itens cruciais (`Python`, `uv`, `Docker` ou `Podman`, `at`, `Git`, `wl-copy`).
 
 ### 2. `boundaries/harvey_vera.fish` (Fronteira com Vera Onboarding)
-* **Objetivo**: Assegurar a existência e o formato básico do histórico/background do candidato.
-* **Pré-condição**: Se [.data/docs/who_are_u.md](file:///home/alex/git/my/meta_2028/.data/docs/who_are_u.md) existir, pede confirmação para reuse/refresh.
-* **Ação**: Executa Vera para criar/atualizar o arquivo.
-* **Pós-condição**: Valida se [.data/docs/who_are_u.md](file:///home/alex/git/my/meta_2028/.data/docs/who_are_u.md) existe, tem tamanho > 100 bytes e possui cabeçalhos obrigatórios markdown (ex: contendo informações estruturadas de experiência).
+* **Objetivo**: Assegurar a integridade do perfil do candidato.
+* **Modo `--pre`**: Nenhuma (o orquestrador decide se executa Vera).
+* **Modo `--post`**:
+  * Valida se [.data/docs/who_are_u.md](file:///home/alex/git/my/meta_2028/.data/docs/who_are_u.md) existe.
+  * Valida se possui cabeçalhos obrigatórios markdown (tamanho > 100 bytes) contendo o perfil de experiência estruturado.
 
 ### 3. `boundaries/harvey_setup.fish` (Fronteira de Inicialização/Setup)
-* **Objetivo**: Validar os insumos iniciais fornecidos pelo usuário e inicializar a sessão do Harvey.
-* **Pré-condição**:
-  * Presença e integridade de [.data/docs/cv.md](file:///home/alex/git/my/meta_2028/.data/docs/cv.md) e [.data/docs/job.md](file:///home/alex/git/my/meta_2028/.data/docs/job.md).
-  * O arquivo `job.md` deve conter um título de vaga válido na primeira linha (formato `# <Cargo> — <Empresa>`).
-  * As variáveis `MAX_LOOPS` e `MIN_FIT_SCORE` devem ser inteiros válidos.
-  * `KAREN_READS_BACKGROUND` deve ser `"yes"` ou `"no"`.
-* **Ação**: Executa `uv run python harvey_guy/main.py` para criar a sessão e obter o `SESSION_ID`.
-* **Pós-condição**:
-  * O diretório `/tmp/karen_guard_$SESSION_ID/` foi criado.
-  * O layout isolado foi estruturado (`docs/`, `repos/`, `anti_karen/`).
-  * O arquivo `who_are_u.md` foi copiado para a pasta correta (dentro de `docs/` se `yes`, dentro de `anti_karen/` se `no`).
+* **Objetivo**: Validar os insumos do usuário antes da inicialização.
+* **Modo `--pre`**:
+  * Verifica se [.data/docs/cv.md](file:///home/alex/git/my/meta_2028/.data/docs/cv.md) e [.data/docs/job.md](file:///home/alex/git/my/meta_2028/.data/docs/job.md) existem e são não-vazios.
+  * Verifica se a primeira linha de `job.md` corresponde ao formato `# <Cargo> — <Empresa>`.
+  * Garante que `MAX_LOOPS` e `MIN_FIT_SCORE` são inteiros válidos.
+  * Garante que `KAREN_READS_BACKGROUND` é `"yes"` ou `"no"`.
+* **Modo `--post`**:
+  * Valida que o diretório `/tmp/karen_guard_$SESSION_ID/` e os subdiretórios `docs/`, `repos/`, `anti_karen/` foram criados.
+  * Valida que `docs/cv.md` e `docs/job.md` foram copiados para a sessão.
+  * **Roteamento Condicional**:
+    * Se `KAREN_READS_BACKGROUND` for `"yes"` e o arquivo `.data/docs/who_are_u.md` existir, garante que ele foi copiado para `SESSION_DIR/docs/who_are_u.md`.
+    * Se `KAREN_READS_BACKGROUND` for `"no"` e o arquivo `.data/docs/who_are_u.md` existir, garante que ele foi copiado para `SESSION_DIR/anti_karen/who_are_u.md` (e **não** está presente em `docs/`).
 
 ### 4. `boundaries/harvey_shadow.fish` (Fronteira com Harvey Shadow)
-* **Objetivo**: Validar a ingestão paralela de informações da empresa e dos repositórios do candidato.
-* **Pré-condição**:
-  * A variável `SESSION_DIR` (/tmp/karen_guard_$SESSION_ID) deve estar definida e activa.
-* **Ação**: Executa as tarefas do Harvey Shadow (pesquisa e clonagem de repositórios).
-* **Pós-condição**:
-  * O arquivo `SESSION_DIR/company_info.md` existe e não é vazio.
-  * O diretório `SESSION_DIR/repos/` existe e possui ao menos um subdiretório ou arquivo clonado (se houver repositórios informados no perfil do candidato).
+* **Objetivo**: Validar a coleta paralela de repositórios e informações.
+* **Modo `--pre`**:
+  * Garante que `SESSION_DIR` está definido e existe.
+* **Modo `--post`**:
+  * Garante que `SESSION_DIR/company_info.md` existe e é não-vazio.
+  * Lê o arquivo de contagem esperada (ex: `SESSION_DIR/repos_expected_count.txt` ou similar se gerado, ou valida se a pasta `repos/` foi criada). Se repositórios eram esperados, garante que foram baixados.
 
 ### 5. `boundaries/harvey_karen.fish` (Fronteira com Karen Guard)
-* **Objetivo**: Executar a auditoria na sandbox com segurança de volume e chaves.
-* **Pré-condição**:
-  * `SESSION_DIR` e subdiretórios `docs/`, `repos/` e arquivo `company_info.md` presentes.
-  * Presença de credenciais válidas do agy no host (`~/.gemini/antigravity-cli/antigravity-oauth-token`).
-* **Ação**: Executa `./karen_guard/run.sh $SESSION_ID` com logs isolados.
-* **Pós-condição**:
-  * Geração do arquivo `SESSION_DIR/anti_karen/evaluation.md`.
-  * Validação física: o container Karen não deve ter escrito fora do diretório `out/` (que é mapeado no container).
+* **Objetivo**: Rodar a auditoria na sandbox de forma isolada e autenticada.
+* **Modo `--pre`**:
+  * Verifica se `SESSION_DIR/docs/cv.md` e `SESSION_DIR/docs/job.md` existem.
+  * **Verificação de Liveness Autenticada**: Roda um comando rápido de teste do `agy` no host (ex: `agy models`) para garantir que o token oauth local não está corrompido ou expirado.
+* **Modo `--post`**:
+  * Garante que `SESSION_DIR/anti_karen/evaluation.md` foi gerado e é não-vazio.
+  * **Validação Física**: Garante que nenhum arquivo fora de `out/` (no mount de escrita) foi modificado no container Karen.
 
 ### 6. `boundaries/karen_gatekeeper.fish` (Fronteira com o Gatekeeper)
-* **Objetivo**: Avaliar o encerramento ou prosseguimento do loop determinístico.
-* **Pré-condição**:
-  * Presença de `SESSION_DIR/anti_karen/evaluation.md`.
-* **Ação**: Executa `uv run python harvey_guy/gatekeeper.py ...` extraindo o score de forma tolerante.
-* **Pós-condição**:
-  * Saída de status válida (0: Sucesso, 1: Limite de loops, 2: Continua loop).
-  * Se status for 0 ou 1, garante que a versão final do currículo foi copiada com segurança de volta para o host em [.data/docs/cv.md](file:///home/alex/git/my/meta_2028/.data/docs/cv.md).
+* **Objetivo**: Avaliar os critérios de saída do loop determinístico.
+* **Modo `--pre`**:
+  * Garante que `SESSION_DIR/anti_karen/evaluation.md` existe.
+* **Modo `--post`**:
+  * Captura o código de retorno do gatekeeper.
+  * Se o status for `0` (sucesso) ou `1` (max_loops), valida que o currículo final da iteração foi copiado de volta para o host em [.data/docs/cv.md](file:///home/alex/git/my/meta_2028/.data/docs/cv.md).
 
 ### 7. `boundaries/gatekeeper_bill.fish` (Fronteira com Bill Editor)
-* **Objetivo**: Garantir que as edições de CV do Bill respeitem restrições e não adulterem outros arquivos.
-* **Pré-condição**:
-  * Presença de `SESSION_DIR/docs/cv.md` original, relatório de auditoria `karen_output.md` e ground-truth `who_are_u.md`.
-* **Ação**: Spawna o agente Bill.
-* **Pós-condição**:
-  * O arquivo `SESSION_DIR/docs/cv.md` foi modificado (conteúdo é diferente do inicial).
-  * **Verificação Anti-Trust/Anti-Hallucination**: NENHUM arquivo no repositório host (rastreado pelo git) foi modificado pelo Bill. Validação feita comparando `git diff --name-only` do repositório host e verificando timestamps.
+* **Objetivo**: Prevenir fraudes de contexto, alucinações de arquivos e modificações fora da sessão.
+* **Modo `--pre`**:
+  * Garante que `SESSION_DIR/docs/cv.md` existe.
+  * **Segurança contra Fraude de Contexto**: Salva os hashes SHA-256 iniciais das fontes de verdade da sessão: `docs/job.md`, `anti_karen/who_are_u.md` (se existir), `docs/who_are_u.md` (se existir) e `company_info.md`.
+  * Cria uma lista de snapshots de arquivos modificados no repositório host (usando `git diff --name-only`).
+* **Modo `--post`**:
+  * Garante que `SESSION_DIR/docs/cv.md` foi modificado pelo Bill (tamanho ou hash diferem do inicial).
+  * **Verificação contra Modificações Indevidas**: Garante que o Bill não alterou nenhum arquivo rastreado pelo git no repositório principal (comparando com o snapshot inicial).
+  * **Verificação Anti-Fraude**: Recalcula e compara os hashes SHA-256 de `job.md`, `who_are_u.md` e `company_info.md` para garantir que o Bill não os alterou para burlar o fit score da Karen.
 
 ### 8. `boundaries/bill_harvey.fish` (Fronteira de Carry Forward)
-* **Objetivo**: Conduzir o currículo revisado pelo Bill para a próxima iteração com segurança.
-* **Pré-condição**:
-  * O currículo atualizado em `SESSION_DIR/docs/cv.md` é válido e difere do anterior.
-* **Ação**:
+* **Objetivo**: Conduzir o currículo otimizado com segurança para a próxima iteração.
+* **Modo `--pre`**:
+  * Garante que `SESSION_DIR/docs/cv.md` difere de `.data/docs/cv.md`.
+* **Modo `--post`**:
   * Copia o currículo modificado para o host [.data/docs/cv.md](file:///home/alex/git/my/meta_2028/.data/docs/cv.md).
-  * Incrementa `CURRENT_LOOP` e escreve o checkpoint atualizado em `/tmp/karen_guard_loop_state.json`.
-* **Pós-condição**:
-  * O checkpoint `/tmp/karen_guard_loop_state.json` existe e reflete o incremento correto de loops.
+  * Incrementa `CURRENT_LOOP`.
+  * Escreve o estado no checkpoint `/tmp/karen_guard_loop_state.json`.
 
 ### 9. `boundaries/gatekeeper_donna.fish` (Fronteira com Donna Career Coach)
-* **Objetivo**: Gerar o plano de desenvolvimento pós-loop.
-* **Pré-condição**:
-  * Presença de `SESSION_DIR/anti_karen/evaluation.md`.
-* **Ação**: Spawna a agente Donna.
-* **Pós-condição**:
-  * O arquivo [.data/docs/action_plan.md](file:///home/alex/git/my/meta_2028/.data/docs/action_plan.md) foi criado e contém seções estruturadas sobre gaps técnicos e plano de ação.
+* **Objetivo**: Garantir a geração correta do plano de desenvolvimento final.
+* **Modo `--pre`**:
+  * Garante que o relatório de avaliação final em `SESSION_DIR/anti_karen/evaluation.md` existe.
+* **Modo `--post`**:
+  * Valida que [.data/docs/action_plan.md](file:///home/alex/git/my/meta_2028/.data/docs/action_plan.md) foi gerado e não está vazio.
 
 ---
 
 ## 🧪 Estratégia de Testes Unitários (`tests/test_boundaries.py`)
 
-Para comprovar que esses scripts impedem falhas silenciosas e alucinações de caminhos de arquivos, escreveremos testes unitários usando `pytest`. 
-Os testes irão:
-1. **Mockar estados do filesystem** (pastas temporárias criadas pelo pytest `tmp_path`).
-2. **Executar os scripts de fronteira** (`boundaries/*.fish`) usando `subprocess` passando caminhos mockados.
-3. **Validar falha controlada**: Garantir que se uma pré-condição ou pós-condição falhar (ex: faltar `cv.md` ou se Bill modificar um arquivo proibido), o script retorne um status code de erro (`!= 0`).
+Escreveremos a suíte de testes unitários `tests/test_boundaries.py` em Python (pytest) que irá:
+1. **Mockar cenários de sucesso e falha**: Criará diretórios de sessão temporários, com arquivos válidos, inválidos ou ausentes.
+2. **Invocar os scripts de fronteira**: Roda os scripts fish de fronteira via `subprocess` e garante que retornam `exit code 0` nas pré/pós condições corretas e `exit code != 0` em caso de quebra de contrato.
+3. **Testar integridade SHA-256**: Fornece um cenário onde simulamos o Bill editando `job.md` de forma maliciosa e verifica se `gatekeeper_bill.fish --post` pega a fraude e aborta com erro.
 
 ---
 
-## 📅 Plano de Execução do Agente
+## 📅 Plano de Ação para Implementação
 
-1. **Submissão do Plano para Validação por Subagente**:
-   * Invocar o subagente `research` para avaliar este plano de implementação e dar feedback sobre consistência, edge cases e conformidade com o projeto.
-2. **Refinamento**:
-   * Ajustar o plano com base nas correções do subagente.
-3. **Criação dos Scripts**:
-   * Escrever os scripts `.fish` na pasta `boundaries/`.
-4. **Implementação dos Testes**:
-   * Escrever a suite de testes unitários em `tests/test_boundaries.py`.
-   * Garantir que todas as asserções rodem localmente e passem via `pytest`.
-5. **Integração no Fluxo de Orquestração**:
-   * Atualizar [harvey_guy/main.md](file:///home/alex/git/my/meta_2028/harvey_guy/main.md) para chamar esses scripts de fronteira em cada transição, ao invés de usar comandos ad-hoc de movimentação direta ou confiar em subagentes.
+1. **Escrever os Scripts de Fronteira**: Criar o diretório `boundaries/` e escrever os arquivos `.fish` aplicando os padrões de hooks pré/pós e asserções.
+2. **Escrever e Rodar a Suite de Testes**: Implementar `tests/test_boundaries.py` e executar `uv run pytest tests/test_boundaries.py` até que todos os casos de teste passem.
+3. **Corrigir Erros no Runbook Principal**:
+   * Ajustar o link incorreto da Donna para apontar para `../donna_nana/main.md`.
+   * Ajustar a lógica do checkpoint no Step 1 para não resetar o `session_id` se `CURRENT_LOOP > 0`.
+4. **Integrar os Hooks no Runbook**: Modificar `harvey_guy/main.md` inserindo chamadas explícitas aos scripts `--pre` e `--post` em cada transição relevante de agente.
