@@ -12,11 +12,8 @@ from .harvey_guy import Harvey
 
 
 def main():
-    Harvey.setup()\
-        .setup_paths()\
-        .check_dependencies()\
-        .ingest_documents()\
-        .print_session_id()
+    Harvey.setup().setup_paths().check_dependencies().ingest_documents().print_session_id()
+
 
 if __name__ == "__main__":
     main()

@@ -61,22 +61,23 @@ def test_init_session_creates_protected_layout():
 
 def test_init_session_carry_forward(tmp_path, monkeypatch):
     import json
+
     # Set up a dummy previous session
     prev_session_id = "test-prev-session-123"
     prev_session_dir = Path("/tmp") / f"karen_guard_{prev_session_id}"
     prev_anti_karen = prev_session_dir / "anti_karen"
     prev_anti_karen.mkdir(parents=True, exist_ok=True)
-    
+
     # Create some files in prev_anti_karen
     (prev_anti_karen / "draft_notes.txt").write_text("my notes", encoding="utf-8")
     (prev_anti_karen / "karen_guard_core.log").write_text("core log", encoding="utf-8")
     (prev_anti_karen / "karen_run.log").write_text("run log", encoding="utf-8")
-    
+
     # Create the loop state checkpoint
     checkpoint_path = tmp_path / "karen_guard_loop_state.json"
     checkpoint_path.write_text(json.dumps({"session_id": prev_session_id}), encoding="utf-8")
     monkeypatch.setenv("LOOP_STATE_PATH", str(checkpoint_path))
-    
+
     try:
         session_id, session_dir, log = Harvey()._init_session()
         try:

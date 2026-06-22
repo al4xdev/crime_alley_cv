@@ -12,7 +12,9 @@ def _log_method(func: Callable[[Log, str], Log]) -> Callable[[Log, str], Log]:
             self._count += 1
             func(self, f"[{self._count}] {msg}", *args, **kwargs)
         return self
+
     return wrapper
+
 
 class Log:
     def __init__(self):
@@ -24,19 +26,19 @@ class Log:
     def config(cls, log_file: Path, tool: str = "harvey") -> Log:
         instance = cls()
         instance._count = 0
-        
+
         logger = logging.getLogger(tool)
         logger.setLevel(logging.INFO)
-        
+
         if logger.handlers:
             logger.handlers.clear()
-            
-        fh = logging.FileHandler(log_file, encoding='utf-8')
+
+        fh = logging.FileHandler(log_file, encoding="utf-8")
         fh.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(asctime)s [%(levelname)s] (%(name)s): %(message)s')
+        formatter = logging.Formatter("%(asctime)s [%(levelname)s] (%(name)s): %(message)s")
         fh.setFormatter(formatter)
         logger.addHandler(fh)
-        
+
         instance._logger = logger
         return instance
 

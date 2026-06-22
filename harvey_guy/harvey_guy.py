@@ -43,13 +43,16 @@ class Harvey:
         session_id = str(uuid.uuid4())
         session_dir = Path("/tmp") / f"karen_guard_{session_id}"
         session_dir.mkdir(parents=True, exist_ok=True)
-        
+
         anti_karen_dir = session_dir / "anti_karen"
         anti_karen_dir.mkdir(parents=True, exist_ok=True)
 
         # Check for previous session state and copy history files into anti_karen
         import os
-        checkpoint_path = Path(os.environ.get("LOOP_STATE_PATH", "/tmp/karen_guard_loop_state.json"))
+
+        checkpoint_path = Path(
+            os.environ.get("LOOP_STATE_PATH", "/tmp/karen_guard_loop_state.json")
+        )
         if checkpoint_path.exists():
             try:
                 with open(checkpoint_path) as f:
@@ -89,6 +92,7 @@ class Harvey:
 
     def ingest_documents(self) -> Harvey:
         import os
+
         self.session_docs_dir.mkdir(parents=True, exist_ok=True)
         anti_karen_dir = self.session_dir / "anti_karen"
         anti_karen_dir.mkdir(exist_ok=True)
