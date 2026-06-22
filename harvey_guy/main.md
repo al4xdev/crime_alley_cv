@@ -99,13 +99,21 @@ Before doing anything else, you must verify that all environment dependencies ar
 5. **Git**
 
 ### Actions:
-1. **Skip if already verified**: Check for the persistent marker in the data docs directory:
+1. **Validate Pre-conditions**: Run the boundary script to check inputs:
+   ```bash
+   boundaries/harvey_depchecker.fish --pre
+   ```
+2. **Skip if already verified**: Check for the persistent marker in the data docs directory:
    ```bash
    test -f .data/docs/.dependencies_checked.md && echo verified || echo unverified
    ```
    If `verified`, dependencies were already confirmed on a previous run — skip straight to Phase 1. (Delete `.data/docs/.dependencies_checked.md` to force a re-check.)
 2. **Verify directly**: Read, execute, and verify all check steps described in **[requirements.md](../requirements.md)** directly.
-3. **Write final report**: Once all checks pass, write the status report to `.data/docs/.dependencies_checked.md` and proceed.
+3. **Write final report**: Once all checks pass, write the status report to `.data/docs/.dependencies_checked.md`.
+4. **Validate Post-conditions**: Ensure the verification was successfully written and passed:
+   ```bash
+   boundaries/harvey_depchecker.fish --post
+   ```
 
 ---
 
@@ -159,11 +167,29 @@ Ask the user to provide all of the following configuration variables at once (al
    ```
 2. **Branch on the result:**
    - **`missing`**: Ask the user: *"No candidate background found. Run Vera to create one now? (recommended) [yes/no]"*
-     - If **yes** → spawn the `Vera` agent, instructing it to read and execute [vera_psyco/main.md](../vera_psyco/main.md) with **`MODE=create`**. Wait for completion and verify `.data/docs/who_are_u.md` was written.
+     - If **yes** →
+       - Run the boundary pre-flight check:
+         ```bash
+         boundaries/harvey_vera.fish --pre
+         ```
+       - Spawn the `Vera` agent, instructing it to read and execute [vera_psyco/main.md](../vera_psyco/main.md) with **`MODE=create`**. Wait for completion.
+       - Run the boundary post-flight check to verify integrity:
+         ```bash
+         boundaries/harvey_vera.fish --post
+         ```
      - If **no** → warn the user that Bill will have a weaker source of truth and anti-hallucination guarantees are reduced, then proceed.
    - **`exists`**: Ask the user: *"A candidate background already exists. Reuse it as-is, or refresh it with Vera? [reuse/refresh]"*
      - **`reuse`** → skip Vera entirely. Proceed to the loop. (This is the default fast path.)
-     - **`refresh`** → spawn the `Vera` agent with **`MODE=refresh`** and **`EXISTING_BACKGROUND_PATH=.data/docs/who_are_u.md`**. Wait for completion.
+     - **`refresh`** →
+       - Run the boundary pre-flight check:
+         ```bash
+         boundaries/harvey_vera.fish --pre
+         ```
+       - Spawn the `Vera` agent with **`MODE=refresh`** and **`EXISTING_BACKGROUND_PATH=.data/docs/who_are_u.md`**. Wait for completion.
+       - Run the boundary post-flight check:
+         ```bash
+         boundaries/harvey_vera.fish --post
+         ```
 3. Once `who_are_u.md` is settled, proceed to the Optimization Loop.
 
 > Vera runs **only here**, before the loop. It never runs during iterations.
@@ -187,16 +213,34 @@ KAREN_READS_BACKGROUND=$KAREN_READS_BACKGROUND uv run python harvey_guy/main.py
 Substitute `$KAREN_READS_BACKGROUND` with the value collected in Phase 1 (`yes` or `no`).
 
 **Actions:**
-1. Write the loop state checkpoint **before** running the command:
+1. **Validate Pre-conditions (Setup)**: Run setup pre-flight check:
    ```bash
-   echo '{"current_loop": '$CURRENT_LOOP', "fit_score": '$FIT_SCORE_OR_NULL', "session_id": "previous_or_null"}' > /tmp/karen_guard_loop_state.json
+   boundaries/harvey_setup.fish --pre
    ```
-2. Execute the setup command above.
-3. Capture the `stdout` session UUID, and store it as **`SESSION_ID`**. Derive **`SESSION_DIR`** as `/tmp/karen_guard_$SESSION_ID/` — use this exact formula everywhere. Update the checkpoint with the new `session_id`.
-4. Spawn a specialized agent with the role `Harvey Shadow`.
-5. Instruct the agent to read and execute the instructions defined in **[shadow.md](shadow.md)** using the active **`SESSION_ID`** and **`SESSION_DIR`** (`/tmp/karen_guard_$SESSION_ID/`).
-6. Wait for the `Harvey Shadow` agent to complete all execution tasks.
-7. Verify that `/tmp/karen_guard_$SESSION_ID/company_info.md` and the cloned repos in `/tmp/karen_guard_$SESSION_ID/repos/` are created and populated before proceeding. If `SESSION_DIR/anti_karen/clone_warnings.txt` exists, read it and report the discrepancy to the user before continuing.
+2. Write the loop state checkpoint **before** running the command. Only write this file to initialize it if `CURRENT_LOOP` is `0`:
+   ```bash
+   if [ "$CURRENT_LOOP" -eq 0 ]; then
+     echo '{"current_loop": 0, "fit_score": null, "session_id": "previous_or_null"}' > /tmp/karen_guard_loop_state.json
+   fi
+   ```
+3. Execute the setup command above.
+4. Capture the `stdout` session UUID, and store it as **`SESSION_ID`**. Derive **`SESSION_DIR`** as `/tmp/karen_guard_$SESSION_ID/` — use this exact formula everywhere. Update the checkpoint with the new `session_id`.
+5. **Validate Post-conditions (Setup)**:
+   ```bash
+   boundaries/harvey_setup.fish --post $SESSION_ID
+   ```
+6. **Validate Pre-conditions (Shadow)**:
+   ```bash
+   boundaries/harvey_shadow.fish --pre $SESSION_ID
+   ```
+7. Spawn a specialized agent with the role `Harvey Shadow`.
+8. Instruct the agent to read and execute the instructions defined in **[shadow.md](shadow.md)** using the active **`SESSION_ID`** and **`SESSION_DIR`** (`/tmp/karen_guard_$SESSION_ID/`).
+9. Wait for the `Harvey Shadow` agent to complete all execution tasks.
+10. **Validate Post-conditions (Shadow)**:
+    ```bash
+    boundaries/harvey_shadow.fish --post $SESSION_ID
+    ```
+    If `SESSION_DIR/anti_karen/clone_warnings.txt` exists, read it and report the discrepancy to the user before continuing.
 
 ---
 
@@ -214,16 +258,24 @@ Delegate or follow the instructions defined in [karen_guard/main.md](../karen_gu
 ```
 
 **Actions:**
-1. Execute the command above to isolate output logs inside the session directory.
-2. Monitor progress by viewing `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.err`.
-3. Retrieve **`KAREN_REPORT_PATH`** from the last line of `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.log`.
-4. Extract **`FIT_SCORE`** with a deterministic, format-tolerant command — do **not** read it "by eye". Karen's exact wording drifts in practice (`## Technical Fit Score: 72/100`, etc.), so use the python extractor to ensure parsing robustness:
+1. **Validate Pre-conditions (Karen)**:
+   ```bash
+   boundaries/harvey_karen.fish --pre $SESSION_ID
+   ```
+2. Execute the command above to isolate output logs inside the session directory.
+3. Monitor progress by viewing `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.err`.
+4. **Validate Post-conditions (Karen)**:
+   ```bash
+   boundaries/harvey_karen.fish --post $SESSION_ID
+   ```
+5. Retrieve **`KAREN_REPORT_PATH`** from the last line of `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.log`.
+6. Extract **`FIT_SCORE`** with a deterministic, format-tolerant command — do **not** read it "by eye". Karen's exact wording drifts in practice (`## Technical Fit Score: 72/100`, etc.), so use the python extractor to ensure parsing robustness:
    ```bash
    FIT_SCORE=$(uv run python -c "import sys; from harvey_guy.gatekeeper import extract_score; print(extract_score(open(sys.argv[1]).read()))" "$KAREN_REPORT_PATH")
    echo "$FIT_SCORE"
    ```
-5. **FIT_SCORE fallback**: If the command prints nothing or fails — **stop the loop immediately**. Report to the user: "Karen did not produce a parseable fit score. Inspect `KAREN_REPORT_PATH` manually." Do not proceed to the Gatekeeper with an undefined score.
-6. **Archive this iteration's input + evaluation** into the run history (the CV at `SESSION_DIR/docs/cv.md` is still the version Karen just evaluated — Bill has not run yet):
+7. **FIT_SCORE fallback**: If the command prints nothing or fails — **stop the loop immediately**. Report to the user: "Karen did not produce a parseable fit score. Inspect `KAREN_REPORT_PATH` manually." Do not proceed to the Gatekeeper with an undefined score.
+8. **Archive this iteration's input + evaluation** into the run history (the CV at `SESSION_DIR/docs/cv.md` is still the version Karen just evaluated — Bill has not run yet):
    ```bash
    ITER_DIR="$RUN_DIR/loop_$(printf '%02d' $CURRENT_LOOP)" && mkdir -p "$ITER_DIR"
    cp /tmp/karen_guard_$SESSION_ID/docs/cv.md "$ITER_DIR/cv_in.md"
@@ -238,12 +290,21 @@ Delegate or follow the instructions defined in [karen_guard/main.md](../karen_gu
 
 Evaluate the iteration results deterministically using the gatekeeper python helper:
 
-**Command to run:**
-```bash
-uv run python harvey_guy/gatekeeper.py --min-fit-score $MIN_FIT_SCORE --max-loops $MAX_LOOPS --current-loop $CURRENT_LOOP --session-dir $SESSION_DIR
-```
-
-**Actions based on exit code:**
+**Actions:**
+1. **Validate Pre-conditions (Gatekeeper)**:
+   ```bash
+   boundaries/karen_gatekeeper.fish --pre $SESSION_ID
+   ```
+2. Execute the gatekeeper command:
+   ```bash
+   uv run python harvey_guy/gatekeeper.py --min-fit-score $MIN_FIT_SCORE --max-loops $MAX_LOOPS --current-loop $CURRENT_LOOP --session-dir $SESSION_DIR
+   ```
+   *Note: Capture the exit status code of this command in a variable (e.g. `set gatekeeper_exit $status` or `gatekeeper_exit=$?`).*
+3. **Validate Post-conditions (Gatekeeper)**: Run validation script passing the gatekeeper exit status:
+   ```bash
+   boundaries/karen_gatekeeper.fish --post $SESSION_ID $gatekeeper_exit
+   ```
+4. **Actions based on exit code:**
 
 - **Exit Code 0 (Success)**:
   - **Exit Report** → show to user:
@@ -268,24 +329,32 @@ uv run python harvey_guy/gatekeeper.py --min-fit-score $MIN_FIT_SCORE --max-loop
 Delegate the CV revision to a specialized agent. This isolates the editing logic and prevents cluttering the main orchestrator's context.
 
 **Actions:**
-1. Spawn a agent (Bill) to optimize the CV.
-2. Instruct the agent to read and execute the instructions defined in [billf/main.md](../billf/main.md) using the active **`SESSION_ID`** and **`KAREN_REPORT_PATH`**.
-3. Wait for the agent to complete the revision. (The agent will modify `/tmp/karen_guard_$SESSION_ID/docs/cv.md` directly).
-4. **Archive Bill's output** into the same iteration directory (the CV is now the revised version; draft notes are optional):
+1. **Validate Pre-conditions (Bill)**:
+   ```bash
+   boundaries/gatekeeper_bill.fish --pre $SESSION_ID
+   ```
+2. Spawn an agent (Bill) to optimize the CV.
+3. Instruct the agent to read and execute the instructions defined in [billf/main.md](../billf/main.md) using the active **`SESSION_ID`** and **`KAREN_REPORT_PATH`**.
+4. Wait for the agent to complete the revision. (The agent will modify `/tmp/karen_guard_$SESSION_ID/docs/cv.md` directly).
+5. **Validate Post-conditions (Bill)**:
+   ```bash
+   boundaries/gatekeeper_bill.fish --post $SESSION_ID
+   ```
+6. **Archive Bill's output** into the same iteration directory (the CV is now the revised version; draft notes are optional):
    ```bash
    ITER_DIR="$RUN_DIR/loop_$(printf '%02d' $CURRENT_LOOP)" && mkdir -p "$ITER_DIR"
    cp /tmp/karen_guard_$SESSION_ID/docs/cv.md "$ITER_DIR/cv_out.md"
    cp /tmp/karen_guard_$SESSION_ID/anti_karen/draft_notes.txt "$ITER_DIR/draft_notes.txt" 2>/dev/null || true
    ```
-5. **CV carry-forward** (authorized inter-iteration modification): copy the revised CV so the next iteration's `ingest_documents()` reads Bill's version instead of the original:
-   ```bash
-   cp /tmp/karen_guard_$SESSION_ID/docs/cv.md .data/docs/cv.md
-   ```
-6. Increment **`CURRENT_LOOP`** by 1.
-7. Update the loop state checkpoint:
-   ```bash
-   echo '{"current_loop": '$CURRENT_LOOP', "fit_score": '$FIT_SCORE', "session_id": "'$SESSION_ID'"}' > /tmp/karen_guard_loop_state.json
-   ```
+7. **CV carry-forward & Checkpoint Update**: Run the carry-forward boundary hook to copy the CV, increment the loop counter, and write the loop checkpoint state:
+   - **Validate Pre-conditions (Carry-forward)**:
+     ```bash
+     boundaries/bill_harvey.fish --pre $SESSION_ID
+     ```
+   - **Perform Action & Validate Post-conditions**:
+     ```bash
+     boundaries/bill_harvey.fish --post $SESSION_ID
+     ```
 8. Restart the loop from **Step 1**.
 
 ---
@@ -295,9 +364,17 @@ Delegate the CV revision to a specialized agent. This isolates the editing logic
 Reached only on a Gatekeeper exit (either success or max cycles). The loop is done — now convert Karen's final evaluation into a forward-looking development plan for the candidate.
 
 **Actions:**
-1. Spawn a agent (Donna) for career coaching.
-2. Instruct the agent to read and execute the instructions defined in [donna_nana/main.md](../donna_donna_nana/main.md) using the active **`SESSION_ID`**, **`KAREN_REPORT_PATH`**, **`FIT_SCORE`**, and **`MIN_FIT_SCORE`**.
-3. Wait for the agent to complete. (It writes `.data/docs/action_plan.md` and modifies nothing else.)
-4. Surface the final summary to the user:
+1. **Validate Pre-conditions (Donna)**:
+   ```bash
+   boundaries/gatekeeper_donna.fish --pre $SESSION_ID
+   ```
+2. Spawn an agent (Donna) for career coaching.
+3. Instruct the agent to read and execute the instructions defined in [donna_nana/main.md](../donna_nana/main.md) using the active **`SESSION_ID`**, **`KAREN_REPORT_PATH`**, **`FIT_SCORE`**, and **`MIN_FIT_SCORE`**.
+4. Wait for the agent to complete. (It writes `.data/docs/action_plan.md` and modifies nothing else.)
+5. **Validate Post-conditions (Donna)**:
+   ```bash
+   boundaries/gatekeeper_donna.fish --post $SESSION_ID
+   ```
+6. Surface the final summary to the user:
    > 🎓 Action plan ready at `.data/docs/action_plan.md` — prioritized technical gaps, interview prep, and public projects to raise your score on the next run.
-5. **End of pipeline.**
+7. **End of pipeline.**
