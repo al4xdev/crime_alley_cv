@@ -48,7 +48,8 @@ class Harvey:
         anti_karen_dir.mkdir(parents=True, exist_ok=True)
 
         # Check for previous session state and copy history files into anti_karen
-        checkpoint_path = Path("/tmp/karen_guard_loop_state.json")
+        import os
+        checkpoint_path = Path(os.environ.get("LOOP_STATE_PATH", "/tmp/karen_guard_loop_state.json"))
         if checkpoint_path.exists():
             try:
                 with open(checkpoint_path) as f:

@@ -326,14 +326,16 @@ def test_bill_harvey(mock_repo_structure):
     host_cv.write_text("Original resume", encoding="utf-8")
     
     # Loop checkpoint setup
-    checkpoint_file = Path("/tmp/karen_guard_loop_state.json")
+    checkpoint_file = tmp_path / "karen_guard_loop_state_test.json"
     checkpoint_file.write_text('{"current_loop": 0, "fit_score": null, "session_id": "prev"}', encoding="utf-8")
     
+    env = {"LOOP_STATE_PATH": str(checkpoint_file)}
+    
     try:
-        res_pre = run_hook("bill_harvey.fish", "--pre", session_id)
+        res_pre = run_hook("bill_harvey.fish", "--pre", session_id, env=env)
         assert res_pre.returncode == 0
         
-        res_post = run_hook("bill_harvey.fish", "--post", session_id)
+        res_post = run_hook("bill_harvey.fish", "--post", session_id, env=env)
         assert res_post.returncode == 0
         
         # Verify host CV updated

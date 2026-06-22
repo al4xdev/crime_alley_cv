@@ -59,7 +59,7 @@ def test_init_session_creates_protected_layout():
         shutil.rmtree(session_dir, ignore_errors=True)
 
 
-def test_init_session_carry_forward():
+def test_init_session_carry_forward(tmp_path, monkeypatch):
     import json
     # Set up a dummy previous session
     prev_session_id = "test-prev-session-123"
@@ -73,8 +73,9 @@ def test_init_session_carry_forward():
     (prev_anti_karen / "karen_run.log").write_text("run log", encoding="utf-8")
     
     # Create the loop state checkpoint
-    checkpoint_path = Path("/tmp/karen_guard_loop_state.json")
+    checkpoint_path = tmp_path / "karen_guard_loop_state.json"
     checkpoint_path.write_text(json.dumps({"session_id": prev_session_id}), encoding="utf-8")
+    monkeypatch.setenv("LOOP_STATE_PATH", str(checkpoint_path))
     
     try:
         session_id, session_dir, log = Harvey()._init_session()

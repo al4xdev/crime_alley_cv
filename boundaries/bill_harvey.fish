@@ -42,7 +42,10 @@ else if test "$mode" = "--post"
     end
 
     # 2. Increment CURRENT_LOOP and write state JSON
-    set checkpoint_file "/tmp/karen_guard_loop_state.json"
+    set checkpoint_file $LOOP_STATE_PATH
+    if test -z "$checkpoint_file"
+        set checkpoint_file "/tmp/karen_guard_loop_state.json"
+    end
     if test -f "$checkpoint_file"
         set state_json (cat "$checkpoint_file")
         # Extract variables
