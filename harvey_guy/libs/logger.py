@@ -17,7 +17,7 @@ def _log_method(func: Callable[[Log, str], Log]) -> Callable[[Log, str], Log]:
 
 
 class Log:
-    def __init__(self):
+    def __init__(self) -> None:
         if TYPE_CHECKING:
             self._logger: logging.Logger
             self._count: int

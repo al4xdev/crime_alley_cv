@@ -1,9 +1,8 @@
 import json
 import subprocess
-import pytest
 from pathlib import Path
 
-def test_shadow_rendering_success(tmp_path):
+def test_shadow_rendering_success(tmp_path: Path) -> None:
     data_file = tmp_path / "shadow_data.json"
     data = {
         "session_id": "test-session-123",
@@ -44,7 +43,7 @@ def test_shadow_rendering_success(tmp_path):
     assert "Welcome, Harvey Shadow!" in prompt
     assert str(output_dir / "shadow_instructions.md") in prompt
 
-def test_bill_rendering_success(tmp_path):
+def test_bill_rendering_success(tmp_path: Path) -> None:
     data_file = tmp_path / "bill_data.json"
     data = {
         "session_id": "test-session-123",
@@ -81,7 +80,7 @@ def test_bill_rendering_success(tmp_path):
     instructions = (output_dir / "bill_instructions.md").read_text(encoding="utf-8")
     assert "bg: /tmp/who_are_u.md" in instructions
 
-def test_donna_rendering_success(tmp_path):
+def test_donna_rendering_success(tmp_path: Path) -> None:
     data_file = tmp_path / "donna_data.json"
     data = {
         "session_id": "test-session-123",
@@ -110,7 +109,7 @@ def test_donna_rendering_success(tmp_path):
     instructions = (output_dir / "donna_instructions.md").read_text(encoding="utf-8")
     assert "Score: 85/100 (min: 80/100)" in instructions
 
-def test_validation_type_error(tmp_path):
+def test_validation_type_error(tmp_path: Path) -> None:
     data_file = tmp_path / "donna_bad.json"
     data = {
         "session_id": "test-session-123",
@@ -136,7 +135,7 @@ def test_validation_type_error(tmp_path):
     assert res.returncode != 0
     assert "Pydantic validation failed for donna" in res.stderr
 
-def test_validation_missing_field(tmp_path):
+def test_validation_missing_field(tmp_path: Path) -> None:
     data_file = tmp_path / "shadow_bad.json"
     data = {
         "session_id": "test-session-123"
@@ -159,7 +158,7 @@ def test_validation_missing_field(tmp_path):
     assert res.returncode != 0
     assert "Pydantic validation failed for shadow" in res.stderr
 
-def test_invalid_agent_choice():
+def test_invalid_agent_choice() -> None:
     args = [
         "uv", "run", "python", "harvey_guy/render_instructions.py",
         "--agent", "invalid_agent",

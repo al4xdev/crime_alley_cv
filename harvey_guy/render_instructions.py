@@ -64,7 +64,7 @@ You can also read the JSON configuration at: {{ input_json_path }}
 """
 }
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Render deterministic contracts and instructions")
     parser.add_argument("--agent", required=True, choices=list(MODELS.keys()), help="Agent name")
     parser.add_argument("--data-file", required=True, help="Path to JSON data file")
