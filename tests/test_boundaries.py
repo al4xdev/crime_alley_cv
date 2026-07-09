@@ -231,7 +231,7 @@ def test_harvey_karen(mock_repo_structure):
         # If it fails, that's a valid failure.
         res_pre = run_hook("harvey_karen.fish", "--pre", session_id)
         if res_pre.returncode == 0:
-            # Post fails as evaluation.md is missing
+            # Post fails as karen_output.md is missing
             res_post_fail = run_hook("harvey_karen.fish", "--post", session_id)
             assert res_post_fail.returncode != 0
 
@@ -250,7 +250,7 @@ def test_karen_gatekeeper(mock_repo_structure):
     session_id = "test-gatekeeper-xyz"
     session_dir = Path("/tmp") / f"karen_guard_{session_id}"
 
-    # Pre fails as evaluation.md missing
+    # Pre fails as karen_output.md missing
     res_pre_fail = run_hook("karen_gatekeeper.fish", "--pre", session_id)
     assert res_pre_fail.returncode != 0
 
@@ -387,7 +387,7 @@ def test_gatekeeper_donna(mock_repo_structure):
     (session_dir / "anti_karen").mkdir()
 
     try:
-        # Pre fails since evaluation.md missing
+        # Pre fails since karen_output.md missing
         res_pre_fail = run_hook("gatekeeper_donna.fish", "--pre", session_id)
         assert res_pre_fail.returncode != 0
 
