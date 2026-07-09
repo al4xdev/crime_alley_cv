@@ -1,6 +1,13 @@
 #!/usr/bin/env fish
 # boundaries/harvey_depchecker.fish — Boundary validation hook for Dependency Checker
 
+if set -q BOUNDARY_REPO_ROOT
+    set repo_root "$BOUNDARY_REPO_ROOT"
+else
+    set boundary_dir (status dirname)
+    set repo_root "$boundary_dir/.."
+end
+
 set mode $argv[1]
 set session_id $argv[2]
 

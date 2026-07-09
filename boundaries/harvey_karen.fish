@@ -1,6 +1,13 @@
 #!/usr/bin/env fish
 # boundaries/harvey_karen.fish — Boundary validation hook for Karen Guard
 
+if set -q BOUNDARY_REPO_ROOT
+    set repo_root "$BOUNDARY_REPO_ROOT"
+else
+    set boundary_dir (status dirname)
+    set repo_root "$boundary_dir/.."
+end
+
 set mode $argv[1]
 set session_id $argv[2]
 
@@ -37,7 +44,7 @@ else if test "$mode" = "--post"
     set session_dir "/tmp/karen_guard_$session_id"
     
     # Verify evaluation report was generated
-    set eval_file "$session_dir/anti_karen/evaluation.md"
+    set eval_file "$session_dir/anti_karen/karen_output.md"
     if not test -f "$eval_file"
         echo "Error [Karen boundary]: Karen's audit report '$eval_file' was not generated." >&2
         exit 1

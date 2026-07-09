@@ -235,7 +235,7 @@ def test_harvey_karen(mock_repo_structure):
             res_post_fail = run_hook("harvey_karen.fish", "--post", session_id)
             assert res_post_fail.returncode != 0
 
-            (session_dir / "anti_karen" / "evaluation.md").write_text(
+            (session_dir / "anti_karen" / "karen_output.md").write_text(
                 "## Technical Fit Score: 78/100\nThis is a long mock evaluation report written to verify that the file size check of 100 bytes is passed successfully under boundaries validation.",
                 encoding="utf-8",
             )
@@ -257,7 +257,7 @@ def test_karen_gatekeeper(mock_repo_structure):
     session_dir.mkdir(parents=True, exist_ok=True)
     (session_dir / "docs").mkdir()
     (session_dir / "anti_karen").mkdir()
-    eval_file = session_dir / "anti_karen" / "evaluation.md"
+    eval_file = session_dir / "anti_karen" / "karen_output.md"
     eval_file.write_text("## Technical Fit Score: 85/100", encoding="utf-8")
 
     try:
@@ -391,10 +391,12 @@ def test_gatekeeper_donna(mock_repo_structure):
         res_pre_fail = run_hook("gatekeeper_donna.fish", "--pre", session_id)
         assert res_pre_fail.returncode != 0
 
-        (session_dir / "anti_karen" / "evaluation.md").write_text(
+        (session_dir / "anti_karen" / "karen_output.md").write_text(
             "Evaluation summary", encoding="utf-8"
         )
-        res_pre_pass = run_hook("gatekeeper_donna.fish", "--pre", session_id)
+        res_pre_pass = run_hook(
+            "gatekeeper_donna.fish", "--pre", session_id, env={"FIT_SCORE": "85", "MIN_FIT_SCORE": "80"}
+        )
         assert res_pre_pass.returncode == 0
 
         # Post fails since action_plan.md is missing

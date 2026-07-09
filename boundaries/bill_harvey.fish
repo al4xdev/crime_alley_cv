@@ -1,6 +1,13 @@
 #!/usr/bin/env fish
 # boundaries/bill_harvey.fish — Boundary validation hook for carry-forward of optimized CV
 
+if set -q BOUNDARY_REPO_ROOT
+    set repo_root "$BOUNDARY_REPO_ROOT"
+else
+    set boundary_dir (status dirname)
+    set repo_root "$boundary_dir/.."
+end
+
 set mode $argv[1]
 set session_id $argv[2]
 
@@ -59,7 +66,12 @@ else if test "$mode" = "--post"
         set current_loop (math "$current_loop + 1")
         
         # Write back new state JSON
-        echo "{\"current_loop\": $current_loop, \"fit_score\": $fit_score, \"session_id\": \"$session_id\"}" > "$checkpoint_file"
+        jq -n \
+            --argjson loop $current_loop \
+            --arg score "$fit_score" \
+            --arg sid "$session_id" \
+            '{current_loop: $loop, fit_score: $score, session_id: $sid}' \
+            > "$checkpoint_file"
         
         # Verify checkpoint update
         set new_loop (cat "$checkpoint_file" | jq -r '.current_loop')
@@ -69,7 +81,11 @@ else if test "$mode" = "--post"
         end
     else
         echo "Warning [carry-forward boundary]: Checkpoint file '$checkpoint_file' not found. Creating it."
-        echo "{\"current_loop\": 1, \"fit_score\": null, \"session_id\": \"$session_id\"}" > "$checkpoint_file"
+        jq -n \
+            --argjson loop 1 \
+            --arg sid "$session_id" \
+            '{current_loop: $loop, fit_score: null, session_id: $sid}' \
+            > "$checkpoint_file"
     end
 
     exit 0

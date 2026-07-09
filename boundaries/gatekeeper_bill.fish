@@ -1,6 +1,13 @@
 #!/usr/bin/env fish
 # boundaries/gatekeeper_bill.fish — Boundary validation hook for Bill CV revision
 
+if set -q BOUNDARY_REPO_ROOT
+    set repo_root "$BOUNDARY_REPO_ROOT"
+else
+    set boundary_dir (status dirname)
+    set repo_root "$boundary_dir/.."
+end
+
 set mode $argv[1]
 set session_id $argv[2]
 
@@ -42,6 +49,46 @@ if test "$mode" = "--pre"
 
     # 3. Create a snapshot of currently modified files in host repository
     git diff --name-only > "$session_dir/anti_karen/pre_bill_git_diff.txt"
+
+    # 4. Build and render deterministic instructions via Pydantic/Jinja2
+    set output_dir "$session_dir/anti_karen"
+    set json_input "$output_dir/bill_input.json"
+    
+    set candidate_bg "null"
+    if test -f "$session_dir/anti_karen/who_are_u.md"
+        set candidate_bg "$session_dir/anti_karen/who_are_u.md"
+    else if test -f "$session_dir/docs/who_are_u.md"
+        set candidate_bg "$session_dir/docs/who_are_u.md"
+    end
+
+    if test "$candidate_bg" = "null"
+        jq -n \
+            --arg sid "$session_id" \
+            --arg sdir "$session_dir" \
+            --arg krp "$session_dir/anti_karen/karen_output.md" \
+            '{session_id: $sid, session_dir: $sdir, karen_report_path: $krp, candidate_background_path: null}' \
+            > "$json_input"
+    else
+        jq -n \
+            --arg sid "$session_id" \
+            --arg sdir "$session_dir" \
+            --arg krp "$session_dir/anti_karen/karen_output.md" \
+            --arg cbg "$candidate_bg" \
+            '{session_id: $sid, session_dir: $sdir, karen_report_path: $krp, candidate_background_path: $cbg}' \
+            > "$json_input"
+    end
+
+    # Invoke validation and rendering
+    uv run python "$repo_root/harvey_guy/render_instructions.py" \
+        --agent bill \
+        --data-file "$json_input" \
+        --template-path "$repo_root/billf/main.md" \
+        --output-dir "$output_dir"
+    set render_status $status
+    if test $render_status -ne 0
+        echo "Error [Bill boundary]: Failed to validate/render instructions (exit code $render_status)." >&2
+        exit 1
+    end
 
     exit 0
 

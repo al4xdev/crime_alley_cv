@@ -1,3 +1,5 @@
+<!-- WARNING: This file must NEVER be processed by Jinja2. It contains mermaid
+     syntax with curly braces that would cause template rendering errors. -->
 # Execution Runbook: Actor-Critic CV Optimization Loop
 
 Welcome, Agent! You are entering a multi-agent pipeline that iteratively refines a candidate's CV against a job description until an acceptance threshold is met. Read this runbook sequentially. Initialize state variables, execute parallel tasks where instructed, and drive the feedback loop until the termination criteria are satisfied.
@@ -234,7 +236,7 @@ Substitute `$KAREN_READS_BACKGROUND` with the value collected in Phase 1 (`yes` 
    boundaries/harvey_shadow.fish --pre $SESSION_ID
    ```
 7. Spawn a specialized agent with the role `Harvey Shadow`.
-8. Instruct the agent to read and execute the instructions defined in **[shadow.md](shadow.md)** using the active **`SESSION_ID`** and **`SESSION_DIR`** (`/tmp/karen_guard_$SESSION_ID/`).
+8. Instruct the agent to read and execute the prompt defined in `/tmp/karen_guard_$SESSION_ID/anti_karen/shadow.prompt` (using the active **`SESSION_ID`** and **`SESSION_DIR`**).
 9. Wait for the `Harvey Shadow` agent to complete all execution tasks.
 10. **Validate Post-conditions (Shadow)**:
     ```bash
@@ -334,7 +336,7 @@ Delegate the CV revision to a specialized agent. This isolates the editing logic
    boundaries/gatekeeper_bill.fish --pre $SESSION_ID
    ```
 2. Spawn an agent (Bill) to optimize the CV.
-3. Instruct the agent to read and execute the instructions defined in [billf/main.md](../billf/main.md) using the active **`SESSION_ID`** and **`KAREN_REPORT_PATH`**.
+3. Instruct the agent to read and execute the prompt defined in `/tmp/karen_guard_$SESSION_ID/anti_karen/bill.prompt`.
 4. Wait for the agent to complete the revision. (The agent will modify `/tmp/karen_guard_$SESSION_ID/docs/cv.md` directly).
 5. **Validate Post-conditions (Bill)**:
    ```bash
@@ -369,7 +371,7 @@ Reached only on a Gatekeeper exit (either success or max cycles). The loop is do
    boundaries/gatekeeper_donna.fish --pre $SESSION_ID
    ```
 2. Spawn an agent (Donna) for career coaching.
-3. Instruct the agent to read and execute the instructions defined in [donna_nana/main.md](../donna_nana/main.md) using the active **`SESSION_ID`**, **`KAREN_REPORT_PATH`**, **`FIT_SCORE`**, and **`MIN_FIT_SCORE`**.
+3. Instruct the agent to read and execute the prompt defined in `/tmp/karen_guard_$SESSION_ID/anti_karen/donna.prompt`.
 4. Wait for the agent to complete. (It writes `.data/docs/action_plan.md` and modifies nothing else.)
 5. **Validate Post-conditions (Donna)**:
    ```bash

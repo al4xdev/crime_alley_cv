@@ -1,6 +1,13 @@
 #!/usr/bin/env fish
 # boundaries/harvey_shadow.fish — Boundary validation hook for Harvey Shadow
 
+if set -q BOUNDARY_REPO_ROOT
+    set repo_root "$BOUNDARY_REPO_ROOT"
+else
+    set boundary_dir (status dirname)
+    set repo_root "$boundary_dir/.."
+end
+
 set mode $argv[1]
 set session_id $argv[2]
 
@@ -15,6 +22,28 @@ if test "$mode" = "--pre"
         echo "Error [shadow boundary]: Session directory '$session_dir' does not exist." >&2
         exit 1
     end
+    # Build shadow_input.json
+    set output_dir "$session_dir/anti_karen"
+    set json_input "$output_dir/shadow_input.json"
+
+    jq -n \
+        --arg sid "$session_id" \
+        --arg sdir "$session_dir" \
+        '{session_id: $sid, session_dir: $sdir}' \
+        > "$json_input"
+
+    # Invoke validation and rendering
+    uv run python "$repo_root/harvey_guy/render_instructions.py" \
+        --agent shadow \
+        --data-file "$json_input" \
+        --template-path "$repo_root/harvey_guy/shadow.md" \
+        --output-dir "$output_dir"
+    set render_status $status
+    if test $render_status -ne 0
+        echo "Error [shadow boundary]: Failed to validate/render instructions (exit code $render_status)." >&2
+        exit 1
+    end
+
     exit 0
 
 else if test "$mode" = "--post"

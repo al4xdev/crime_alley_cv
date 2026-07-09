@@ -1,6 +1,13 @@
 #!/usr/bin/env fish
 # boundaries/karen_gatekeeper.fish — Boundary validation hook for Gatekeeper
 
+if set -q BOUNDARY_REPO_ROOT
+    set repo_root "$BOUNDARY_REPO_ROOT"
+else
+    set boundary_dir (status dirname)
+    set repo_root "$boundary_dir/.."
+end
+
 set mode $argv[1]
 set session_id $argv[2]
 set gatekeeper_exit $argv[3]
@@ -12,7 +19,7 @@ if test "$mode" = "--pre"
         exit 1
     end
     set session_dir "/tmp/karen_guard_$session_id"
-    set eval_file "$session_dir/anti_karen/evaluation.md"
+    set eval_file "$session_dir/anti_karen/karen_output.md"
     if not test -f "$eval_file"
         echo "Error [gatekeeper boundary]: Evaluation report '$eval_file' is missing." >&2
         exit 1

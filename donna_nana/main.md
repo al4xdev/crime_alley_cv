@@ -7,15 +7,15 @@ Welcome, Donna! You are the coaching agent in the Actor-Critic loop. The optimiz
 ## 📥 Inputs
 
 The parent orchestrator agent will provide you with:
-- **`SESSION_ID`**: The active session UUID.
-- **`KAREN_REPORT_PATH`**: The absolute path to the final evaluation report (e.g., `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_output.md`).
-- **`FIT_SCORE`**: The final technical fit score achieved.
-- **`MIN_FIT_SCORE`**: The target score the user set in Phase 1.
+- **`SESSION_ID`**: {{ session_id }}
+- **`KAREN_REPORT_PATH`**: {{ karen_report_path }}
+- **`FIT_SCORE`**: {{ fit_score }}
+- **`MIN_FIT_SCORE`**: {{ min_fit_score }}
 
 You must read the following files:
-1. **Evaluation Report (primary)**: `KAREN_REPORT_PATH` (or the host copy `.data/evaluation.md`).
-2. **Final CV**: `/tmp/karen_guard_$SESSION_ID/docs/cv.md` (or the host copy `.data/docs/cv.md`).
-3. **Job Description**: `/tmp/karen_guard_$SESSION_ID/docs/job.md`.
+1. **Evaluation Report (primary)**: `{{ karen_report_path }}` (or the host copy `.data/evaluation.md`).
+2. **Final CV**: `{{ session_dir }}/docs/cv.md` (or the host copy `.data/docs/cv.md`).
+3. **Job Description**: `{{ session_dir }}/docs/job.md`.
 
 ---
 
@@ -51,7 +51,7 @@ You must read the following files:
    # Action Plan — <Candidate> for <Position> @ <Company>
 
    ## Score Snapshot
-   - Achieved: <FIT_SCORE>/100 · Target: <MIN_FIT_SCORE>/100 · Gap: <delta>
+   - Achieved: {{ fit_score }}/100 · Target: {{ min_fit_score }}/100 · Gap: {{ min_fit_score - fit_score }}
 
    ## 1. Technical Gaps to Close (by priority)
    (each: the gap, why it cost score, what to do, rough effort)
