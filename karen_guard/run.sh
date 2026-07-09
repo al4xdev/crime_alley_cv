@@ -61,39 +61,14 @@ else
 fi
 
 SESSION_GEMINI_DIR="${SESSION_DIR}/.gemini"
-mkdir -p "${SESSION_GEMINI_DIR}/config"
 
-echo "Preparing isolated Antigravity CLI environment..." >&2
-if [ -d "${HOME}/.gemini" ]; then
-    cp -R "${HOME}/.gemini/." "${SESSION_GEMINI_DIR}/" 2>/dev/null || true
-    rm -rf "${SESSION_GEMINI_DIR}/brain"
-fi
-
-cat << 'EOF' > "${SESSION_GEMINI_DIR}/config/config.json"
-{
-  "userSettings": {
-    "globalPermissionGrants": {
-      "allow": [
-        "unsandboxed(bash)",
-        "unsandboxed(sh)",
-        "command(*)",
-        "read_file(*)",
-        "write_file(*)",
-        "read_url(*)",
-        "mcp(*)"
-      ],
-      "deny": [
-        "command(rm)",
-        "command(rm -rf)",
-        "write_file(/etc)"
-      ]
-    },
-    "useAiCredits": false
-  }
-}
-EOF
-
-chown -R "${HOST_UID}:${HOST_GID}" "${SESSION_GEMINI_DIR}"
+# Initialize configurations for each agentic CLI by importing from unified config
+for agent_setup in "$DIR"/../config/agents/*/setup.sh; do
+  if [ -f "$agent_setup" ]; then
+    echo "Running agent setup: $(basename "$(dirname "$agent_setup")")" >&2
+    bash "$agent_setup" "$SESSION_DIR" "$HOST_UID" "$HOST_GID" "$USER_HOME"
+  fi
+done
 
 echo "Checking Antigravity CLI authentication..." >&2
 if [ "$CONTAINER_ENGINE" = "podman" ]; then

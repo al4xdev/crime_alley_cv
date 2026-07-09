@@ -75,6 +75,15 @@ def test_run_sh_auth_success(tmp_session, temp_home_dir, monkeypatch):
     # Verify that evaluation.md was generated/moved correctly
     assert (session_dir / "anti_karen" / "evaluation.md").exists()
 
+    # Verify settings.json contains the trusted workspaces inside the container
+    settings_path = session_dir / ".gemini" / "antigravity-cli" / "settings.json"
+    assert settings_path.exists()
+    import json
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    assert "/app" in settings.get("trustedWorkspaces", [])
+    assert "/app/session" in settings.get("trustedWorkspaces", [])
+
+
 
 def test_run_sh_auth_false_positive_reproduces_bug(tmp_session, temp_home_dir, monkeypatch):
     """
@@ -132,6 +141,14 @@ def test_run_sh_auth_false_positive_reproduces_bug(tmp_session, temp_home_dir, m
     assert "Starting interactive login flow" not in proc.stderr
     assert proc.returncode == 0
 
+    # Verify settings.json contains the trusted workspaces inside the container
+    settings_path = session_dir / ".gemini" / "antigravity-cli" / "settings.json"
+    assert settings_path.exists()
+    import json
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    assert "/app" in settings.get("trustedWorkspaces", [])
+    assert "/app/session" in settings.get("trustedWorkspaces", [])
+
 
 def test_run_sh_auth_needs_login(tmp_session, temp_home_dir, monkeypatch):
     session_id, session_dir = tmp_session
@@ -186,3 +203,11 @@ def test_run_sh_auth_needs_login(tmp_session, temp_home_dir, monkeypatch):
     assert "Starting interactive login flow" in proc.stderr
     # Verify that evaluation.md was generated/moved correctly
     assert (session_dir / "anti_karen" / "evaluation.md").exists()
+
+    # Verify settings.json contains the trusted workspaces inside the container
+    settings_path = session_dir / ".gemini" / "antigravity-cli" / "settings.json"
+    assert settings_path.exists()
+    import json
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    assert "/app" in settings.get("trustedWorkspaces", [])
+    assert "/app/session" in settings.get("trustedWorkspaces", [])
