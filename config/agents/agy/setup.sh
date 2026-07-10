@@ -1,6 +1,7 @@
 #!/bin/bash
 # config/agents/agy/setup.sh <session_dir> <host_uid> <host_gid> <user_home>
 set -e
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 SESSION_DIR="$1"
 HOST_UID="$2"
@@ -35,28 +36,7 @@ else
 EOF
 fi
 
-cat << 'EOF' > "${SESSION_GEMINI_DIR}/config/config.json"
-{
-  "userSettings": {
-    "globalPermissionGrants": {
-      "allow": [
-        "unsandboxed(bash)",
-        "unsandboxed(sh)",
-        "command(*)",
-        "read_file(*)",
-        "write_file(*)",
-        "read_url(*)",
-        "mcp(*)"
-      ],
-      "deny": [
-        "command(rm)",
-        "command(rm -rf)",
-        "write_file(/etc)"
-      ]
-    },
-    "useAiCredits": false
-  }
-}
-EOF
+cp "$DIR/config/config.json" "${SESSION_GEMINI_DIR}/config/config.json"
+cp "$DIR/config/AGENTS.md" "${SESSION_GEMINI_DIR}/config/AGENTS.md"
 
 chown -R "${HOST_UID}:${HOST_GID}" "${SESSION_GEMINI_DIR}"

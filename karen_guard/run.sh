@@ -73,12 +73,12 @@ done
 echo "Checking Antigravity CLI authentication..." >&2
 if [ "$CONTAINER_ENGINE" = "podman" ]; then
   if ! podman run --rm --userns=keep-id --dns=8.8.8.8 -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini:z" \
-      karen_guard agy models >/dev/null 2>&1; then
+      karen_guard su - "${HOST_USER}" -c "agy models" >/dev/null 2>&1; then
       
       echo "Antigravity CLI is not authenticated. Starting interactive login flow..." >&2
       podman run -it --rm --userns=keep-id --dns=8.8.8.8 \
         -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini:z" \
-        karen_guard agy
+        karen_guard su - "${HOST_USER}" -c "agy"
         
       echo "Login efetuado! Retomando execução do avaliador..." >&2
       cp -R "${SESSION_GEMINI_DIR}/"* "${USER_HOME}/.gemini/" 2>/dev/null || true
@@ -113,7 +113,7 @@ if [ "$CONTAINER_ENGINE" = "podman" ]; then
     -v "${SESSION_DIR}/company_info.md:/app/session/company_info.md:ro,z" \
     -v "${SESSION_DIR}/out:/app/session/out:z" \
     -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini:z" \
-    karen_guard run_evaluator
+    karen_guard su - "${HOST_USER}" -c "run_evaluator"
 else
   docker run --rm \
     -v "${SESSION_DIR}/docs:/app/session/docs:ro" \
