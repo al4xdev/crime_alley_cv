@@ -11,6 +11,9 @@ end
 set mode $argv[1]
 set session_id $argv[2]
 
+set -g BOUNDARY_NAME "harvey_vera.fish"
+source "$repo_root/boundaries/audit_logger.fish"
+
 if test "$mode" = "--pre"
     # Pre-conditions: Nenhuma especial
     exit 0

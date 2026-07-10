@@ -11,7 +11,13 @@ end
 set mode $argv[1]
 set session_id $argv[2]
 
+set -g BOUNDARY_NAME "harvey_setup.fish"
+source "$repo_root/boundaries/audit_logger.fish"
+
 if test "$mode" = "--pre"
+    # Clear previous audit log
+    rm -f /tmp/boundary_audit.jsonl
+
     # Pre-conditions:
     # 1. Check cv.md and job.md exist and are non-empty
     for doc in cv.md job.md

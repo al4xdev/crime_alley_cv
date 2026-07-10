@@ -12,6 +12,9 @@ set mode $argv[1]
 set session_id $argv[2]
 set gatekeeper_exit $argv[3]
 
+set -g BOUNDARY_NAME "karen_gatekeeper.fish"
+source "$repo_root/boundaries/audit_logger.fish"
+
 if test "$mode" = "--pre"
     # Pre-conditions:
     if test -z "$session_id"

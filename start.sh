@@ -36,7 +36,7 @@ mkdir -p .runs
 # - ~/.gemini to share credentials from host
 # We run with --privileged so that Podman can run inside the Docker container
 echo "Starting pipeline container in interactive mode (using fish shell)..." >&2
-$DOCKER_CMD run -it --privileged --rm \
+$DOCKER_CMD run -it --init --privileged --rm \
   -v "$(pwd)/.data:/app/.data" \
   -v "$(pwd)/.runs:/app/.runs" \
   -v "$ORIG_HOME/.gemini:/root/.gemini" \

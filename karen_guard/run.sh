@@ -71,10 +71,18 @@ for agent_setup in "$DIR"/../config/agents/*/setup.sh; do
 done
 
 echo "Checking Antigravity CLI authentication..." >&2
+AUTH_SUCCESS=false
 if [ "$CONTAINER_ENGINE" = "podman" ]; then
-  if ! podman run --rm --userns=keep-id --dns=8.8.8.8 -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini:z" \
-      karen_guard su - "${HOST_USER}" -c "agy models" >/dev/null 2>&1; then
-      
+  for i in {1..3}; do
+    if podman run --rm --userns=keep-id --dns=8.8.8.8 -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini:z" \
+        karen_guard su - "${HOST_USER}" -c "agy models" >/dev/null 2>&1; then
+        AUTH_SUCCESS=true
+        break
+    fi
+    echo "Authentication check attempt $i failed. Retrying in 2 seconds..." >&2
+    sleep 2
+  done
+  if [ "$AUTH_SUCCESS" = false ]; then
       echo "Antigravity CLI is not authenticated. Starting interactive login flow..." >&2
       podman run -it --rm --userns=keep-id --dns=8.8.8.8 \
         -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini:z" \
@@ -84,9 +92,16 @@ if [ "$CONTAINER_ENGINE" = "podman" ]; then
       cp -R "${SESSION_GEMINI_DIR}/"* "${USER_HOME}/.gemini/" 2>/dev/null || true
   fi
 else
-  if ! docker run --rm -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini" \
-      karen_guard su - "${HOST_USER}" -c "agy models" >/dev/null 2>&1; then
-      
+  for i in {1..3}; do
+    if docker run --rm -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini" \
+        karen_guard su - "${HOST_USER}" -c "agy models" >/dev/null 2>&1; then
+        AUTH_SUCCESS=true
+        break
+    fi
+    echo "Authentication check attempt $i failed. Retrying in 2 seconds..." >&2
+    sleep 2
+  done
+  if [ "$AUTH_SUCCESS" = false ]; then
       echo "Antigravity CLI is not authenticated. Starting interactive login flow..." >&2
       docker run -it --rm \
         -v "${SESSION_GEMINI_DIR}:${USER_HOME}/.gemini" \

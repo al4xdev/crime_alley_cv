@@ -377,6 +377,10 @@ Reached only on a Gatekeeper exit (either success or max cycles). The loop is do
    ```bash
    boundaries/gatekeeper_donna.fish --post $SESSION_ID
    ```
-6. Surface the final summary to the user:
+6. Copy the boundary audit log to the run directory for persistence:
+   ```bash
+   cp /tmp/boundary_audit.jsonl "$RUN_DIR/boundary_audit.jsonl" 2>/dev/null || true
+   ```
+7. Surface the final summary to the user:
    > 🎓 Action plan ready at `.data/docs/action_plan.md` — prioritized technical gaps, interview prep, and public projects to raise your score on the next run.
-7. **End of pipeline.**
+8. **End of pipeline.**

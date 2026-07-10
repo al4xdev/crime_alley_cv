@@ -11,6 +11,9 @@ end
 set mode $argv[1]
 set session_id $argv[2]
 
+set -g BOUNDARY_NAME "harvey_shadow.fish"
+source "$repo_root/boundaries/audit_logger.fish"
+
 if test "$mode" = "--pre"
     # Pre-conditions:
     if test -z "$session_id"
@@ -71,7 +74,7 @@ else if test "$mode" = "--post"
             if test "$actual_count" -ne "$expected_count"
                 # Check if there is a warning file or log
                 set warnings_file "$session_dir/anti_karen/clone_warnings.txt"
-                if test -f "$warnings_file"
+                if test -s "$warnings_file"
                     echo "Warning [shadow boundary]: Repository count mismatch (Expected: $expected_count, Got: $actual_count). Warning file found."
                 else
                     echo "Error [shadow boundary]: Repository count mismatch (Expected: $expected_count, Got: $actual_count) without clone_warnings.txt." >&2
