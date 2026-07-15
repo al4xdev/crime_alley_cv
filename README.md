@@ -16,6 +16,9 @@ Python owns state transitions, limits and artifact validation.
 This is a forward-only MVP. Python is the sole state owner; thin Fish boundary scripts validate
 each handoff and append run-scoped audit events without duplicating counters or transition rules.
 
+The methodology, negative controls, provider token observations and live container smoke tests are
+documented in the [2026-07-15 experimental validation report](docs/experimental-validation-2026-07-15.md).
+
 ## System architecture
 
 ```mermaid
@@ -29,6 +32,8 @@ flowchart TD
     G --> C
     F -->|target met or budget exhausted| H[Donna creates action plan]
     H --> I[Complete run]
+    I -. optional content capture .-> J[The Celestial frozen case]
+    J -. explicit quota confirmation .-> K[Baseline and blind repeated judging]
 ```
 
 The only control-flow source of truth is `.runs/<run-id>/state.json`. It records the phase,
@@ -76,6 +81,25 @@ silently corrupt the workflow.
 
 The practical rule is: **judgment lives in prose; invariants live in code.**
 
+### The frontier-model bet
+
+Agent work is inherently nondeterministic: the same inputs, model family and runbook may still
+produce different reasoning paths and artifacts. This project does not claim to reproduce an
+agent's hidden reasoning or make one provider universally superior. Provider quality depends on
+the task, model generation and surrounding tools, so agy, Claude Code and Codex are treated as
+replaceable execution clients behind the same explicit boundaries.
+
+The architectural bet is that future frontier models will be increasingly capable of using an
+open, prose-driven workspace, while the surrounding system remains responsible for confinement.
+The reproducible unit is therefore **the environment, inputs, contracts, limits and execution
+evidence—not the model's exact reasoning**. Containers, typed state transitions, immutable
+snapshots, validation and audit logs narrow the consequences of nondeterministic work without
+pretending to eliminate it.
+
+This is a research and engineering direction, not proof that the current architecture is optimal
+for every workload. Stronger isolation still requires deployment-level controls, and successful
+replay demonstrates control-flow behavior rather than identical future model output.
+
 | Concern | Failure mode | Owner |
 |---|---|---|
 | Phase, iteration and termination | Silent extra or infinite loops | `harvey_guy.pipeline` |
@@ -104,7 +128,7 @@ The practical rule is: **judgment lives in prose; invariants live in code.**
 Agent and provider calls are separated from the deterministic control plane. Tests use mock
 container commands and temporary filesystem roots to validate transitions, recovery, score parsing,
 authentication-flow detection and file boundaries without spending model quota. Recorded Karen
-reports can replay a full three-evaluation loop without `agy` or network access.
+reports can replay a full three-evaluation loop without an agent CLI or network access.
 
 ## System requirements
 
@@ -116,11 +140,18 @@ reports can replay a full three-evaluation loop without `agy` or network access.
 - **Disk:** allow substantial space for the outer environment, evaluator image and cloned public
   repositories. Ten GB free is a practical starting point for the current setup.
 
-Container builds use content-addressed Python and `uv` images, a dated Debian snapshot and a fixed
-`agy` release whose amd64/arm64 archives are checked with published SHA-512 values. These pins live
-in the two Dockerfiles and the small installers under `tools/`; update the version, digest/snapshot
-and checksums together. Python application dependencies remain locked by `uv.lock` and are installed
-with `uv sync --frozen`.
+The current image footprint favors explicit dependencies, inspectability and broad CLI
+compatibility over minimum size. It is not presented as an irreducible requirement: multi-stage
+builds, a distroless or otherwise minimal runtime, and manually verified shared libraries could
+reduce it. Such optimization should be measured per layer and accepted only after authentication,
+network, certificate, sandbox and end-to-end provider tests pass; replacing the base distribution
+alone is not assumed to save most of the footprint.
+
+Container builds use content-addressed Python and `uv` images, a dated Debian snapshot and fixed
+agy, Claude Code and Codex releases. Their amd64/arm64 artifacts are checked against pinned SHA-512
+or SHA-256 values before installation. These pins live in both Dockerfiles and the installers under
+`tools/`; update the version and both architecture checksums together. Python application
+dependencies remain locked by `uv.lock` and are installed with `uv sync --frozen`.
 
 Mutable roots are deployment-owned. In direct execution the values are used as written. With
 `start.sh`, data and runs select host directories that are mounted at `/app/.data` and `/app/.runs`;
@@ -132,6 +163,71 @@ path is backed separately by the deployment.
 | `PIPELINE_DATA_DIR` | `.data` |
 | `PIPELINE_RUNS_DIR` | `.runs` |
 | `PIPELINE_SESSION_ROOT` | `/tmp` |
+| `CELESTIAL_DATA_DIR` | `.celestial` |
+| `CELESTIAL_ENABLED` | prompt interactively; otherwise `0` |
+| `AGENT_MODEL` | required only when The Celestial is enabled |
+| `CELESTIAL_JUDGE_PROVIDER` | required only when enabled |
+| `CELESTIAL_JUDGE_MODEL` | required only when enabled |
+
+## Optional content benchmark: The Celestial
+
+The Celestial evaluates the visible conversational content of Vera, Harvey, Shadow, Karen, Bill
+and Donna. It does not score source code, containers, tools, permissions, hidden reasoning or the
+runtime environment. Every role uses the same eight dimensions and 0–4 scale, with a dynamic role
+description and role-specific anchors loaded from `the_celestial/profiles/`. Instruction design and
+execution/output each contribute 50% of the global 0–100 index.
+
+Docker asks whether to enable it near startup. Capture envelopes are written even when it is off,
+but capture is deterministic and makes no model calls. If enabled, the completed capture is frozen
+before the launcher prints an exact estimate and asks for a second explicit confirmation. Declining
+that confirmation leaves a reusable frozen case and spends no benchmark quota.
+
+An accepted benchmark performs:
+
+1. one simple one-shot CV baseline with the same provider and exact model used by the pipeline;
+2. three blind judge repetitions per observed content envelope;
+3. three blinded comparisons between the final Bill CV and the simple baseline;
+4. at most one schema repair and one read-only verification batch of five excerpts per repetition.
+
+Failed or interrupted evaluations do not seal the benchmark. Re-running with the same accepted
+plan digest validates completed results and resumes only missing repetitions. The frozen source
+case is never modified by baseline generation, judging, labels or reports; generated artifacts are
+kept in a separate benchmark directory with a hash-chained event ledger.
+
+The judge provider and explicit model ID are fixed in the capture request. A judge matching the
+executor is allowed but reported as a self-judge conflict. Dedicated provider images mount only
+one credential and the Celestial data directory. Claude runs with an empty tool set; Codex disables
+shell/unified execution, web search, user configuration and project rules in a read-only sandbox.
+Capability checks fail closed before quota is accepted. `agy` remains available for the normal
+pipeline and passive capture, but is blocked from Celestial baseline/judge calls until equivalent
+no-tool enforcement can be proven. Results are observational: no metric can gate a transition or
+modify the CV pipeline.
+
+Reports include within-item judge repeatability, schema-valid citation integrity, human-validated
+evidence precision, comparison with the simpler pipeline, human/model agreement, blinded revision
+acceptance, unsupported-claim reduction and sensitivity across compatible judge runs. Metrics that
+need two independent human labels remain explicitly unavailable until those labels exist. “Real CV
+improvement” means blinded human preference only—not a hiring or downstream outcome.
+
+Sensitive content and raw judge responses live under ignored `.celestial/`. Human exports use
+opaque item IDs, random A/B order and deterministic redaction of the candidate name and common
+contact identifiers. Review the export for unusual PII before sharing it. Two raters per item are
+required for human metrics. Export blind tasks and import completed labels with:
+
+```fish
+uv run python -m the_celestial.cli export-labels \
+    --benchmark .celestial/benchmarks/<benchmark-id> \
+    --output /tmp/celestial-label-tasks.json
+
+uv run python -m the_celestial.cli import-label /tmp/completed-label.json
+```
+
+> [!WARNING]
+> Credential mounting and `auth status` have been validated inside both dedicated containers. The
+> Claude Haiku and Codex also completed isolated live file-edit smoke tests. The full authenticated
+> Celestial benchmark has intentionally not been run. Offline tests validate capture, schemas,
+> frozen cases, prompts, call planning and permission flags. Use the deferred frozen-case workflow
+> for a controlled benchmark later.
 
 ## Isolation layout and current trust boundary
 
@@ -151,10 +247,13 @@ Each evaluation uses a fresh session:
 
 Karen receives read-only mounts for documents, repository evidence and company information, plus a
 writable output mount. `anti_karen/` is omitted from the evaluator mount. The evaluator runs as a
-dedicated non-root user without `sudo`; capabilities are dropped, `no-new-privileges` is enabled,
-and `agy` uses sandbox mode with network/content escalation tools denied. Only the OAuth token file
-is mounted during evaluation, read-only. The image is rebuilt from the current context on every run
-while unchanged layers remain cached.
+dedicated non-root user without `sudo`; capabilities are dropped and `no-new-privileges` is enabled.
+Claude restricts its own tool list. Codex relies on these Docker mounts as the authoritative write
+boundary because nested `bubblewrap` namespaces are unavailable on common restricted Docker hosts;
+its evaluator action therefore disables the inner Codex sandbox while the container exposes only
+the ephemeral output directory as writable. The Karen image contains only the selected provider's
+executable, and only its credential file is mounted during evaluation, read-only. The image is
+rebuilt from the current context on every run while unchanged layers remain cached.
 
 Provider transport still needs network access. The current boundary restricts Karen's tools rather
 than claiming that the whole container is offline; it is not a domain-level egress firewall. The
@@ -165,7 +264,23 @@ disable cgroup creation because the outer container does not own the host cgroup
 children share the outer container's network namespace—not the physical host network—so provider
 transport works without granting nested network administration.
 This remains a broad mount/syscall boundary, but it is materially narrower than privileged mode.
-Host `.gemini` is received read-only before making an ephemeral internal copy.
+Only the selected host credential is received read-only before making an ephemeral internal copy;
+credentials for the other providers are not mounted.
+
+> [!WARNING]
+> Authentication and isolated file editing were exercised live for Claude Code and Codex. This does
+> not validate a complete CV run or The Celestial's repeated benchmark. agy remains untested here;
+> its status command needs a writable log directory and loopback socket. See the experimental report
+> for exact models, boundaries, failed attempts and provider-reported token usage.
+
+The provider boundary intentionally invokes the official CLIs instead of embedding the Claude
+Agent SDK or Codex SDK. Both SDKs are useful when an application needs structured event streams,
+custom tools or resumable in-process sessions. This pipeline needs parity with each user's
+interactive client: the same login, instruction discovery, settings, sandbox and subscription
+behavior must work in the outer orchestrator and in a one-shot evaluator. The Codex TypeScript SDK
+also wraps and spawns the Codex CLI, so it would add a Node integration layer without removing the
+binary boundary. Revisit SDK integration if the control plane starts consuming structured agent
+events rather than a final Markdown artifact.
 
 Likewise, transaction hashes, guard digests and ancestor snapshots are local reliability and
 attribution checks. They detect stale, corrupt or accidentally replaced application files. They do
@@ -178,10 +293,15 @@ separate process and credential boundary.
 
 ```fish
 ./start.sh
+
+# Non-interactive selection or a repeatable shortcut:
+./start.sh --agent codex
 ```
 
-Inside the resulting shell, start the configured agent client and invoke `@main.md`. The runbook
-will initialize the canonical run and retain its returned `STATE_PATH` for all later commands.
+Without `--agent`, the script presents a selector for agy, Claude Code or Codex. It then opens the
+selected client with `main.md` as the initial runbook. Use `--shell` together with `--agent` when a
+diagnostic Fish shell is needed instead. The runbook initializes the canonical run, records
+`agent_provider` in `state.json` and retains its returned `STATE_PATH` for all later commands.
 
 At completion, `boundaries/run_audit.fish --finalize "$STATE_PATH"` archives every session's
 private artifacts, contracts and logs under the run directory. It writes `log_tree.md`, a merged
@@ -191,7 +311,7 @@ chronological trace from the Python event journal and every boundary handoff, pl
 ### Direct host execution
 
 Install the dependencies from [requirements.md](requirements.md), start the agent client from the
-repository root and invoke `@main.md`.
+repository root, set `AGENT_PROVIDER` to `agy`, `claude` or `codex`, and invoke `@main.md`.
 
 To inspect a run without editing it:
 
@@ -208,7 +328,7 @@ uv run ruff check .
 uv run mypy --strict harvey_guy tools/replay_pipeline.py
 ```
 
-Replay the recorded boundary case without `agy`, network access or the real `.data` directory:
+Replay the recorded boundary case without an agent CLI, network access or the real `.data` directory:
 
 ```fish
 uv run python -m tools.replay_pipeline \

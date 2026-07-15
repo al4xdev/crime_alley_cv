@@ -49,13 +49,30 @@ Ensure `$DATA_DIR/docs/cv.md` exists. If `$DATA_DIR/docs/who_are_u.md` is absent
 [vera_psyco/main.md](../vera_psyco/main.md) before initializing the run and provide its absolute
 path as `BACKGROUND_PATH`.
 
-Initialize the canonical run and retain only `STATE_PATH`:
+Initialize the canonical run and retain only `STATE_PATH`. The launcher supplies a capture ID on
+every Docker run; capture itself is local and makes no model calls. The optional benchmark flags
+are present only after the user accepts both quota warnings:
 
 ```fish
+set celestial_args
+if set -q CELESTIAL_CAPTURE_ID
+    set -a celestial_args --celestial-capture-id "$CELESTIAL_CAPTURE_ID"
+end
+if set -q CELESTIAL_ENABLED; and test "$CELESTIAL_ENABLED" = "1"
+    set -a celestial_args --celestial-enabled \
+        --celestial-judge-provider "$CELESTIAL_JUDGE_PROVIDER" \
+        --celestial-judge-model "$CELESTIAL_JUDGE_MODEL"
+end
+set model_args
+if set -q AGENT_MODEL
+    set -a model_args --agent-model "$AGENT_MODEL"
+end
 set init_json (uv run python -m harvey_guy.pipeline init \
     --max-iterations "$MAX_ITERATIONS" \
     --min-fit-score "$MIN_FIT_SCORE" \
-    --karen-reads-background "$KAREN_READS_BACKGROUND" | string collect)
+    --agent-provider "$AGENT_PROVIDER" \
+    --karen-reads-background "$KAREN_READS_BACKGROUND" \
+    $model_args $celestial_args | string collect)
 or return 1
 set STATE_PATH (echo "$init_json" | jq -r .state_path)
 test -f "$STATE_PATH"
@@ -98,7 +115,8 @@ or return 1
 ```fish
 ./boundaries/harvey_karen.fish --pre "$STATE_PATH" >/dev/null
 or return 1
-./karen_guard/run.sh "$SESSION_DIR" \
+set AGENT_PROVIDER (jq -r .agent_provider "$STATE_PATH")
+./karen_guard/run.sh --agent "$AGENT_PROVIDER" --state "$STATE_PATH" "$SESSION_DIR" \
     > "$SESSION_DIR/anti_karen/logs/karen.stdout.log" \
     2> "$SESSION_DIR/anti_karen/logs/karen.stderr.log"
 or return 1

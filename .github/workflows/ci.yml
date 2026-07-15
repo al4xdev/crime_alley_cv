@@ -44,10 +44,10 @@ jobs:
 
       - name: Validate shell and JSON boundaries
         run: |
-          bash -n start.sh entrypoint.sh karen_guard/run.sh karen_guard/run_evaluator.sh config/agents/agy/setup.sh
-          sh -n tools/configure_apt_snapshot.sh tools/install_agy.sh
+          bash -n start.sh entrypoint.sh karen_guard/run.sh karen_guard/run_evaluator.sh config/agents/agent.sh config/agents/*/setup.sh config/agents/*/run.sh
+          sh -n tools/configure_apt_snapshot.sh tools/install_agy.sh tools/install_claude.sh tools/install_codex.sh
           fish -n boundaries/*.fish
-          jq empty config/agents/agy/config/config.json
+          jq empty config/agents/agy/config/config.json config/agents/claude/config/settings.json
 
       - name: Test
         run: uv run pytest
@@ -56,13 +56,22 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        agent-provider: [agy, claude, codex]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
       - name: Build Karen evaluator
-        run: docker build --file karen_guard/Dockerfile --tag karen_guard:ci .
+        run: |
+          docker build \
+            --build-arg AGENT_PROVIDER=${{ matrix.agent-provider }} \
+            --file karen_guard/Dockerfile \
+            --tag karen_guard-${{ matrix.agent-provider }}:ci .
 
       - name: Build outer orchestrator
+        if: matrix.agent-provider == 'agy'
         run: docker build --tag crime_alley_pipeline:ci .
 
   publish:

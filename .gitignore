@@ -17,6 +17,6 @@ wheels/
 
 # Versioned run history (contains CV/evaluation copies — sensitive)
 .runs/
+.celestial/
 .stable_version_results/
 .plan/
-

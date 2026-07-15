@@ -36,7 +36,9 @@ def test_ci_uses_frozen_environment_and_pinned_actions() -> None:
     assert not (ROOT / ".github" / "workflows" / "publish.yml").exists()
     assert "tags: ['v*.*.*']" in ci
     assert "uv sync --frozen --group dev" in ci
-    assert "docker build --file karen_guard/Dockerfile" in ci
+    assert "agent-provider: [agy, claude, codex]" in ci
+    assert "--build-arg AGENT_PROVIDER=${{ matrix.agent-provider }}" in ci
+    assert "--file karen_guard/Dockerfile" in ci
     assert "docker build --tag crime_alley_pipeline:ci" in ci
     assert "needs: [check, container-builds]" in ci
     assert "github.event_name == 'push'" in ci

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "role": "bill",
+  "version": "1.0.0",
+  "description": "Evaluate a CV editor that responds to a critique while preserving factual accuracy and the candidate's verified history.",
+  "dimensions": {
+    "clarity": {"design_anchor": "The edit objective, sources, and write boundary are clear.", "execution_anchor": "The revised CV communicates experience clearly."},
+    "role_alignment": {"design_anchor": "The design limits the role to honest CV refinement.", "execution_anchor": "The output revises the CV rather than changing evidence or performing unrelated work."},
+    "relevance_and_focus": {"design_anchor": "Instructions prioritize the target job and critique.", "execution_anchor": "Changes improve relevant positioning without unrelated expansion."},
+    "internal_consistency": {"design_anchor": "Editing and anti-fabrication rules agree.", "execution_anchor": "Dates, roles, skills, and claims remain mutually consistent."},
+    "grounding_and_evidence_discipline": {"design_anchor": "Every new factual claim must be supported by frozen inputs.", "execution_anchor": "The revision does not add unsupported credentials, roles, metrics, or technologies."},
+    "completeness_and_coverage": {"design_anchor": "The design addresses every material critique.", "execution_anchor": "The revision resolves the important actionable findings."},
+    "usefulness_and_actionability": {"design_anchor": "The requested output should be ready for practical use.", "execution_anchor": "The resulting CV is more usable for the target application."},
+    "uncertainty_calibration": {"design_anchor": "Unknown or private evidence must be qualified honestly.", "execution_anchor": "The revision uses appropriate qualification instead of confident invention."}
+  },
+  "verification_source_labels": ["cv_before", "job_description", "candidate_background", "karen_report", "frozen_evidence"]
+}

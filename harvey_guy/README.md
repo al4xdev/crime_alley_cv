@@ -60,7 +60,7 @@ final `log_tree.md`.
 
 ## Offline replay
 
-Recorded Karen reports can exercise the complete loop without `agy`, network access or the user's
+Recorded Karen reports can exercise the complete loop without an agent CLI, network access or the user's
 real `.data` directory:
 
 ```fish

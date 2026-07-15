@@ -18,7 +18,19 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+
+from the_celestial.capture import (
+    capture_root,
+    create_run_request,
+    freeze_capture,
+    read_text_if_file,
+    record_case_input,
+    record_envelope,
+    update_request,
+)
+from the_celestial.io import read_json_object as read_celestial_json
+from the_celestial.models import AgentRole, Coverage, EnvelopeStatus
 
 from .evaluation import read_evaluation
 from .harvey_guy import Harvey
@@ -127,12 +139,18 @@ class PendingManifest(StrictModel):
 class RunState(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    schema_version: Literal[2] = 2
+    schema_version: Literal[3] = 3
     revision: int = Field(default=0, ge=0)
     run_id: str
     run_dir: str
     data_dir: str
     session_root: str
+    agent_provider: Literal["agy", "claude", "codex", "replay"] = "agy"
+    agent_model: str | None = None
+    celestial_capture_id: str | None = None
+    celestial_requested: bool = False
+    celestial_judge_provider: Literal["agy", "claude", "codex"] | None = None
+    celestial_judge_model: str | None = None
     max_iterations: int = Field(ge=1)
     min_fit_score: int = Field(ge=0, le=100)
     karen_reads_background: bool
@@ -146,6 +164,24 @@ class RunState(BaseModel):
     donna_guard: GuardReference | None = None
     created_at: str
     updated_at: str
+
+    @model_validator(mode="after")
+    def validate_celestial_configuration(self) -> RunState:
+        judge_values = (self.celestial_judge_provider, self.celestial_judge_model)
+        if any(judge_values) and not all(judge_values):
+            raise ValueError("Celestial judge provider and model must be configured together")
+        if self.celestial_requested and (
+            self.celestial_capture_id is None or self.agent_model is None or not all(judge_values)
+        ):
+            raise ValueError(
+                "An enabled Celestial benchmark requires capture, subject model and judge model"
+            )
+        if self.celestial_requested and (
+            self.agent_provider not in {"claude", "codex"}
+            or self.celestial_judge_provider not in {"claude", "codex"}
+        ):
+            raise ValueError("Celestial calls fail closed to Claude or Codex providers")
+        return self
 
     @property
     def run_path(self) -> Path:
@@ -168,6 +204,23 @@ class PlannedWrite:
     target: Path
     size: int
     sha256: str
+
+
+def _parse_run_state(raw: str) -> RunState:
+    value = json.loads(raw)
+    if not isinstance(value, dict):
+        raise ValueError("Run state must be a JSON object")
+    if value.get("schema_version") == 2:
+        value = {
+            **value,
+            "schema_version": 3,
+            "agent_model": None,
+            "celestial_capture_id": None,
+            "celestial_requested": False,
+            "celestial_judge_provider": None,
+            "celestial_judge_model": None,
+        }
+    return RunState.model_validate_json(json.dumps(value))
 
 
 def _file_sha256(path: Path) -> str:
@@ -249,9 +302,7 @@ class TransitionTransaction:
         self.write_text(target, _json_text(value))
 
 
-Transition = Callable[
-    [RunState, TransitionTransaction], tuple[str, dict[str, Any]]
-]
+Transition = Callable[[RunState, TransitionTransaction], tuple[str, dict[str, Any]]]
 
 
 class RunStore:
@@ -273,7 +324,7 @@ class RunStore:
 
     def _load(self) -> RunState:
         try:
-            return RunState.model_validate_json(self.state_path.read_text(encoding="utf-8"))
+            return _parse_run_state(self.state_path.read_text(encoding="utf-8"))
         except (OSError, ValueError, ValidationError) as exc:
             raise PipelineError(f"Cannot load run state {self.state_path}: {exc}") from exc
 
@@ -312,9 +363,7 @@ class RunStore:
             required.add(self.run_dir / "guards" / f"bill_{before.iterations_completed:02d}.json")
         elif operation == "commit_bill":
             iteration_dir = self.run_dir / "iterations" / f"{before.iterations_completed:02d}"
-            required.update(
-                {iteration_dir / "cv_out.md", before.data_path / "docs" / "cv.md"}
-            )
+            required.update({iteration_dir / "cv_out.md", before.data_path / "docs" / "cv.md"})
             optional.add(iteration_dir / "draft_notes.txt")
         elif operation == "prepare_donna":
             required.add(self.run_dir / "guards" / "donna.json")
@@ -336,6 +385,12 @@ class RunStore:
             "run_dir",
             "data_dir",
             "session_root",
+            "agent_provider",
+            "agent_model",
+            "celestial_capture_id",
+            "celestial_requested",
+            "celestial_judge_provider",
+            "celestial_judge_model",
             "max_iterations",
             "min_fit_score",
             "karen_reads_background",
@@ -369,9 +424,7 @@ class RunStore:
             raise PipelineError("Pending event does not match the declared transition")
         if manifest.operation in {"prepare_bill", "prepare_donna"}:
             reference = (
-                staged.bill_guard
-                if manifest.operation == "prepare_bill"
-                else staged.donna_guard
+                staged.bill_guard if manifest.operation == "prepare_bill" else staged.donna_guard
             )
             details = event.get("details")
             if (
@@ -475,7 +528,7 @@ class RunStore:
         try:
             state_index = targets.index(self.state_path)
             events_index = targets.index(self.events_path)
-            staged = RunState.model_validate_json(sources[state_index].read_text(encoding="utf-8"))
+            staged = _parse_run_state(sources[state_index].read_text(encoding="utf-8"))
         except (ValueError, ValidationError) as exc:
             raise PipelineError(f"Invalid pending canonical payload: {exc}") from exc
         self._validate_pending_state(manifest, current, staged, sources[events_index])
@@ -485,9 +538,7 @@ class RunStore:
             raise PipelineError("Pending manifest contains targets outside the operation allowlist")
         if manifest.operation in {"prepare_bill", "prepare_donna"}:
             reference = (
-                staged.bill_guard
-                if manifest.operation == "prepare_bill"
-                else staged.donna_guard
+                staged.bill_guard if manifest.operation == "prepare_bill" else staged.donna_guard
             )
             if reference is None:
                 raise PipelineError("Pending guard reference is missing")
@@ -598,10 +649,7 @@ def _path_snapshot(path: Path) -> dict[str, dict[str, str]]:
     absolute = path.absolute()
     snapshot = {
         "@resolution": {"type": "resolution", "path": str(absolute.resolve(strict=False))},
-        **{
-            f"@ancestor:{ancestor}": describe(ancestor)
-            for ancestor in reversed(absolute.parents)
-        },
+        **{f"@ancestor:{ancestor}": describe(ancestor) for ancestor in reversed(absolute.parents)},
         ".": describe(absolute),
     }
     if snapshot["."]["type"] != "directory":
@@ -682,6 +730,12 @@ def initialize_run(
     max_iterations: int,
     min_fit_score: int,
     karen_reads_background: bool,
+    agent_provider: Literal["agy", "claude", "codex", "replay"] = "agy",
+    agent_model: str | None = None,
+    celestial_capture_id: str | None = None,
+    celestial_requested: bool = False,
+    celestial_judge_provider: Literal["agy", "claude", "codex"] | None = None,
+    celestial_judge_model: str | None = None,
     run_id: str | None = None,
 ) -> tuple[Path, RunState]:
     data_dir = _configured_path("PIPELINE_DATA_DIR", REPOSITORY_ROOT / ".data")
@@ -709,6 +763,12 @@ def initialize_run(
             run_dir=str(run_dir),
             data_dir=str(data_dir),
             session_root=str(session_root),
+            agent_provider=agent_provider,
+            agent_model=agent_model,
+            celestial_capture_id=celestial_capture_id,
+            celestial_requested=celestial_requested,
+            celestial_judge_provider=celestial_judge_provider,
+            celestial_judge_model=celestial_judge_model,
             max_iterations=max_iterations,
             min_fit_score=min_fit_score,
             karen_reads_background=karen_reads_background,
@@ -739,6 +799,10 @@ def initialize_run(
             "details": {
                 "max_iterations": max_iterations,
                 "min_fit_score": min_fit_score,
+                "agent_provider": agent_provider,
+                "agent_model": agent_model,
+                "celestial_capture_id": celestial_capture_id,
+                "celestial_requested": celestial_requested,
             },
         }
         atomic_write_text(staging / "events.jsonl", json.dumps(event) + "\n")
@@ -750,13 +814,91 @@ def initialize_run(
             os.close(directory_fd)
         fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
     state_path = run_dir / "state.json"
+    if celestial_capture_id is not None:
+        create_run_request(
+            capture_id=celestial_capture_id,
+            run_id=run_id,
+            run_dir=str(run_dir),
+            subject_provider=agent_provider,
+            subject_model=agent_model,
+            celestial_requested=celestial_requested,
+            judge_provider=celestial_judge_provider,
+            judge_model=celestial_judge_model,
+        )
+        record_envelope(
+            capture_id=celestial_capture_id,
+            run_id=run_id,
+            role=AgentRole.VERA,
+            invocation=1,
+            instruction=None,
+            inputs={},
+            outputs={},
+            status=EnvelopeStatus.NOT_OBSERVED,
+        )
+        record_case_input(
+            celestial_capture_id,
+            "initial_cv",
+            cv_path.read_text(encoding="utf-8"),
+        )
+        record_case_input(
+            celestial_capture_id,
+            "job_description",
+            job_path.read_text(encoding="utf-8"),
+        )
     return state_path, state
 
 
+def _existing_texts(paths: dict[str, Path]) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for label, path in paths.items():
+        content = read_text_if_file(path)
+        if content is not None:
+            values[label] = content
+    return values
+
+
+def _capture_agent(
+    state: RunState,
+    *,
+    role: AgentRole,
+    invocation: int,
+    instruction_path: Path,
+    inputs: dict[str, Path],
+    outputs: dict[str, Path],
+    coverage: Coverage = Coverage.PROMPT_OUTPUT_ONLY,
+) -> bool:
+    if state.celestial_capture_id is None:
+        return True
+    instruction = read_text_if_file(instruction_path)
+    try:
+        record_envelope(
+            capture_id=state.celestial_capture_id,
+            run_id=state.run_id,
+            role=role,
+            invocation=invocation,
+            instruction=(f"{role.value}_instruction", instruction)
+            if instruction is not None
+            else None,
+            inputs=_existing_texts(inputs),
+            outputs=_existing_texts(outputs),
+            coverage=coverage,
+        )
+    except (OSError, ValueError) as exc:
+        print(f"Celestial capture warning for {role.value}: {exc}", file=sys.stderr)
+        try:
+            update_request(
+                state.celestial_capture_id,
+                status="capture_incomplete",
+                last_capture_error=str(exc),
+            )
+        except (OSError, ValueError):
+            pass
+        return False
+    return True
+
+
 def start_session(store: RunStore) -> RunState:
-    def action(
-        state: RunState, transaction: TransitionTransaction
-    ) -> tuple[str, dict[str, Any]]:
+    def action(state: RunState, transaction: TransitionTransaction) -> tuple[str, dict[str, Any]]:
         del transaction
         harvey = Harvey.setup(
             data_dir=state.data_path,
@@ -780,9 +922,7 @@ def start_session(store: RunStore) -> RunState:
 
 
 def mark_shadow_ready(store: RunStore) -> RunState:
-    def action(
-        state: RunState, transaction: TransitionTransaction
-    ) -> tuple[str, dict[str, Any]]:
+    def action(state: RunState, transaction: TransitionTransaction) -> tuple[str, dict[str, Any]]:
         del transaction
         session = state.session_path
         company_info = session / "company_info.md"
@@ -812,13 +952,28 @@ def mark_shadow_ready(store: RunStore) -> RunState:
         state.phase = Phase.KAREN_READY
         return "shadow_completed", {"repository_count": actual}
 
-    return store.transition("mark_shadow_ready", {Phase.SHADOW_RUNNING}, action)
+    state = store.transition("mark_shadow_ready", {Phase.SHADOW_RUNNING}, action)
+    session = state.session_path
+    _capture_agent(
+        state,
+        role=AgentRole.SHADOW,
+        invocation=state.iterations_completed + 1,
+        instruction_path=SessionLayout(session).contracts / "shadow" / "shadow.prompt",
+        inputs={
+            "cv": session / "docs" / "cv.md",
+            "job_description": session / "docs" / "job.md",
+            "candidate_background": session / "docs" / "who_are_u.md",
+        },
+        outputs={
+            "company_sources": session / "company_info.md",
+            "repository_inventory": session / "repos.json",
+        },
+    )
+    return state
 
 
 def record_evaluation(store: RunStore) -> RunState:
-    def action(
-        state: RunState, transaction: TransitionTransaction
-    ) -> tuple[str, dict[str, Any]]:
+    def action(state: RunState, transaction: TransitionTransaction) -> tuple[str, dict[str, Any]]:
         session = state.session_path
         report = SessionLayout(session).artifacts / "karen_output.md"
         evaluation = read_evaluation(report)
@@ -832,9 +987,7 @@ def record_evaluation(store: RunStore) -> RunState:
         )
         score_rows = ["iteration,score"]
         for completed in range(1, iteration):
-            evaluation_path = (
-                state.run_path / "iterations" / f"{completed:02d}" / "evaluation.json"
-            )
+            evaluation_path = state.run_path / "iterations" / f"{completed:02d}" / "evaluation.json"
             try:
                 archived = json.loads(evaluation_path.read_text(encoding="utf-8"))
                 score_rows.append(f"{completed},{int(archived['fit_score'])}")
@@ -864,13 +1017,27 @@ def record_evaluation(store: RunStore) -> RunState:
             },
         )
 
-    return store.transition("record_evaluation", {Phase.KAREN_READY}, action)
+    state = store.transition("record_evaluation", {Phase.KAREN_READY}, action)
+    session = state.session_path
+    iteration_dir = state.run_path / "iterations" / f"{state.iterations_completed:02d}"
+    _capture_agent(
+        state,
+        role=AgentRole.KAREN,
+        invocation=state.iterations_completed,
+        instruction_path=REPOSITORY_ROOT / "karen_guard" / "prompt_persona.txt",
+        inputs={
+            "cv": iteration_dir / "cv_in.md",
+            "job_description": session / "docs" / "job.md",
+            "company_research": session / "company_info.md",
+            "candidate_background": session / "docs" / "who_are_u.md",
+        },
+        outputs={"evaluation": iteration_dir / "evaluation.md"},
+    )
+    return state
 
 
 def prepare_bill(store: RunStore) -> RunState:
-    def action(
-        state: RunState, transaction: TransitionTransaction
-    ) -> tuple[str, dict[str, Any]]:
+    def action(state: RunState, transaction: TransitionTransaction) -> tuple[str, dict[str, Any]]:
         session = state.session_path
         layout = SessionLayout(session)
         protected_paths = _bill_protected_paths(state)
@@ -920,9 +1087,7 @@ def prepare_bill(store: RunStore) -> RunState:
 
 
 def commit_bill(store: RunStore) -> RunState:
-    def action(
-        state: RunState, transaction: TransitionTransaction
-    ) -> tuple[str, dict[str, Any]]:
+    def action(state: RunState, transaction: TransitionTransaction) -> tuple[str, dict[str, Any]]:
         session = state.session_path
         layout = SessionLayout(session)
         guard_path = state.run_path / "guards" / f"bill_{state.iterations_completed:02d}.json"
@@ -969,13 +1134,28 @@ def commit_bill(store: RunStore) -> RunState:
         state.phase = Phase.READY
         return "bill_committed", {"cv_sha256": current_cv_hash}
 
-    return store.transition("commit_bill", {Phase.BILL_RUNNING}, action)
+    state = store.transition("commit_bill", {Phase.BILL_RUNNING}, action)
+    iteration_dir = state.run_path / "iterations" / f"{state.iterations_completed:02d}"
+    _capture_agent(
+        state,
+        role=AgentRole.BILL,
+        invocation=state.iterations_completed,
+        instruction_path=SessionLayout(state.session_path).contracts / "bill" / "bill.prompt",
+        inputs={
+            "cv_before": iteration_dir / "cv_in.md",
+            "karen_report": iteration_dir / "evaluation.md",
+            "candidate_background": state.session_path / "docs" / "who_are_u.md",
+        },
+        outputs={
+            "cv_after": iteration_dir / "cv_out.md",
+            "draft_notes": iteration_dir / "draft_notes.txt",
+        },
+    )
+    return state
 
 
 def prepare_donna(store: RunStore) -> RunState:
-    def action(
-        state: RunState, transaction: TransitionTransaction
-    ) -> tuple[str, dict[str, Any]]:
+    def action(state: RunState, transaction: TransitionTransaction) -> tuple[str, dict[str, Any]]:
         if state.latest_score is None:
             raise PipelineError("Cannot prepare Donna without a fit score")
         session = state.session_path
@@ -999,10 +1179,7 @@ def prepare_donna(store: RunStore) -> RunState:
             revision=state.revision + 1,
         )
         final_report = (
-            state.run_path
-            / "iterations"
-            / f"{state.iterations_completed:02d}"
-            / "evaluation.md"
+            state.run_path / "iterations" / f"{state.iterations_completed:02d}" / "evaluation.md"
         )
         render_agent(
             "donna",
@@ -1028,9 +1205,7 @@ def prepare_donna(store: RunStore) -> RunState:
 
 
 def complete_donna(store: RunStore) -> RunState:
-    def action(
-        state: RunState, transaction: TransitionTransaction
-    ) -> tuple[str, dict[str, Any]]:
+    def action(state: RunState, transaction: TransitionTransaction) -> tuple[str, dict[str, Any]]:
         action_plan = state.data_path / "docs" / "action_plan.md"
         _ensure_regular_file(action_plan, "Donna action plan")
         if action_plan.stat().st_size < 100:
@@ -1078,7 +1253,61 @@ def complete_donna(store: RunStore) -> RunState:
             "action_plan_sha256": _file_sha256(action_plan),
         }
 
-    return store.transition("complete_donna", {Phase.DONNA_RUNNING}, action)
+    state = store.transition("complete_donna", {Phase.DONNA_RUNNING}, action)
+    iteration_dir = state.run_path / "iterations" / f"{state.iterations_completed:02d}"
+    donna_captured = _capture_agent(
+        state,
+        role=AgentRole.DONNA,
+        invocation=1,
+        instruction_path=SessionLayout(state.session_path).contracts / "donna" / "donna.prompt",
+        inputs={
+            "final_cv": state.data_path / "docs" / "cv.md",
+            "final_evaluation": iteration_dir / "evaluation.md",
+            "job_description": state.data_path / "docs" / "job.md",
+        },
+        outputs={"action_plan": state.run_path / "action_plan.md"},
+    )
+    harvey_captured = _capture_agent(
+        state,
+        role=AgentRole.HARVEY,
+        invocation=1,
+        instruction_path=REPOSITORY_ROOT / "harvey_guy" / "main.md",
+        inputs={
+            "initial_job": state.data_path / "docs" / "job.md",
+            "final_cv": state.data_path / "docs" / "cv.md",
+        },
+        outputs={
+            "final_evaluation": iteration_dir / "evaluation.md",
+            "action_plan": state.run_path / "action_plan.md",
+        },
+        coverage=Coverage.ORCHESTRATION_BUNDLE,
+    )
+    if state.celestial_capture_id is not None:
+        try:
+            record_case_input(
+                state.celestial_capture_id,
+                "final_cv",
+                (state.data_path / "docs" / "cv.md").read_text(encoding="utf-8"),
+            )
+            update_request(state.celestial_capture_id, status="capture_complete")
+            repository_roots = [
+                path for path in (state.session_path / "repos").iterdir() if path.is_dir()
+            ]
+            case_root = freeze_capture(
+                state.celestial_capture_id,
+                evidence_roots=repository_roots,
+            )
+            request = read_celestial_json(capture_root(state.celestial_capture_id) / "request.json")
+            update_request(
+                state.celestial_capture_id,
+                status=("ready" if state.celestial_requested else "captured_disabled")
+                if donna_captured and harvey_captured and "last_capture_error" not in request
+                else "ready_with_capture_errors",
+                case_id=case_root.name,
+            )
+        except (OSError, ValueError) as exc:
+            print(f"Celestial freeze warning: {exc}", file=sys.stderr)
+    return state
 
 
 def _add_state_argument(parser: argparse.ArgumentParser) -> None:
@@ -1093,6 +1322,12 @@ def _parse_args() -> argparse.Namespace:
     init.add_argument("--max-iterations", required=True, type=int)
     init.add_argument("--min-fit-score", required=True, type=int)
     init.add_argument("--karen-reads-background", choices=("yes", "no"), required=True)
+    init.add_argument("--agent-provider", choices=("agy", "claude", "codex"), default="agy")
+    init.add_argument("--agent-model")
+    init.add_argument("--celestial-capture-id")
+    init.add_argument("--celestial-enabled", action="store_true")
+    init.add_argument("--celestial-judge-provider", choices=("agy", "claude", "codex"))
+    init.add_argument("--celestial-judge-model")
     init.add_argument("--run-id")
 
     for name in (
@@ -1117,6 +1352,12 @@ def main() -> None:
                 max_iterations=args.max_iterations,
                 min_fit_score=args.min_fit_score,
                 karen_reads_background=args.karen_reads_background == "yes",
+                agent_provider=args.agent_provider,
+                agent_model=args.agent_model,
+                celestial_capture_id=args.celestial_capture_id,
+                celestial_requested=args.celestial_enabled,
+                celestial_judge_provider=args.celestial_judge_provider,
+                celestial_judge_model=args.celestial_judge_model,
                 run_id=args.run_id,
             )
         else:
