@@ -56,3 +56,9 @@ evaluation only the selected credential file is mounted, read-only; other provid
 are absent. Provider transport still requires network access, but Karen's shell/content tools are
 restricted and instructed not to perform network operations. This is not a domain-level egress
 firewall, so provider isolation must still be tested end to end when quota is available.
+
+> [!WARNING]
+> The three authenticated evaluator paths have not yet generated real reports. This is deliberate:
+> provider quota is reserved for active projects. Before treating the boundary as production-proven,
+> run one controlled smoke evaluation per provider and confirm authentication, denied tools,
+> read-only evidence mounts and creation of `out/evaluation.md`.

@@ -194,6 +194,15 @@ This remains a broad mount/syscall boundary, but it is materially narrower than 
 Only the selected host credential is received read-only before making an ephemeral internal copy;
 credentials for the other providers are not mounted.
 
+> [!WARNING]
+> Authenticated end-to-end prompt execution for agy, Claude Code and Codex is intentionally deferred
+> to avoid consuming the maintainer's active provider quota. Offline tests cover selection,
+> credential isolation, configuration, sandbox flags and output handling; real provider enforcement
+> and report generation must receive a low-quota smoke test when project usage permits. Local status
+> checks confirmed Claude Code and Codex authentication without sending prompts. The agy credential
+> file is present with mode `0600`, but its status command could not run inside the restricted
+> development sandbox because the CLI needs a writable log directory and a loopback socket.
+
 The provider boundary intentionally invokes the official CLIs instead of embedding the Claude
 Agent SDK or Codex SDK. Both SDKs are useful when an application needs structured event streams,
 custom tools or resumable in-process sessions. This pipeline needs parity with each user's
