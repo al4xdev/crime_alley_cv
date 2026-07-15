@@ -16,6 +16,9 @@ Python owns state transitions, limits and artifact validation.
 This is a forward-only MVP. Python is the sole state owner; thin Fish boundary scripts validate
 each handoff and append run-scoped audit events without duplicating counters or transition rules.
 
+The methodology, negative controls, provider token observations and live container smoke tests are
+documented in the [2026-07-15 experimental validation report](docs/experimental-validation-2026-07-15.md).
+
 ## System architecture
 
 ```mermaid
@@ -221,9 +224,10 @@ uv run python -m the_celestial.cli import-label /tmp/completed-label.json
 
 > [!WARNING]
 > Credential mounting and `auth status` have been validated inside both dedicated containers. The
-> full authenticated benchmark has intentionally not been run with the maintainer's Claude or
-> Codex quota. Offline tests validate capture, schemas, frozen cases, prompts, call planning and
-> permission flags. Use the deferred frozen-case workflow for a low-risk live prompt test later.
+> Claude Haiku and Codex also completed isolated live file-edit smoke tests. The full authenticated
+> Celestial benchmark has intentionally not been run. Offline tests validate capture, schemas,
+> frozen cases, prompts, call planning and permission flags. Use the deferred frozen-case workflow
+> for a controlled benchmark later.
 
 ## Isolation layout and current trust boundary
 
@@ -243,10 +247,13 @@ Each evaluation uses a fresh session:
 
 Karen receives read-only mounts for documents, repository evidence and company information, plus a
 writable output mount. `anti_karen/` is omitted from the evaluator mount. The evaluator runs as a
-dedicated non-root user without `sudo`; capabilities are dropped, `no-new-privileges` is enabled,
-and the selected CLI uses its read-only evaluator policy. The Karen image contains only that
-provider's executable, and only its credential file is mounted during evaluation, read-only. The
-image is rebuilt from the current context on every run while unchanged layers remain cached.
+dedicated non-root user without `sudo`; capabilities are dropped and `no-new-privileges` is enabled.
+Claude restricts its own tool list. Codex relies on these Docker mounts as the authoritative write
+boundary because nested `bubblewrap` namespaces are unavailable on common restricted Docker hosts;
+its evaluator action therefore disables the inner Codex sandbox while the container exposes only
+the ephemeral output directory as writable. The Karen image contains only the selected provider's
+executable, and only its credential file is mounted during evaluation, read-only. The image is
+rebuilt from the current context on every run while unchanged layers remain cached.
 
 Provider transport still needs network access. The current boundary restricts Karen's tools rather
 than claiming that the whole container is offline; it is not a domain-level egress firewall. The
@@ -261,13 +268,10 @@ Only the selected host credential is received read-only before making an ephemer
 credentials for the other providers are not mounted.
 
 > [!WARNING]
-> Authenticated end-to-end prompt execution for agy, Claude Code and Codex is intentionally deferred
-> to avoid consuming the maintainer's active provider quota. Offline tests cover selection,
-> credential isolation, configuration, sandbox flags and output handling; real provider enforcement
-> and report generation must receive a low-quota smoke test when project usage permits. Local status
-> checks confirmed Claude Code and Codex authentication without sending prompts. The agy credential
-> file is present with mode `0600`, but its status command could not run inside the restricted
-> development sandbox because the CLI needs a writable log directory and a loopback socket.
+> Authentication and isolated file editing were exercised live for Claude Code and Codex. This does
+> not validate a complete CV run or The Celestial's repeated benchmark. agy remains untested here;
+> its status command needs a writable log directory and loopback socket. See the experimental report
+> for exact models, boundaries, failed attempts and provider-reported token usage.
 
 The provider boundary intentionally invokes the official CLIs instead of embedding the Claude
 Agent SDK or Codex SDK. Both SDKs are useful when an application needs structured event streams,

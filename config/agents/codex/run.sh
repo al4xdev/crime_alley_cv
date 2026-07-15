@@ -24,8 +24,11 @@ case "${ACTION}" in
     OUTPUT_FILE="${2:?evaluate requires an output file}"
     TEMP_FILE="${OUTPUT_FILE}.tmp"
     rm -f "${TEMP_FILE}" "${OUTPUT_FILE}"
+    # Docker is the write boundary here: inputs/credentials are mounted read-only and only the
+    # ephemeral output directory is writable. Nested bubblewrap namespaces are unavailable on
+    # common Docker hosts, so Codex must not try to create a second sandbox for this action.
     codex exec --ephemeral --skip-git-repo-check "${MODEL_ARGS[@]}" \
-      --sandbox read-only --ask-for-approval never \
+      --sandbox danger-full-access -c approval_policy="never" \
       --output-last-message "${TEMP_FILE}" "$(cat "${PROMPT_FILE}")"
     test -s "${TEMP_FILE}"
     mv "${TEMP_FILE}" "${OUTPUT_FILE}"

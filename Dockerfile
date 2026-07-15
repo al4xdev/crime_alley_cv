@@ -22,6 +22,7 @@ RUN DEBIAN_SNAPSHOT="${DEBIAN_SNAPSHOT}" sh /usr/local/sbin/configure_apt_snapsh
 # Install system dependencies including podman, fish shell, and tree
 RUN apt-get update && apt-get install -y --no-install-recommends \
     podman \
+    bubblewrap \
     nftables \
     git \
     curl \

@@ -58,6 +58,7 @@ COPY tools/configure_apt_snapshot.sh /usr/local/sbin/configure_apt_snapshot
 RUN DEBIAN_SNAPSHOT="${DEBIAN_SNAPSHOT}" sh /usr/local/sbin/configure_apt_snapshot
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    bubblewrap \
     ca-certificates \
     git \
     jq \

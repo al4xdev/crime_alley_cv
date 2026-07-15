@@ -354,3 +354,17 @@ def test_launcher_tmpfs_home_is_owned_by_the_non_root_celestial_user() -> None:
         "--tmpfs /home/celestial:rw,nosuid,nodev,size=32m,mode=0700,uid=1000,gid=1000"
         in launcher
     )
+
+
+def test_codex_runtime_images_include_the_linux_sandbox_helper() -> None:
+    root = Path(__file__).resolve().parents[1]
+    assert "bubblewrap" in (root / "Dockerfile").read_text(encoding="utf-8")
+    assert "FROM ${PYTHON_IMAGE}\n\nARG USERNAME" in (
+        root / "karen_guard" / "Dockerfile"
+    ).read_text(encoding="utf-8")
+    assert "bubblewrap" in (root / "karen_guard" / "Dockerfile").read_text(
+        encoding="utf-8"
+    ).split("FROM ${PYTHON_IMAGE}\n\nARG USERNAME", 1)[1]
+    assert "bubblewrap" in (root / "the_celestial" / "Dockerfile").read_text(
+        encoding="utf-8"
+    ).split("FROM ${PYTHON_IMAGE}\n\nARG AGENT_PROVIDER", 1)[1]

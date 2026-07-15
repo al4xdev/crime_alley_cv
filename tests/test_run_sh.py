@@ -229,8 +229,8 @@ def test_evaluator_images_and_cli_wrappers_are_non_privileged() -> None:
     assert "--dangerously-skip-permissions" not in "\n".join((agy, claude, codex))
     assert "--sandbox" in agy
     assert "--permission-mode dontAsk" in claude
-    assert "--sandbox read-only" in codex
-    assert "--ask-for-approval never" in codex
+    assert "--sandbox danger-full-access" in codex
+    assert 'approval_policy="never"' in codex
     assert "--dns=8.8.8.8" not in runner
 
 

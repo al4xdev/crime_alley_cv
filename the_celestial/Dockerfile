@@ -32,8 +32,14 @@ FROM ${UV_IMAGE} AS uv
 FROM ${PYTHON_IMAGE}
 
 ARG AGENT_PROVIDER=codex
+ARG DEBIAN_SNAPSHOT=20260714T000000Z
 ARG USER_ID=1000
 ARG GROUP_ID=1000
+COPY tools/configure_apt_snapshot.sh /usr/local/sbin/configure_apt_snapshot
+RUN DEBIAN_SNAPSHOT="${DEBIAN_SNAPSHOT}" sh /usr/local/sbin/configure_apt_snapshot \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends bubblewrap \
+    && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid "${GROUP_ID}" celestial \
     && useradd --uid "${USER_ID}" --gid "${GROUP_ID}" --create-home celestial
 COPY --from=uv /uv /uvx /usr/local/bin/
