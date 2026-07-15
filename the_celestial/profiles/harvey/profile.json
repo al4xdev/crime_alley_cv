@@ -13,5 +13,5 @@
     "usefulness_and_actionability": {"design_anchor": "Delegations enable agents to produce usable outputs.", "execution_anchor": "The final communication tells the user what was produced and what remains."},
     "uncertainty_calibration": {"design_anchor": "The design preserves failure and uncertainty signals.", "execution_anchor": "Harvey does not overstate incomplete or unverified subordinate work."}
   },
-  "verification_source_labels": ["delegations", "agent_outputs", "public_synthesis"]
+  "verification_source_labels": ["initial_job", "final_cv", "final_evaluation", "action_plan"]
 }

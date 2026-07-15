@@ -25,6 +25,7 @@ from the_celestial.capture import (
     create_run_request,
     freeze_capture,
     read_text_if_file,
+    record_case_input,
     record_envelope,
     update_request,
 )
@@ -148,7 +149,6 @@ class RunState(BaseModel):
     agent_model: str | None = None
     celestial_capture_id: str | None = None
     celestial_requested: bool = False
-    celestial_case_id: str | None = None
     celestial_judge_provider: Literal["agy", "claude", "codex"] | None = None
     celestial_judge_model: str | None = None
     max_iterations: int = Field(ge=1)
@@ -176,6 +176,11 @@ class RunState(BaseModel):
             raise ValueError(
                 "An enabled Celestial benchmark requires capture, subject model and judge model"
             )
+        if self.celestial_requested and (
+            self.agent_provider not in {"claude", "codex"}
+            or self.celestial_judge_provider not in {"claude", "codex"}
+        ):
+            raise ValueError("Celestial calls fail closed to Claude or Codex providers")
         return self
 
     @property
@@ -212,7 +217,6 @@ def _parse_run_state(raw: str) -> RunState:
             "agent_model": None,
             "celestial_capture_id": None,
             "celestial_requested": False,
-            "celestial_case_id": None,
             "celestial_judge_provider": None,
             "celestial_judge_model": None,
         }
@@ -385,7 +389,6 @@ class RunStore:
             "agent_model",
             "celestial_capture_id",
             "celestial_requested",
-            "celestial_case_id",
             "celestial_judge_provider",
             "celestial_judge_model",
             "max_iterations",
@@ -832,6 +835,16 @@ def initialize_run(
             outputs={},
             status=EnvelopeStatus.NOT_OBSERVED,
         )
+        record_case_input(
+            celestial_capture_id,
+            "initial_cv",
+            cv_path.read_text(encoding="utf-8"),
+        )
+        record_case_input(
+            celestial_capture_id,
+            "job_description",
+            job_path.read_text(encoding="utf-8"),
+        )
     return state_path, state
 
 
@@ -863,7 +876,9 @@ def _capture_agent(
             run_id=state.run_id,
             role=role,
             invocation=invocation,
-            instruction=(instruction_path.name, instruction) if instruction is not None else None,
+            instruction=(f"{role.value}_instruction", instruction)
+            if instruction is not None
+            else None,
             inputs=_existing_texts(inputs),
             outputs=_existing_texts(outputs),
             coverage=coverage,
@@ -1265,11 +1280,23 @@ def complete_donna(store: RunStore) -> RunState:
             "final_evaluation": iteration_dir / "evaluation.md",
             "action_plan": state.run_path / "action_plan.md",
         },
-        coverage=Coverage.DELEGATION_RESPONSE,
+        coverage=Coverage.ORCHESTRATION_BUNDLE,
     )
     if state.celestial_capture_id is not None:
         try:
-            case_root = freeze_capture(state.celestial_capture_id)
+            record_case_input(
+                state.celestial_capture_id,
+                "final_cv",
+                (state.data_path / "docs" / "cv.md").read_text(encoding="utf-8"),
+            )
+            update_request(state.celestial_capture_id, status="capture_complete")
+            repository_roots = [
+                path for path in (state.session_path / "repos").iterdir() if path.is_dir()
+            ]
+            case_root = freeze_capture(
+                state.celestial_capture_id,
+                evidence_roots=repository_roots,
+            )
             request = read_celestial_json(capture_root(state.celestial_capture_id) / "request.json")
             update_request(
                 state.celestial_capture_id,

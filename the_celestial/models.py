@@ -15,6 +15,8 @@ DIMENSIONS = (
     "usefulness_and_actionability",
     "uncertainty_calibration",
 )
+SAFE_ID = r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+SHA256 = r"^[0-9a-f]{64}$"
 
 
 class StrictModel(BaseModel):
@@ -40,7 +42,7 @@ class EnvelopeStatus(StrEnum):
 
 class Coverage(StrEnum):
     PROMPT_OUTPUT_ONLY = "prompt_output_only"
-    DELEGATION_RESPONSE = "delegation_response"
+    ORCHESTRATION_BUNDLE = "orchestration_bundle"
     FULL_VISIBLE_EXCHANGE = "full_visible_exchange"
 
 
@@ -48,31 +50,55 @@ class ContentMessage(StrictModel):
     message_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]{0,127}$")
     kind: Literal["instruction", "delegation", "input", "public_response", "output"]
     content: str
-    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    source_label: str = Field(min_length=1, max_length=200)
+    sha256: str = Field(pattern=SHA256)
+    source_label: str = Field(pattern=r"^[a-z][a-z0-9_]{0,79}$")
 
 
 class ConversationEnvelope(StrictModel):
-    schema_version: Literal[1] = 1
-    capture_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
-    run_id: str = Field(min_length=1)
-    case_id: str
+    schema_version: Literal[2] = 2
+    capture_id: str = Field(pattern=SAFE_ID)
+    run_id: str = Field(pattern=SAFE_ID)
+    case_key: str = Field(pattern=r"^[0-9a-f]{20}$")
     role: AgentRole
     invocation: int = Field(ge=1)
     coverage: Coverage
     status: EnvelopeStatus
-    input_fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
+    input_fingerprint: str = Field(pattern=SHA256)
     messages: list[ContentMessage]
     created_at: str = Field(min_length=1)
 
     @model_validator(mode="after")
-    def observed_has_content(self) -> ConversationEnvelope:
+    def validate_messages(self) -> ConversationEnvelope:
         if self.status is EnvelopeStatus.OBSERVED and not self.messages:
             raise ValueError("Observed envelopes must contain messages")
         ids = [message.message_id for message in self.messages]
         if len(ids) != len(set(ids)):
             raise ValueError("Envelope message IDs must be unique")
         return self
+
+
+class EvidenceEntry(StrictModel):
+    source_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._/-]{0,299}$")
+    repository: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]{0,127}$")
+    relative_path: str = Field(min_length=1, max_length=500)
+    sha256: str = Field(pattern=SHA256)
+    size: int = Field(ge=0)
+    truncated: bool = False
+
+
+class FrozenCaseManifest(StrictModel):
+    schema_version: Literal[2] = 2
+    case_id: str = Field(pattern=r"^[0-9a-f]{24}$")
+    capture_id: str = Field(pattern=SAFE_ID)
+    run_id: str = Field(pattern=SAFE_ID)
+    subject_provider: Literal["agy", "claude", "codex"]
+    subject_model: str | None
+    envelope_count: int = Field(ge=1)
+    evidence_entries: list[EvidenceEntry]
+    omissions: list[str]
+    files: dict[str, str]
+    content_digest: str = Field(pattern=SHA256)
+    created_at: str
 
 
 class ProfileDimension(StrictModel):
@@ -122,16 +148,22 @@ class ClaimAssessment(StrictModel):
     status: Literal["supported", "unsupported", "unclear", "not_checked"]
     severity: Literal["low", "medium", "high"]
 
+    @model_validator(mode="after")
+    def supported_has_citation(self) -> ClaimAssessment:
+        if self.status == "supported" and not self.message_ids:
+            raise ValueError("Supported claims require at least one message citation")
+        return self
+
 
 class VerificationRequest(StrictModel):
     claim_id: str = Field(pattern=r"^claim-[0-9]+$")
-    source_label: str = Field(min_length=1, max_length=200)
-    query: str = Field(min_length=1, max_length=500)
+    source_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._/-]{0,299}$")
+    query: str = Field(min_length=3, max_length=500)
 
 
 class EvaluationResult(StrictModel):
-    schema_version: Literal[1] = 1
-    item_id: str = Field(min_length=1)
+    schema_version: Literal[2] = 2
+    item_id: str = Field(pattern=SAFE_ID)
     repetition: int = Field(ge=1, le=3)
     instruction_design: AssessmentPanel
     execution_and_output: AssessmentPanel
@@ -141,42 +173,70 @@ class EvaluationResult(StrictModel):
     strengths: list[str]
     risks: list[str]
     confidence: float = Field(ge=0, le=1)
-    profile_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    rubric_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    envelope_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    profile_sha256: str = Field(pattern=SHA256)
+    rubric_sha256: str = Field(pattern=SHA256)
+    envelope_sha256: str = Field(pattern=SHA256)
 
     @model_validator(mode="after")
     def validate_result(self) -> EvaluationResult:
         expected = (self.instruction_design.index_100 + self.execution_and_output.index_100) / 2
         if abs(expected - self.global_index_100) > 0.01:
             raise ValueError("Global index must be the 50/50 panel average")
-        message_claims = {claim.claim_id for claim in self.claims}
-        if any(request.claim_id not in message_claims for request in self.verification_requests):
+        claim_ids = {claim.claim_id for claim in self.claims}
+        if any(request.claim_id not in claim_ids for request in self.verification_requests):
             raise ValueError("Verification request references an unknown claim")
         return self
 
 
+class BenchmarkSpec(StrictModel):
+    schema_version: Literal[2] = 2
+    benchmark_id: str = Field(pattern=SAFE_ID)
+    capture_id: str = Field(pattern=SAFE_ID)
+    case_id: str = Field(pattern=r"^[0-9a-f]{24}$")
+    case_digest: str = Field(pattern=SHA256)
+    subject_provider: Literal["agy", "claude", "codex"]
+    subject_model: str
+    judge_provider: Literal["claude", "codex"]
+    judge_model: str
+    rubric_sha256: str = Field(pattern=SHA256)
+    profile_sha256: dict[str, str]
+    repetitions: Literal[3] = 3
+    plan_digest: str = Field(pattern=SHA256)
+    created_at: str
+
+
+class PairwiseResult(StrictModel):
+    schema_version: Literal[2] = 2
+    repetition: int = Field(ge=1, le=3)
+    blind_order: Literal["pipeline_a", "baseline_a"]
+    preference: Literal["a", "b", "tie"]
+    pipeline_preferred: bool | None
+    rationale: str = Field(min_length=1, max_length=2000)
+    confidence: float = Field(ge=0, le=1)
+
+
 class HumanLabel(StrictModel):
-    schema_version: Literal[1] = 1
-    benchmark_id: str = Field(min_length=1)
-    blind_item_id: str = Field(min_length=1)
+    schema_version: Literal[2] = 2
+    benchmark_id: str = Field(pattern=SAFE_ID)
+    blind_item_id: str = Field(pattern=SAFE_ID)
     rater_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
     instruction_scores: dict[str, int] | None = None
     execution_scores: dict[str, int] | None = None
     pairwise_preference: Literal["a", "b", "tie"] | None = None
+    claim_support: dict[str, Literal["supported", "unsupported", "unclear"]] | None = None
     created_at: str = Field(min_length=1)
 
     @model_validator(mode="after")
     def validate_scores(self) -> HumanLabel:
         if (self.instruction_scores is None) != (self.execution_scores is None):
             raise ValueError("Human panel scores must be supplied together")
-        if self.instruction_scores is None and self.pairwise_preference is None:
-            raise ValueError("A human label must contain panel scores or a pairwise preference")
+        if not any((self.instruction_scores, self.pairwise_preference, self.claim_support)):
+            raise ValueError("A label must contain panel scores, pairwise preference, or claims")
         for scores in (self.instruction_scores, self.execution_scores):
             if scores is None:
                 continue
-            if set(scores) != set(DIMENSIONS):
-                raise ValueError("Human labels must score every common dimension")
-            if any(score < 0 or score > 4 for score in scores.values()):
-                raise ValueError("Human scores must be between 0 and 4")
+            if set(scores) != set(DIMENSIONS) or any(
+                not 0 <= score <= 4 for score in scores.values()
+            ):
+                raise ValueError("Human scores must cover every dimension from 0 through 4")
         return self

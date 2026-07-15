@@ -1,12 +1,17 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from .io import read_json_object
-from .models import ConversationEnvelope, VerificationRequest
+from .models import FrozenCaseManifest, VerificationRequest
 
 MAX_EXCERPT_CHARACTERS = 4000
+
+
+def available_source_ids(case_root: Path) -> list[str]:
+    manifest = FrozenCaseManifest.model_validate_json(
+        (case_root / "manifest.json").read_text(encoding="utf-8")
+    )
+    return [entry.source_id for entry in manifest.evidence_entries]
 
 
 def collect_frozen_excerpts(
@@ -15,43 +20,45 @@ def collect_frozen_excerpts(
 ) -> list[dict[str, str]]:
     if len(requests) > 5:
         raise ValueError("A verification batch may contain at most five requests")
-    messages: dict[str, list[tuple[str, str]]] = {}
-    for path in sorted((case_root / "envelopes").glob("*/*.json")):
-        envelope = ConversationEnvelope.model_validate_json(json.dumps(read_json_object(path)))
-        for message in envelope.messages:
-            messages.setdefault(message.source_label, []).append(
-                (message.message_id, message.content)
-            )
+    manifest = FrozenCaseManifest.model_validate_json(
+        (case_root / "manifest.json").read_text(encoding="utf-8")
+    )
+    entries = {entry.source_id: entry for entry in manifest.evidence_entries}
     results: list[dict[str, str]] = []
     for request in requests:
-        candidates = messages.get(request.source_label, [])
-        query = request.query.casefold()
-        selected = next(
-            (
-                (message_id, content)
-                for message_id, content in candidates
-                if query in content.casefold()
-            ),
-            candidates[0] if candidates else None,
-        )
-        if selected is None:
+        entry = entries.get(request.source_id)
+        if entry is None:
             results.append(
                 {
                     "claim_id": request.claim_id,
-                    "source_label": request.source_label,
+                    "source_id": request.source_id,
                     "status": "unavailable",
                     "excerpt": "",
                 }
             )
             continue
-        message_id, content = selected
+        path = case_root / "evidence" / entry.repository / entry.relative_path
+        content = path.read_text(encoding="utf-8", errors="replace")
+        folded = content.casefold()
+        index = folded.find(request.query.casefold())
+        if index < 0:
+            results.append(
+                {
+                    "claim_id": request.claim_id,
+                    "source_id": request.source_id,
+                    "status": "unavailable",
+                    "excerpt": "",
+                }
+            )
+            continue
+        start = max(0, index - MAX_EXCERPT_CHARACTERS // 2)
+        excerpt = content[start : start + MAX_EXCERPT_CHARACTERS]
         results.append(
             {
                 "claim_id": request.claim_id,
-                "source_label": request.source_label,
+                "source_id": request.source_id,
                 "status": "available",
-                "message_id": message_id,
-                "excerpt": content[:MAX_EXCERPT_CHARACTERS],
+                "excerpt": excerpt,
             }
         )
     return results

@@ -21,7 +21,7 @@ def digest_json(value: Any) -> str:
 
 
 def atomic_write_text(path: Path, content: str, *, exclusive: bool = False) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     if exclusive and path.exists():
         raise FileExistsError(path)
     descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
@@ -34,6 +34,7 @@ def atomic_write_text(path: Path, content: str, *, exclusive: bool = False) -> N
         if exclusive and path.exists():
             raise FileExistsError(path)
         temporary.replace(path)
+        path.chmod(0o600)
     finally:
         if temporary.exists():
             temporary.unlink()

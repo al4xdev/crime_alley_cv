@@ -13,5 +13,5 @@
     "usefulness_and_actionability": {"design_anchor": "The output is intended for immediate application use.", "execution_anchor": "The result is a usable target-specific CV."},
     "uncertainty_calibration": {"design_anchor": "The instruction requires honest qualification.", "execution_anchor": "Unknowns and private experience are not overstated."}
   },
-  "verification_source_labels": ["frozen_case_content", "baseline_cv"]
+  "verification_source_labels": ["initial_cv", "job_description", "baseline_cv"]
 }
