@@ -184,7 +184,7 @@ celestial_container() {
     --pids-limit=128 \
     --security-opt=no-new-privileges \
     --tmpfs /tmp:rw,nosuid,nodev,size=128m \
-    --tmpfs /home/celestial:rw,nosuid,nodev,size=32m \
+    --tmpfs /home/celestial:rw,nosuid,nodev,size=32m,mode=0700,uid=1000,gid=1000 \
     -e AGENT_PROVIDER="${provider}" \
     -e CELESTIAL_DATA_DIR=/app/.celestial \
     -v "${CELESTIAL_HOST_DIR}:/app/.celestial:rw" \

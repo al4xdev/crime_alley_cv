@@ -346,3 +346,11 @@ def test_codex_is_read_only_toolless_and_unversioned_models_are_blocked(
         run_prompt("claude", "sonnet", "content")
     with pytest.raises(ProviderCapabilityError, match="blocked"):
         run_prompt("agy", "gemini", "content")
+
+
+def test_launcher_tmpfs_home_is_owned_by_the_non_root_celestial_user() -> None:
+    launcher = (Path(__file__).resolve().parents[1] / "start.sh").read_text(encoding="utf-8")
+    assert (
+        "--tmpfs /home/celestial:rw,nosuid,nodev,size=32m,mode=0700,uid=1000,gid=1000"
+        in launcher
+    )

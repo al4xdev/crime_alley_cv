@@ -42,7 +42,9 @@ Status: implemented on `feat/the-celestial-content-benchmark`.
 
 ## Deliberately deferred evidence
 
-No live prompt was sent to Claude Code or Codex during implementation. Authenticated end-to-end
-behavior, subscription accounting and provider-side enforcement require a future low-quota smoke
-test. Local CLI capability help, offline provider-command tests and both dedicated image builds can
-be validated without a model prompt. The warning remains visible in both `start.sh` and the README.
+No live prompt was sent to Claude Code or Codex during implementation. Credential mounting and
+`auth status` were validated in both hardened provider containers without a model call.
+Authenticated prompt behavior, subscription accounting and provider-side enforcement require a
+future low-quota smoke test. Local CLI capability help, offline provider-command tests and both
+dedicated image builds can be validated without a model prompt. The warning remains visible in both
+`start.sh` and the README.

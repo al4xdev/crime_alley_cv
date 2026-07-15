@@ -220,9 +220,10 @@ uv run python -m the_celestial.cli import-label /tmp/completed-label.json
 ```
 
 > [!WARNING]
-> The full authenticated benchmark has intentionally not been run with the maintainer's Claude or
+> Credential mounting and `auth status` have been validated inside both dedicated containers. The
+> full authenticated benchmark has intentionally not been run with the maintainer's Claude or
 > Codex quota. Offline tests validate capture, schemas, frozen cases, prompts, call planning and
-> permission flags. Use the deferred frozen-case workflow for a low-risk live test later.
+> permission flags. Use the deferred frozen-case workflow for a low-risk live prompt test later.
 
 ## Isolation layout and current trust boundary
 
