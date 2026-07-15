@@ -4,6 +4,7 @@
 .data
 repos
 .runs
+.celestial
 .stable_version_results
 .dependencies_checked.md
 __pycache__

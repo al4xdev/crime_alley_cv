@@ -79,6 +79,54 @@ else
   ORIG_HOME="${HOME}"
 fi
 
+CELESTIAL_ENABLED="${CELESTIAL_ENABLED:-}"
+AGENT_MODEL="${AGENT_MODEL:-}"
+CELESTIAL_JUDGE_PROVIDER="${CELESTIAL_JUDGE_PROVIDER:-}"
+CELESTIAL_JUDGE_MODEL="${CELESTIAL_JUDGE_MODEL:-}"
+CELESTIAL_CAPTURE_ID="${CELESTIAL_CAPTURE_ID:-capture-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
+
+if [ "${SHELL_ONLY}" = false ] && [ -z "${CELESTIAL_ENABLED}" ]; then
+  if [ -t 0 ]; then
+    echo >&2
+    echo "Optional: enable The Celestial content benchmark?" >&2
+    echo "WARNING: it runs a baseline plus repeated judging and can consume substantial quota." >&2
+    echo "WARNING: live Claude/Codex enforcement remains intentionally untested." >&2
+    read -r -p "Enable The Celestial for this run? [y/N]: " celestial_answer
+    case "${celestial_answer}" in y|Y|yes|YES) CELESTIAL_ENABLED=1 ;; *) CELESTIAL_ENABLED=0 ;; esac
+  else
+    CELESTIAL_ENABLED=0
+  fi
+fi
+
+if [ "${CELESTIAL_ENABLED}" = "1" ]; then
+  if [ -t 0 ]; then
+    [ -n "${AGENT_MODEL}" ] || read -r -p "Versioned ${AGENT_PROVIDER} executor model: " AGENT_MODEL
+    [ -n "${CELESTIAL_JUDGE_PROVIDER}" ] || read -r -p "Fixed judge [claude|codex]: " CELESTIAL_JUDGE_PROVIDER
+    [ -n "${CELESTIAL_JUDGE_MODEL}" ] || read -r -p "Versioned fixed judge model: " CELESTIAL_JUDGE_MODEL
+  fi
+  if [ "${AGENT_PROVIDER}" = "agy" ]; then
+    echo "Error: agy is fail-closed for Celestial calls until no-tool enforcement is verifiable." >&2
+    exit 2
+  fi
+  case "${CELESTIAL_JUDGE_PROVIDER}" in claude|codex) ;; *)
+    echo "Error: the Celestial judge must be claude or codex." >&2; exit 2 ;;
+  esac
+  if [ "${AGENT_PROVIDER}" = "claude" ] && [[ ! "${AGENT_MODEL}" =~ ^claude-[a-z0-9-]+-[0-9]{8}$ ]]; then
+    echo "Error: Claude requires a complete versioned model ID." >&2; exit 2
+  fi
+  if [ "${AGENT_PROVIDER}" = "codex" ] && [[ ! "${AGENT_MODEL}" =~ ^gpt-[0-9]+(\.[0-9]+)+(-[a-z0-9.-]+)?$ ]]; then
+    echo "Error: Codex requires a versioned model ID." >&2; exit 2
+  fi
+  if [ "${CELESTIAL_JUDGE_PROVIDER}" = "claude" ] && [[ ! "${CELESTIAL_JUDGE_MODEL}" =~ ^claude-[a-z0-9-]+-[0-9]{8}$ ]]; then
+    echo "Error: Claude judge requires a complete versioned model ID." >&2; exit 2
+  fi
+  if [ "${CELESTIAL_JUDGE_PROVIDER}" = "codex" ] && [[ ! "${CELESTIAL_JUDGE_MODEL}" =~ ^gpt-[0-9]+(\.[0-9]+)+(-[a-z0-9.-]+)?$ ]]; then
+    echo "Error: Codex judge requires a versioned model ID." >&2; exit 2
+  fi
+else
+  CELESTIAL_ENABLED=0
+fi
+
 AUTH_FILE="$(auth_file_for "${AGENT_PROVIDER}")"
 AUTH_HINT="Authenticate ${AGENT_PROVIDER} on the host first."
 
@@ -86,6 +134,14 @@ if [ ! -f "${AUTH_FILE}" ]; then
   echo "Error: agent credential file does not exist: ${AUTH_FILE}" >&2
   echo "${AUTH_HINT}" >&2
   exit 1
+fi
+
+if [ "${CELESTIAL_ENABLED}" = "1" ]; then
+  JUDGE_AUTH_FILE="$(auth_file_for "${CELESTIAL_JUDGE_PROVIDER}")"
+  if [ ! -f "${JUDGE_AUTH_FILE}" ]; then
+    echo "Error: judge credential file does not exist: ${JUDGE_AUTH_FILE}" >&2
+    exit 1
+  fi
 fi
 
 echo "Building global orchestrator image..." >&2
@@ -106,50 +162,42 @@ DATA_HOST_DIR="$(realpath "${DATA_HOST_DIR}")"
 RUNS_HOST_DIR="$(realpath "${RUNS_HOST_DIR}")"
 CELESTIAL_HOST_DIR="$(realpath "${CELESTIAL_HOST_DIR}")"
 
-CELESTIAL_ENABLED="${CELESTIAL_ENABLED:-}"
-AGENT_MODEL="${AGENT_MODEL:-}"
-CELESTIAL_JUDGE_PROVIDER="${CELESTIAL_JUDGE_PROVIDER:-}"
-CELESTIAL_JUDGE_MODEL="${CELESTIAL_JUDGE_MODEL:-}"
-CELESTIAL_CAPTURE_ID="${CELESTIAL_CAPTURE_ID:-capture-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
-
-if [ "${SHELL_ONLY}" = false ] && [ -z "${CELESTIAL_ENABLED}" ]; then
-  if [ -t 0 ]; then
-    echo >&2
-    echo "Optional: enable The Celestial content benchmark?" >&2
-    echo "WARNING: it runs a one-shot baseline plus repeated judging and can consume a lot of quota." >&2
-    echo "WARNING: Claude/Codex execution permissions were constrained, but live quota/auth behavior" >&2
-    echo "has intentionally not been exercised yet; keep it off until you have comfortable quota." >&2
-    read -r -p "Enable The Celestial for this run? [y/N]: " celestial_answer
-    case "${celestial_answer}" in
-      y|Y|yes|YES) CELESTIAL_ENABLED=1 ;;
-      *) CELESTIAL_ENABLED=0 ;;
-    esac
-  else
-    CELESTIAL_ENABLED=0
+if [ "${CELESTIAL_ENABLED}" = "1" ]; then
+  echo "Building dedicated Celestial ${AGENT_PROVIDER} image..." >&2
+  "${DOCKER_CMD[@]}" build -f the_celestial/Dockerfile \
+    --build-arg AGENT_PROVIDER="${AGENT_PROVIDER}" \
+    -t "celestial-${AGENT_PROVIDER}" .
+  if [ "${CELESTIAL_JUDGE_PROVIDER}" != "${AGENT_PROVIDER}" ]; then
+    echo "Building dedicated Celestial ${CELESTIAL_JUDGE_PROVIDER} image..." >&2
+    "${DOCKER_CMD[@]}" build -f the_celestial/Dockerfile \
+      --build-arg AGENT_PROVIDER="${CELESTIAL_JUDGE_PROVIDER}" \
+      -t "celestial-${CELESTIAL_JUDGE_PROVIDER}" .
   fi
 fi
 
+celestial_container() {
+  local provider="$1"
+  local auth_file="$2"
+  shift 2
+  "${DOCKER_CMD[@]}" run --init --rm --read-only \
+    --cap-drop=ALL \
+    --pids-limit=128 \
+    --security-opt=no-new-privileges \
+    --tmpfs /tmp:rw,nosuid,nodev,size=128m \
+    --tmpfs /home/celestial:rw,nosuid,nodev,size=32m \
+    -e AGENT_PROVIDER="${provider}" \
+    -e CELESTIAL_DATA_DIR=/app/.celestial \
+    -v "${CELESTIAL_HOST_DIR}:/app/.celestial:rw" \
+    -v "${auth_file}:/run/host-agent-auth:ro" \
+    "celestial-${provider}" "$@"
+}
+
 if [ "${CELESTIAL_ENABLED}" = "1" ]; then
-  if [ -t 0 ]; then
-    if [ -z "${AGENT_MODEL}" ]; then
-      read -r -p "Exact ${AGENT_PROVIDER} executor model: " AGENT_MODEL
-    fi
-    if [ -z "${CELESTIAL_JUDGE_PROVIDER}" ]; then
-      read -r -p "Fixed judge provider [agy|claude|codex]: " CELESTIAL_JUDGE_PROVIDER
-    fi
-    if [ -z "${CELESTIAL_JUDGE_MODEL}" ]; then
-      read -r -p "Exact fixed judge model: " CELESTIAL_JUDGE_MODEL
-    fi
-  fi
-  case "${CELESTIAL_JUDGE_PROVIDER}" in agy|claude|codex) ;; *)
-    echo "Error: The Celestial requires a valid fixed judge provider." >&2; exit 2 ;;
-  esac
-  if [ -z "${AGENT_MODEL}" ] || [ -z "${CELESTIAL_JUDGE_MODEL}" ]; then
-    echo "Error: The Celestial requires explicit executor and judge models." >&2
-    exit 2
-  fi
-else
-  CELESTIAL_ENABLED=0
+  celestial_container "${AGENT_PROVIDER}" "${AUTH_FILE}" \
+    python -m the_celestial.cli capability --provider "${AGENT_PROVIDER}" --model "${AGENT_MODEL}"
+  celestial_container "${CELESTIAL_JUDGE_PROVIDER}" "${JUDGE_AUTH_FILE}" \
+    python -m the_celestial.cli capability --provider "${CELESTIAL_JUDGE_PROVIDER}" \
+    --model "${CELESTIAL_JUDGE_MODEL}"
 fi
 
 if [ "${SHELL_ONLY}" = true ]; then
@@ -201,28 +249,17 @@ if [ "${SHELL_ONLY}" = true ] || [ "${CELESTIAL_ENABLED}" != "1" ]; then
   exit 0
 fi
 
-celestial_container() {
-  local provider="$1"
-  local auth_file="$2"
-  shift 2
-  "${DOCKER_CMD[@]}" run --init --rm \
-    --cap-drop=ALL \
-    --security-opt=no-new-privileges \
-    -e AGENT_PROVIDER="${provider}" \
-    -e CELESTIAL_DATA_DIR=/app/.celestial \
-    -v "${CELESTIAL_HOST_DIR}:/app/.celestial" \
-    -v "${auth_file}:/run/host-agent-auth:ro" \
-    "${IMAGE_NAME}" "$@"
-}
-
 echo "The pipeline finished. Calculating the exact benchmark call estimate..." >&2
-celestial_container "${AGENT_PROVIDER}" "${AUTH_FILE}" \
-  uv run python -m the_celestial.cli plan --capture "${CELESTIAL_CAPTURE_ID}"
+plan_json="$(celestial_container "${AGENT_PROVIDER}" "${AUTH_FILE}" \
+  python -m the_celestial.cli plan --capture "${CELESTIAL_CAPTURE_ID}")"
+echo "${plan_json}"
+plan_digest="$(echo "${plan_json}" | jq -er .plan_digest)"
+confirmation_token="RUN ${plan_digest:0:12}"
 
 if [ -t 0 ]; then
   echo "WARNING: continuing now spends quota on the baseline and three repeated judgments per item." >&2
-  read -r -p "Run the expensive benchmark now? Type RUN CELESTIAL: " quota_confirmation
-  if [ "${quota_confirmation}" != "RUN CELESTIAL" ]; then
+  read -r -p "Run the expensive benchmark now? Type ${confirmation_token}: " quota_confirmation
+  if [ "${quota_confirmation}" != "${confirmation_token}" ]; then
     echo "Benchmark deferred. The frozen capture remains in ${CELESTIAL_HOST_DIR}." >&2
     exit 0
   fi
@@ -232,17 +269,13 @@ else
 fi
 
 celestial_container "${AGENT_PROVIDER}" "${AUTH_FILE}" \
-  uv run python -m the_celestial.cli baseline --capture "${CELESTIAL_CAPTURE_ID}"
+  python -m the_celestial.cli baseline --capture "${CELESTIAL_CAPTURE_ID}" \
+  --accept-plan "${plan_digest}"
 
-JUDGE_AUTH_FILE="$(auth_file_for "${CELESTIAL_JUDGE_PROVIDER}")"
-if [ ! -f "${JUDGE_AUTH_FILE}" ]; then
-  echo "Error: judge credential file does not exist: ${JUDGE_AUTH_FILE}" >&2
-  exit 1
-fi
 benchmark_json="$(celestial_container "${CELESTIAL_JUDGE_PROVIDER}" "${JUDGE_AUTH_FILE}" \
-  uv run python -m the_celestial.cli judge --capture "${CELESTIAL_CAPTURE_ID}" \
-  --confirm-high-quota)"
+  python -m the_celestial.cli judge --capture "${CELESTIAL_CAPTURE_ID}" \
+  --accept-plan "${plan_digest}")"
 echo "${benchmark_json}"
 benchmark_path="$(echo "${benchmark_json}" | jq -r .benchmark)"
 celestial_container "${CELESTIAL_JUDGE_PROVIDER}" "${JUDGE_AUTH_FILE}" \
-  uv run python -m the_celestial.cli report --benchmark "${benchmark_path}"
+  python -m the_celestial.cli report --benchmark "${benchmark_path}"

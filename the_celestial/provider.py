@@ -1,16 +1,37 @@
 from __future__ import annotations
 
+import json
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Any
 
 
 class ProviderError(RuntimeError):
     pass
 
 
-def _run(command: list[str], *, cwd: Path | None = None) -> str:
+class ProviderCapabilityError(ProviderError):
+    pass
+
+
+def validate_exact_model(provider: str, model: str) -> None:
+    patterns = {
+        "claude": r"^claude-[a-z0-9-]+-[0-9]{8}$",
+        "codex": r"^gpt-[0-9]+(?:\.[0-9]+)+(?:-[a-z0-9.-]+)?$",
+    }
+    pattern = patterns.get(provider)
+    if pattern is None:
+        raise ProviderCapabilityError(
+            f"{provider} is blocked for Celestial calls until no-tool enforcement is verifiable"
+        )
+    if re.fullmatch(pattern, model) is None:
+        raise ValueError(f"{provider} requires a versioned model ID, not an alias: {model!r}")
+
+
+def _run(command: list[str], *, cwd: Path) -> str:
     result = subprocess.run(command, capture_output=True, text=True, check=False, cwd=cwd)
     if result.returncode != 0:
         error = result.stderr.strip() or result.stdout.strip()
@@ -18,51 +39,77 @@ def _run(command: list[str], *, cwd: Path | None = None) -> str:
     return result.stdout
 
 
-def run_prompt(provider: str, model: str, prompt: str) -> str:
-    if not model.strip():
-        raise ValueError("An explicit model is required")
+def assert_model_capability(provider: str, model: str) -> None:
+    validate_exact_model(provider, model)
+    binary = "claude" if provider == "claude" else "codex"
+    command = [binary, "--help"] if provider == "claude" else [binary, "exec", "--help"]
+    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    text = result.stdout + result.stderr
+    required = (
+        (
+            "--model",
+            "--tools",
+            "--safe-mode",
+            "--disable-slash-commands",
+            "--no-session-persistence",
+            "--strict-mcp-config",
+            "--json-schema",
+        )
+        if provider == "claude"
+        else (
+            "--model",
+            "--disable",
+            "--strict-config",
+            "--sandbox",
+            "--ignore-user-config",
+            "--ignore-rules",
+            "--ephemeral",
+            "--output-schema",
+        )
+    )
+    if result.returncode != 0 or any(flag not in text for flag in required):
+        raise ProviderCapabilityError(f"{provider} lacks required model/no-tool CLI capabilities")
+
+
+def run_prompt(
+    provider: str,
+    model: str,
+    prompt: str,
+    *,
+    schema: dict[str, Any] | None = None,
+) -> str:
+    validate_exact_model(provider, model)
     with tempfile.TemporaryDirectory(prefix="celestial-judge-") as working_directory:
         cwd = Path(working_directory)
-        if provider == "agy":
-            return _run(
-                [
-                    "agy",
-                    "--model",
-                    model,
-                    "--sandbox",
-                    "--print-timeout",
-                    "15m",
-                    "--print",
-                    prompt,
-                ],
-                cwd=cwd,
-            )
+        schema_path = cwd / "schema.json"
+        if schema is not None:
+            schema_path.write_text(json.dumps(schema), encoding="utf-8")
         if provider == "claude":
             environment = os.environ.copy()
             environment["DISABLE_AUTOUPDATER"] = "1"
+            command = [
+                "claude",
+                "-p",
+                "--model",
+                model,
+                "--output-format",
+                "text",
+                "--permission-mode",
+                "dontAsk",
+                "--tools",
+                "",
+                "--safe-mode",
+                "--disable-slash-commands",
+                "--no-session-persistence",
+                "--strict-mcp-config",
+                "--mcp-config",
+                '{"mcpServers":{}}',
+            ]
+            if schema is not None:
+                command.extend(("--json-schema", json.dumps(schema, separators=(",", ":"))))
+            command.append(prompt)
             result = subprocess.run(
-                [
-                    "claude",
-                    "-p",
-                    "--model",
-                    model,
-                    "--output-format",
-                    "text",
-                    "--permission-mode",
-                    "dontAsk",
-                    "--disallowedTools",
-                    "Bash",
-                    "Edit",
-                    "Write",
-                    "Read",
-                    "Glob",
-                    "Grep",
-                    "NotebookEdit",
-                    "WebFetch",
-                    "WebSearch",
-                    "Agent",
-                    prompt,
-                ],
+                command,
                 capture_output=True,
                 text=True,
                 check=False,
@@ -73,40 +120,31 @@ def run_prompt(provider: str, model: str, prompt: str) -> str:
                 raise ProviderError(result.stderr.strip() or "Claude provider call failed")
             return result.stdout
         if provider == "codex":
-            descriptor, output_name = tempfile.mkstemp(prefix="celestial-codex-", suffix=".json")
-            os.close(descriptor)
-            output = Path(output_name)
-            try:
-                _run(
-                    [
-                        "codex",
-                        "exec",
-                        "--ephemeral",
-                        "--skip-git-repo-check",
-                        "--sandbox",
-                        "read-only",
-                        "--ask-for-approval",
-                        "never",
-                        "--model",
-                        model,
-                        "--output-last-message",
-                        str(output),
-                        prompt,
-                    ],
-                    cwd=cwd,
-                )
-                return output.read_text(encoding="utf-8")
-            finally:
-                output.unlink(missing_ok=True)
-    raise ValueError(f"Unsupported provider: {provider}")
-
-
-def assert_model_capability(provider: str) -> None:
-    binary = {"agy": "agy", "claude": "claude", "codex": "codex"}.get(provider)
-    if binary is None:
-        raise ValueError(f"Unsupported provider: {provider}")
-    command = [binary, "--help"] if provider != "codex" else [binary, "exec", "--help"]
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
-    help_text = result.stdout + result.stderr
-    if result.returncode != 0 or "--model" not in help_text:
-        raise ProviderError(f"{provider} does not expose the required --model capability")
+            output = cwd / "last-message.json"
+            command = [
+                "codex",
+                "exec",
+                "--ephemeral",
+                "--skip-git-repo-check",
+                "--ignore-user-config",
+                "--ignore-rules",
+                "--strict-config",
+                "--sandbox",
+                "read-only",
+                "--disable",
+                "shell_tool",
+                "--disable",
+                "unified_exec",
+                "-c",
+                'web_search="disabled"',
+                "--model",
+                model,
+                "--output-last-message",
+                str(output),
+            ]
+            if schema is not None:
+                command.extend(("--output-schema", str(schema_path)))
+            command.append(prompt)
+            _run(command, cwd=cwd)
+            return output.read_text(encoding="utf-8")
+    raise ProviderCapabilityError(f"Unsupported Celestial provider: {provider}")

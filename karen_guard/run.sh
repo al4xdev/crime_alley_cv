@@ -61,9 +61,14 @@ if [ -n "${STATE_PATH}" ]; then
     exit 1
   fi
   STATE_AGENT_PROVIDER="$(jq -er '.agent_provider // "agy"' "${STATE_PATH}")"
+  STATE_AGENT_MODEL="$(jq -er '.agent_model // ""' "${STATE_PATH}")"
   STATE_SESSION_DIR="$(jq -er '.current_session_dir' "${STATE_PATH}")"
   if [ "${STATE_AGENT_PROVIDER}" != "${AGENT_PROVIDER}" ]; then
     echo "Error: agent provider ${AGENT_PROVIDER} diverges from state provider ${STATE_AGENT_PROVIDER}." >&2
+    exit 1
+  fi
+  if [ "${STATE_AGENT_MODEL}" != "${AGENT_MODEL:-}" ]; then
+    echo "Error: agent model diverges from the canonical run state." >&2
     exit 1
   fi
   if [ "${STATE_SESSION_DIR}" != "${SESSION_DIR}" ]; then
@@ -200,6 +205,7 @@ echo "Starting Karen Guard ${AGENT_PROVIDER} evaluation for session ${SESSION_ID
   --security-opt=no-new-privileges \
   --pids-limit=256 \
   --tmpfs /tmp:rw,nosuid,nodev,size=256m \
+  --env AGENT_MODEL="${AGENT_MODEL:-}" \
   --volume "${SESSION_DIR}/docs:/app/session/docs:${READ_ONLY_SUFFIX}" \
   --volume "${SESSION_DIR}/repos:/app/session/repos:${READ_ONLY_SUFFIX}" \
   --volume "${SESSION_DIR}/company_info.md:/app/session/company_info.md:${READ_ONLY_SUFFIX}" \
