@@ -1,42 +1,71 @@
-FROM python:3.13-slim
+ARG PYTHON_IMAGE=python:3.13.14-slim-trixie@sha256:bffeb7bd6a85767587059c6ba23e1e9122078e3aa3fa836099171b9bb5a9bb00
 
-WORKDIR /app
+FROM ${PYTHON_IMAGE} AS agy-installer
+
+ARG DEBIAN_SNAPSHOT=20260714T000000Z
+ARG AGY_VERSION=1.1.2
+ARG AGY_RELEASE_ID=5174998495789056
+ARG AGY_SHA512_AMD64=b7a1b606a61c97ccb1592a64d689ad0fd0ed4491592f3474adf6cf0e6193d23b390e1308f89a1dd4e78306aeab13fe08dcb1a4a24da3e4583c3bd6845d52c456
+ARG AGY_SHA512_ARM64=df2d147cee4f6d85630c98bcbc097369d47897b9aac97cbb6027b1e11c920c36a8de27f49cde05c3bbed0a9b9a1dfc2542e5b8c93606935ac4af7eb3cbad88b3
+
+COPY tools/configure_apt_snapshot.sh /usr/local/sbin/configure_apt_snapshot
+RUN DEBIAN_SNAPSHOT="${DEBIAN_SNAPSHOT}" sh /usr/local/sbin/configure_apt_snapshot
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    curl \
     ca-certificates \
-    sudo \
-    jq \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+COPY tools/install_agy.sh /usr/local/sbin/install_agy
+RUN AGY_VERSION="${AGY_VERSION}" \
+    AGY_RELEASE_ID="${AGY_RELEASE_ID}" \
+    AGY_SHA512_AMD64="${AGY_SHA512_AMD64}" \
+    AGY_SHA512_ARM64="${AGY_SHA512_ARM64}" \
+    sh /usr/local/sbin/install_agy /usr/local/bin/agy
+
+
+FROM ${PYTHON_IMAGE}
 
 ARG USERNAME=karen
 ARG USER_ID=1000
+ARG GROUP_ID=1000
+ARG DEBIAN_SNAPSHOT=20260714T000000Z
 
-RUN if [ "${USER_ID}" -ne 0 ] && [ "${USERNAME}" != "root" ]; then \
-        if ! getent group "${USER_ID}" >/dev/null 2>&1; then \
-            groupadd -g ${USER_ID} ${USERNAME}; \
-        fi && \
-        if ! getent passwd "${USER_ID}" >/dev/null 2>&1 && ! getent passwd "${USERNAME}" >/dev/null 2>&1; then \
-            useradd -u ${USER_ID} -g ${USER_ID} -m -s /bin/bash ${USERNAME}; \
-        fi && \
-        echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers; \
-    fi && \
-    chown -R ${USER_ID}:${USER_ID} /app
+COPY tools/configure_apt_snapshot.sh /usr/local/sbin/configure_apt_snapshot
+RUN DEBIAN_SNAPSHOT="${DEBIAN_SNAPSHOT}" sh /usr/local/sbin/configure_apt_snapshot
 
-RUN pip install --no-cache-dir uv
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    jq \
+    && rm -rf /var/lib/apt/lists/* \
+    && if ! getent group "${GROUP_ID}" >/dev/null; then \
+        groupadd --gid "${GROUP_ID}" "${USERNAME}"; \
+    fi \
+    && useradd --uid "${USER_ID}" --gid "${GROUP_ID}" --create-home \
+        --shell /bin/bash "${USERNAME}"
 
-# Instalação do agy
-RUN curl -fsSL https://antigravity.google/cli/install.sh | bash && \
-    mv /root/.local/bin/agy /usr/local/bin/agy
+COPY --from=agy-installer /usr/local/bin/agy /usr/local/bin/agy
 
-ENV PATH="/usr/local/bin:${PATH}"
+WORKDIR /app
 
-COPY requirements.txt .
-RUN uv pip install --system --no-cache -r requirements.txt
+COPY karen_guard/prompt_persona.txt /app/prompt_persona.txt
+COPY karen_guard/run_evaluator.sh /usr/local/bin/run_evaluator
+COPY config/agents/agy/config/config.json /home/${USERNAME}/.gemini/config/config.json
 
-COPY prompt_persona.txt /app/prompt_persona.txt
-COPY run_evaluator.sh /usr/local/bin/run_evaluator
-RUN chmod +x /usr/local/bin/run_evaluator
+RUN mkdir -p /app/session/out /home/${USERNAME}/.gemini/antigravity-cli \
+    && printf '%s\n' \
+        '{' \
+        '  "allowNonWorkspaceAccess": false,' \
+        '  "trustedWorkspaces": ["/app/session"]' \
+        '}' \
+        > /home/${USERNAME}/.gemini/antigravity-cli/settings.json \
+    && chmod 0755 /usr/local/bin/run_evaluator \
+    && chown -R "${USER_ID}:${GROUP_ID}" /app /home/${USERNAME}
 
-CMD ["/bin/bash"]
+ENV HOME=/home/${USERNAME}
+ENV PATH=/usr/local/bin:${PATH}
+
+USER ${USER_ID}:${GROUP_ID}
+
+CMD ["run_evaluator"]

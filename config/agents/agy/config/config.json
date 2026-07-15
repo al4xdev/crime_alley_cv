@@ -2,18 +2,17 @@
   "userSettings": {
     "globalPermissionGrants": {
       "allow": [
-        "unsandboxed(bash)",
-        "unsandboxed(sh)",
         "command(*)",
-        "read_file(*)",
-        "write_file(*)",
-        "read_url(*)",
-        "mcp(*)"
+        "read_file(/app/session/**)",
+        "write_file(/app/session/out/**)"
       ],
       "deny": [
-        "command(rm)",
-        "command(rm -rf)",
-        "write_file(/etc)"
+        "unsandboxed(*)",
+        "read_url(*)",
+        "mcp(*)",
+        "read_file(/home/**)",
+        "write_file(/app/session/docs/**)",
+        "write_file(/app/session/repos/**)"
       ]
     },
     "useAiCredits": false

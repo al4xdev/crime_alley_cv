@@ -14,7 +14,7 @@ You must read the following files from the session workspace:
 1. **CV**: `{{ session_dir }}/docs/cv.md`
 2. **Job Description**: `{{ session_dir }}/docs/job.md`
 3. **Evaluation Report**: `{{ karen_report_path }}`
-4. **Candidate Background (Source of Truth)**: `{{ session_dir }}/anti_karen/who_are_u.md` (if present) or `{{ session_dir }}/docs/who_are_u.md`
+4. **Candidate Background (Source of Truth)**: `{{ session_dir }}/anti_karen/artifacts/who_are_u.md` (if present) or `{{ session_dir }}/docs/who_are_u.md`
 
 ---
 
@@ -23,7 +23,7 @@ You must read the following files from the session workspace:
 To prevent biasing the critic agent (Karen), leaking intermediate reasoning steps, or executing out-of-scope tasks, adhere strictly to these rules:
 
 1. **Do NOT Modify Host Repository Files**: Do not write to `.data/docs/cv.md` directly. All updates must be made to `{{ session_dir }}/docs/cv.md`.
-2. **Use the Protected Workspace**: Write all intermediate draft versions, comparison tables, brainstorm logs, and notes inside `{{ session_dir }}/anti_karen/`. Karen's prompt instructs her to ignore this folder completely, keeping your draft process private.
+2. **Use the Protected Workspace**: Write intermediate drafts and notes inside `{{ session_dir }}/anti_karen/artifacts/`. Karen cannot read this folder.
 3. **Strict Scope Discipline (No Code Modifications)**: Your sole responsibility is editing and optimizing the candidate's resume (`cv.md`). You must **NEVER** modify source code files, refactor the application codebase, or write/commit changes to the candidate's cloned repositories. Repositories must be treated strictly as read-only references.
 
 ---
@@ -43,12 +43,12 @@ To ensure the CV remains highly professional, realistic, and factual, you must o
 
 ## 🛠️ Step-by-Step Editor Execution Plan
 
-1. **Read Inputs**: Read the Job Description (`job.md`), the Candidate Background (`who_are_u.md` from `anti_karen/who_are_u.md` if present, otherwise from `docs/who_are_u.md`), and Karen's evaluation report. Note down:
+1. **Read Inputs**: Read the Job Description (`job.md`), the Candidate Background (`who_are_u.md` from `anti_karen/artifacts/who_are_u.md` if present, otherwise from `docs/who_are_u.md`), and Karen's evaluation report. Note down:
    - Inconsistencies and exaggerations highlighted (e.g., title inflation, lack of public code support for claimed technologies).
    - Core technology requirements of the job.
    - Recommended adjustments for the CV.
 2. **Draft Modifications**:
-   - Create a draft analysis inside `{{ session_dir }}/anti_karen/draft_notes.txt`.
+   - Create a draft analysis inside `{{ session_dir }}/anti_karen/artifacts/draft_notes.txt`.
    - Align the CV's headline and senior title to match the candidate's actual profile ("GenAI Platform Engineer") and years of experience.
    - Replace generic or unverified metrics with qualified, professional explanations.
    - Ensure any private corporate experience that cannot have public code is labeled with appropriate NDA remarks.

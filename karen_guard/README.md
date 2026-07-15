@@ -1,60 +1,54 @@
-# Karen Guard (Evaluator Sandbox)
+# Karen Guard evaluator
 
-Isolated candidate evaluator. Simulates a highly skeptical Senior Technical Recruiter. Runs as a Gemini CLI (`agy`) process inside a containerized sandbox, fully isolated from the host and from the orchestrator's context.
+Karen evaluates one fresh session and writes a report with exactly one canonical score line:
 
-Karen does not know she is part of a loop. She receives a fresh session workspace for each evaluation, checks the candidate's claims against real evidence, and writes a report.
+```markdown
+## Technical Fit Score: N/100
+```
 
----
+The deterministic parser accepts only an integer from 0 through 100 in that form. The pipeline
+archives the report, increments its authoritative iteration count and chooses either
+`needs_revision` or `coaching_ready`.
 
-## How Karen Evaluates
+## Session contract
 
-1. **Job vs Resume**: Reads `job.md` and `cv.md` to assess initial alignment.
-2. **Code Evidence**: Inspects cloned repositories in `repos/` (architecture, coding patterns, Git history, test coverage).
-3. **Skeptical Correlation**: Cross-references every CV statement against actual code. Flags inconsistencies, hallucinations, and exaggerations.
-4. **Report**: Writes `evaluation.md` containing a structured report with a `## Technical Fit Score: N/100` line parsed by the Gatekeeper.
+Karen receives these session artifacts:
 
----
+```text
+docs/cv.md
+docs/job.md
+docs/who_are_u.md       optional
+repos/                  cloned evidence
+company_info.md
+out/                    writable evaluator output
+```
 
-## Sandboxing & Isolation Model
+The protected `anti_karen/` directory is not mounted in the evaluator container. After execution,
+the wrapper copies the raw report into its artifacts area; the pipeline then validates and archives
+that report.
 
-The evaluator implements a strict **physical isolation boundary** rather than relying solely on soft prompt instructions.
-
-| Karen Can See | Karen Cannot See |
-|---|---|
-| `docs/cv.md`, `docs/job.md` | `anti_karen/` (History log, draft notes, run metrics) |
-| `docs/who_are_u.md` (only if `KAREN_READS_BACKGROUND=yes`) | The host filesystem |
-| `repos/` (cloned candidate repositories, mounted read-only) | Orchestrator context / past CV iterations |
-| `company_info.md` (read-only research) | Other session directories |
-
-### Isolation Mechanisms
-- **Mount Hardening**: `run.sh` mounts only the specific folders `docs/`, `repos/`, and `company_info.md` as **read-only** (`:ro`). The folder `anti_karen/` is physically omitted from the volume configurations, making it structurally impossible for the evaluator to inspect execution logs or previous drafts.
-- **Container Engines (Podman vs. Docker)**:
-  - **Podman (Recommended / Default)**: Runs fully **rootless** inside nested container systems (using the `vfs` storage driver under Podman-in-Docker). It utilizes user namespace mapping (`--userns=keep-id`) and SELinux tags (`:z`) to prevent file access leaks to/from the host system.
-  - **Docker (Fallback)**: If Podman is not installed, the runner falls back to Docker. It automatically builds the container passing host user IDs (`--build-arg USER_ID`) and executes commands inside the sandbox under that user ID (`su - <user>`), protecting root permissions.
-
----
+The evaluator image has a dedicated non-root user and no `sudo`. The runtime drops every Linux
+capability, enables `no-new-privileges`, limits process count, mounts evidence read-only and exposes
+only `out/` for session writes. `agy` runs with `--sandbox`; unsandboxed commands, URL tools and MCP
+are denied by its evaluator-specific permission file.
 
 ## Execution
 
-Always execute from the **repository root**:
+Pass the absolute session directory returned by `harvey_guy.pipeline start-session`:
 
-```bash
-./karen_guard/run.sh <session_id> \
-  > /tmp/karen_guard_<session_id>/anti_karen/karen_run.log \
-  2> /tmp/karen_guard_<session_id>/anti_karen/karen_run.err
+```fish
+./karen_guard/run.sh "$SESSION_DIR" \
+    > "$SESSION_DIR/anti_karen/logs/karen.stdout.log" \
+    2> "$SESSION_DIR/anti_karen/logs/karen.stderr.log"
 ```
 
-> **Pre-flight**: The Antigravity CLI (`agy`) must have valid credentials. The script copies host credentials dynamically from `~/.gemini` to the session's isolated `.gemini` folder before starting. If credentials are missing, the script will halt and prompt for an interactive login flow.
+After this wrapper returns, `record-evaluation` validates the report and uses `PIPELINE_DATA_DIR`
+for the transactional convenience copy `evaluation.md`. The wrapper itself never publishes to the
+data directory. The canonical archived report remains under the run's `iterations/` directory.
 
----
-
-## Output Lifecycle
-
-Once evaluation completes, the runner moves the generated file from the writable `out/` mount into the protected `anti_karen/` folder:
-
-| File | Location |
-|---|---|
-| Evaluation report | `SESSION_DIR/anti_karen/karen_output.md` |
-| Host repository copy | `.data/evaluation.md` |
-| Stdout runner log | `SESSION_DIR/anti_karen/karen_run.log` |
-| Stderr builder log | `SESSION_DIR/anti_karen/karen_run.err` |
+The image is rebuilt from the current source context on every invocation; the container engine
+reuses unchanged layers. Authentication may run interactively in a separate container. During the
+evaluation only the OAuth token file is mounted, read-only. Provider transport still requires
+network access, but Karen's shell/content tools are sandboxed and instructed not to perform network
+operations. This is not a domain-level egress firewall, so provider isolation must still be tested
+end to end when quota is available.

@@ -7,7 +7,10 @@ Evaluation Instructions:
 CRITICAL RESTRICTION: You MUST NOT read, analyze, inspect, or in any way consider any files or folders contained within the `anti_karen/` directory of the session. Ignore this directory entirely.
 
 ENVIRONMENT RESTRICTIONS:
-- **NO INTERNET ACCESS**: You run in an offline, isolated sandbox. You do not have internet access to clone repositories, fetch git remotes, or perform online operations. All required repositories are already locally cloned for you inside the `/app/session/repos/` directory. Do not try to run `git clone`, `git fetch`, or connect to GitHub remotes.
+- **NO TOOL INTERNET ACCESS**: Your shell and content tools run in restricted sandbox mode. The
+  provider transport itself remains online so the model can respond, but you must not use tools to
+  clone repositories, fetch remotes, browse URLs or perform any other network operation. All
+  evidence is already present under `/app/session/repos/`.
 - **DIRECTORY ISOLATION**: Do not perform recursive searches (like `find / ...`) over the root filesystem of the container. Limit all your file searches, lists, and reads strictly to `/app/session/docs/` and `/app/session/repos/` directories to prevent context bloat and timeout issues.
 
 0. COMPANY CONTEXT:
@@ -38,7 +41,9 @@ Write the final evaluation report in Markdown format to the `out/` directory (i.
 
 ## Technical Fit Score: <number>/100
 
-Output your realistic, rigorous rating here. This is parsed programmatically: the pipeline finds the line containing the text `Technical Fit Score` and reads the integer immediately before `/100`. Therefore you MUST: (a) keep the score on a single line, (b) write the value in the form `<number>/100`, and (c) not place any other `N/100` figure earlier in the report. Canonical form: `## Technical Fit Score: 72/100`.
+Output your realistic, rigorous rating here. The parser accepts exactly one ASCII score line in the
+canonical form `## Technical Fit Score: 72/100`, with a value from 0 through 100. Do not emit a
+second line in that form.
 
 ## 1. Overview and Job Fit
 - **Executive Summary**: Your direct, professional assessment of the candidate against the position requirements described in `job.md`.

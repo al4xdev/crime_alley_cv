@@ -11,7 +11,7 @@ Bill operates as a agent spawned by the orchestrator in Step 3 of each loop iter
 While Karen acts as the rigorous critic who surfaces gaps and inconsistencies, **Bill** is the intelligent editor who:
 
 1. Reads the current CV, job description, Karen's report, and the candidate background (`who_are_u.md`).
-2. Creates a draft analysis in `anti_karen/draft_notes.txt` (hidden from Karen).
+2. Creates a draft analysis in `anti_karen/artifacts/draft_notes.txt` (hidden from Karen).
 3. Rewrites `SESSION_DIR/docs/cv.md` to address Karen's criticisms using only verified facts.
 4. Never invents technologies, roles, or certifications not present in the candidate's actual background.
 

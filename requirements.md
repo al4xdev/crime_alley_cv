@@ -1,65 +1,74 @@
-# Dependency Verification Guide (Requirements Checker)
+# Dependency Verification Guide
 
-Welcome, Dependency Checker Agent! Your goal is to check the host system to ensure that all required tools and libraries are installed and configured correctly. Interact directly with the user to resolve any missing dependencies so that we don't saturate the main orchestrator's context.
+Verify dependencies on every run. Do not create a persistent “dependencies checked” marker:
+installed tools, daemon access and credentials can change between executions.
 
-## 📋 Required System Dependencies
+## Supported environment
 
-> [!IMPORTANT]
-> **Operating System & Storage Requirements**
-> - **Linux Host Only**: This system utilizes rootless Podman nested containerization, user namespaces (`keep-id`), and advanced cgroups configurations. It **only runs on Linux host environments** (macOS and Windows/WSL are not supported).
-> - **Disk Space**: A minimum of **10 GB of free disk space** is required on the host system to build and store container image layers, cache dependencies, and accommodate cloned repositories.
+- **Host:** Linux. The nested-container boundary relies on Linux capabilities, seccomp, AppArmor
+  integration where available and container namespaces.
+- **Disk:** keep at least 10 GB free for the two images, build cache, run artifacts and cloned public
+  repositories.
+- **Authentication:** authenticate `agy` on the host first. `start.sh` requires
+  `~/.gemini/antigravity-cli/antigravity-oauth-token` and mounts the credential directory read-only.
 
-The Actor-Critic CV Optimization loop requires the following tools:
-1. **Python (>=3.13)**
-2. **`uv` Package Manager** (to run python files inside virtualenv)
-3. **Podman** or **Docker** (to run the Karen Guard sandbox container rootless)
-4. **`at` command-line utility** (for long-running task watchdog checks)
-5. **Git** (for cloning public repositories)
+## Containerized execution
 
----
+This is the normal path:
 
-## 🛠️ Step-by-Step Verification Instructions
+```fish
+docker version
+git --version
+test -f ~/.gemini/antigravity-cli/antigravity-oauth-token
+./start.sh
+```
 
-Run the following commands on the host machine to check each dependency:
+The host needs Docker daemon access without an interactive privilege prompt. Python, `uv`, Fish,
+`jq`, Git, Podman and `agy` are installed inside the content-addressed outer image. `start.sh`
+rebuilds that image from the current checkout before launching it.
 
-### 1. Python & uv Version Check
-```bash
+## Direct host execution
+
+Running the runbook without the outer image additionally requires:
+
+1. Python 3.13 or newer.
+2. `uv` compatible with the checked-in `uv.lock` (the container and CI pin 0.11.28).
+3. Fish, Git and `jq`.
+4. Docker or Podman with permission to build and run containers.
+5. An authenticated agent client capable of executing `@main.md`.
+
+Verify the toolchain:
+
+```fish
 python --version
 uv --version
-```
-- Verify Python version is `3.13` or greater.
-- If `uv` is not installed, instruct the user to install it (e.g., using `curl -LsSf https://astral.sh/uv/install.sh | sh` or standard package manager).
-
-### 2. Container Engine Check (Podman / Docker)
-```bash
-podman --version || docker ps
-```
-- Verify if `podman` is installed. Podman is preferred as it runs in rootless mode by default.
-- If `podman` is missing, verify if `docker` is installed and if the user has permission to run it without sudo (e.g. `docker ps` runs successfully).
-- If neither is installed, help the user install Podman (recommended) or Docker.
-
-### 3. Git Check
-```bash
+fish --version
 git --version
+jq --version
+
+if command -q podman
+    podman version
+else
+    docker version
+end
+
+uv sync --frozen --group dev
 ```
-- Verify Git is installed and reports a version. If missing, instruct the user to install it (e.g., `sudo apt install git` on Debian/Ubuntu or `brew install git` on macOS).
 
-### 4. at Utility Check
-```bash
-which at
+## Development validation
+
+These checks consume no provider quota:
+
+```fish
+uv run ruff check .
+uv run mypy --strict harvey_guy tools/replay_pipeline.py
+uv run pytest
+bash -n start.sh entrypoint.sh karen_guard/run.sh karen_guard/run_evaluator.sh
+sh -n tools/configure_apt_snapshot.sh tools/install_agy.sh
+fish -n boundaries/*.fish
+jq empty config/agents/agy/config/config.json
 ```
-- If the `at` utility is missing, instruct the user to install it based on their OS:
-  - Ubuntu/Debian: `sudo apt install at`
-  - macOS: `brew install at`
-- Ensure the `atd` service is enabled and running:
-  - Linux: `sudo systemctl enable --now atd`
 
----
-
----
-
-## 💬 User Interaction & Report
-
-1. **Verify Automatically:** Executing the verification commands on the host system.
-2. **Interact with the User:** If any dependency is missing, output clear installation commands and wait for the user to install it.
-3. **Final Report:** Once all checks pass, write a summary status report to `.data/docs/.dependencies_checked.md` (not at the repository root or `/tmp/`, so it persists across container runs/restarts via volume mount and the check runs only once) and signal success to the parent agent.
+CI repeats those checks and builds both the outer orchestrator and Karen evaluator images. Real
+provider execution is intentionally excluded while `agy` quota is unavailable; the offline replay
+and mock container tests cover the deterministic boundaries.

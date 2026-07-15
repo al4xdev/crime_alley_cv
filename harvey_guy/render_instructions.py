@@ -1,139 +1,148 @@
+from __future__ import annotations
+
 import argparse
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
-from pydantic import BaseModel, Field, ConfigDict, StrictStr, StrictInt, ValidationError
-from jinja2 import Template
+from typing import Any
 
-class ShadowInput(BaseModel):
-    model_config = ConfigDict(strict=True)
-    session_id: StrictStr = Field(..., min_length=1)
-    session_dir: StrictStr = Field(..., min_length=1)
+from jinja2 import Environment, StrictUndefined
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-class BillInput(BaseModel):
-    model_config = ConfigDict(strict=True)
-    session_id: StrictStr = Field(..., min_length=1)
-    session_dir: StrictStr = Field(..., min_length=1)
-    karen_report_path: StrictStr = Field(..., min_length=1)
-    candidate_background_path: Optional[StrictStr] = None
+from .io import atomic_write_text
 
-class DonnaInput(BaseModel):
-    model_config = ConfigDict(strict=True)
-    session_id: StrictStr = Field(..., min_length=1)
-    session_dir: StrictStr = Field(..., min_length=1)
-    karen_report_path: StrictStr = Field(..., min_length=1)
-    fit_score: StrictInt = Field(..., ge=0, le=100)
-    min_fit_score: StrictInt = Field(..., ge=0, le=100)
 
-MODELS = {
+class ContractModel(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+
+class ShadowInput(ContractModel):
+    session_id: str = Field(min_length=1)
+    session_dir: str = Field(min_length=1)
+
+
+class BillInput(ContractModel):
+    session_id: str = Field(min_length=1)
+    session_dir: str = Field(min_length=1)
+    karen_report_path: str = Field(min_length=1)
+    candidate_background_path: str | None = None
+
+
+class DonnaInput(ContractModel):
+    session_id: str = Field(min_length=1)
+    session_dir: str = Field(min_length=1)
+    karen_report_path: str = Field(min_length=1)
+    action_plan_path: str = Field(min_length=1)
+    fit_score: int = Field(ge=0, le=100)
+    min_fit_score: int = Field(ge=0, le=100)
+
+
+MODELS: dict[str, type[ContractModel]] = {
     "shadow": ShadowInput,
     "bill": BillInput,
     "donna": DonnaInput,
 }
 
 PROMPTS = {
-    "shadow": """Welcome, Harvey Shadow! You are the execution agent. Please read and follow the instructions defined in the file: {{ instructions_path }}
+    "shadow": """Welcome, Harvey Shadow! Read and follow: {{ instructions_path }}
 
-Your input parameters are:
+Inputs:
 - SESSION_ID: {{ session_id }}
 - SESSION_DIR: {{ session_dir }}
 
-You can also read the JSON configuration at: {{ input_json_path }}
+Validated JSON: {{ input_json_path }}
 """,
-    "bill": """Welcome, Bill! You are the editor agent. Please read and follow the instructions defined in the file: {{ instructions_path }}
+    "bill": """Welcome, Bill! Read and follow: {{ instructions_path }}
 
-Your input parameters are:
+Inputs:
 - SESSION_ID: {{ session_id }}
 - SESSION_DIR: {{ session_dir }}
 - KAREN_REPORT_PATH: {{ karen_report_path }}
 - CANDIDATE_BACKGROUND_PATH: {{ candidate_background_path }}
 
-You can also read the JSON configuration at: {{ input_json_path }}
+Validated JSON: {{ input_json_path }}
 """,
-    "donna": """Welcome, Donna! You are the coaching agent. Please read and follow the instructions defined in the file: {{ instructions_path }}
+    "donna": """Welcome, Donna! Read and follow: {{ instructions_path }}
 
-Your input parameters are:
+Inputs:
 - SESSION_ID: {{ session_id }}
 - SESSION_DIR: {{ session_dir }}
 - KAREN_REPORT_PATH: {{ karen_report_path }}
+- ACTION_PLAN_PATH: {{ action_plan_path }}
 - FIT_SCORE: {{ fit_score }}
 - MIN_FIT_SCORE: {{ min_fit_score }}
 
-You can also read the JSON configuration at: {{ input_json_path }}
-"""
+Validated JSON: {{ input_json_path }}
+""",
 }
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Render deterministic contracts and instructions")
-    parser.add_argument("--agent", required=True, choices=list(MODELS.keys()), help="Agent name")
-    parser.add_argument("--data-file", required=True, help="Path to JSON data file")
-    parser.add_argument("--template-path", required=True, help="Path to the template markdown file")
-    parser.add_argument("--output-dir", required=True, help="Directory to output rendered files")
-    args = parser.parse_args()
+JINJA = Environment(undefined=StrictUndefined, autoescape=False, keep_trailing_newline=True)
 
-    data_file_path = Path(args.data_file)
-    if not data_file_path.exists():
-        print(f"Error: Data file not found at '{data_file_path}'", file=sys.stderr)
-        sys.exit(1)
 
+@dataclass(frozen=True, slots=True)
+class RenderedContract:
+    input_json: Path
+    instructions: Path
+    prompt: Path
+
+
+def render_agent(
+    agent: str,
+    data: dict[str, Any],
+    template_path: Path,
+    output_dir: Path,
+) -> RenderedContract:
     try:
-        data_dict = json.loads(data_file_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        print(f"Error parsing JSON data file: {e}", file=sys.stderr)
-        sys.exit(1)
+        model_class = MODELS[agent]
+    except KeyError as exc:
+        raise ValueError(f"Unknown agent: {agent}") from exc
+    if not template_path.is_file():
+        raise FileNotFoundError(template_path)
 
-    model_class = MODELS[args.agent]
-    try:
-        model = model_class(**data_dict)
-    except ValidationError as e:
-        print(f"Pydantic validation failed for {args.agent}: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    output_dir = Path(args.output_dir)
+    model = model_class.model_validate(data)
+    context = model.model_dump()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save validated input JSON
-    json_output_path = output_dir / f"{args.agent}_input.json"
-    json_output_path.write_text(model.model_dump_json(indent=2), encoding="utf-8")
+    input_json = output_dir / f"{agent}_input.json"
+    instructions = output_dir / f"{agent}_instructions.md"
+    prompt = output_dir / f"{agent}.prompt"
 
-    # Render template
-    template_file = Path(args.template_path)
-    if not template_file.exists():
-        print(f"Error: Template not found at '{template_file}'", file=sys.stderr)
-        sys.exit(1)
+    atomic_write_text(input_json, model.model_dump_json(indent=2) + "\n")
+    template = JINJA.from_string(template_path.read_text(encoding="utf-8"))
+    atomic_write_text(instructions, template.render(**context))
 
-    template_content = template_file.read_text(encoding="utf-8")
-    context = model.model_dump()
-    
+    prompt_context = {
+        **context,
+        "instructions_path": str(instructions),
+        "input_json_path": str(input_json),
+    }
+    prompt_template = JINJA.from_string(PROMPTS[agent])
+    atomic_write_text(prompt, prompt_template.render(**prompt_context))
+    return RenderedContract(input_json=input_json, instructions=instructions, prompt=prompt)
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Render a validated agent contract")
+    parser.add_argument("--agent", required=True, choices=sorted(MODELS))
+    parser.add_argument("--data-file", required=True, type=Path)
+    parser.add_argument("--template-path", required=True, type=Path)
+    parser.add_argument("--output-dir", required=True, type=Path)
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = _parse_args()
     try:
-        template = Template(template_content)
-        rendered_content = template.render(**context)
-    except Exception as e:
-        print(f"Error rendering Jinja2 template: {e}", file=sys.stderr)
-        sys.exit(1)
+        data = json.loads(args.data_file.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("Data file must contain a JSON object")
+        render_agent(args.agent, data, args.template_path, args.output_dir)
+    except (OSError, ValueError, ValidationError) as exc:
+        print(f"Contract rendering failed for {args.agent}: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+    print(f"Contract rendered for {args.agent}.")
 
-    instructions_path = output_dir / f"{args.agent}_instructions.md"
-    instructions_path.write_text(rendered_content, encoding="utf-8")
-
-    # Generate prompt file (.prompt)
-    prompt_template_content = PROMPTS[args.agent]
-    prompt_context = context.copy()
-    prompt_context["instructions_path"] = str(instructions_path)
-    prompt_context["input_json_path"] = str(json_output_path)
-
-    try:
-        prompt_template = Template(prompt_template_content)
-        rendered_prompt = prompt_template.render(**prompt_context)
-    except Exception as e:
-        print(f"Error rendering prompt template: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    prompt_path = output_dir / f"{args.agent}.prompt"
-    prompt_path.write_text(rendered_prompt, encoding="utf-8")
-
-    print(f"Deterministic contract and prompt rendered successfully for {args.agent}.")
-    sys.exit(0)
 
 if __name__ == "__main__":
     main()

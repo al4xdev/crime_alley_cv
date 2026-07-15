@@ -1,98 +1,12 @@
 #!/usr/bin/env fish
-# boundaries/bill_harvey.fish — Boundary validation hook for carry-forward of optimized CV
-
-if set -q BOUNDARY_REPO_ROOT
-    set repo_root "$BOUNDARY_REPO_ROOT"
-else
-    set boundary_dir (status dirname)
-    set repo_root "$boundary_dir/.."
-end
-
+source (status dirname)/common.fish
 set mode $argv[1]
-set session_id $argv[2]
-
-set -g BOUNDARY_NAME "bill_harvey.fish"
-source "$repo_root/boundaries/audit_logger.fish"
-
-if test "$mode" = "--pre"
-    # Pre-conditions:
-    if test -z "$session_id"
-        echo "Error [carry-forward boundary]: session_id is missing." >&2
-        exit 1
-    end
-    set session_dir "/tmp/karen_guard_$session_id"
-    set session_cv "$session_dir/docs/cv.md"
-    if not test -f "$session_cv"
-        echo "Error [carry-forward boundary]: Session CV '$session_cv' is missing." >&2
-        exit 1
-    end
-
-    set host_cv ".data/docs/cv.md"
-    if test -f "$host_cv"
-        set session_hash (sha256sum "$session_cv" | cut -d' ' -f1)
-        set host_hash (sha256sum "$host_cv" | cut -d' ' -f1)
-        if test "$session_hash" = "$host_hash"
-            echo "Warning [carry-forward boundary]: Session CV is identical to Host CV. Nothing to carry forward?"
-        end
-    end
-    exit 0
-
-else if test "$mode" = "--post"
-    # Post-conditions:
-    set session_dir "/tmp/karen_guard_$session_id"
-    set session_cv "$session_dir/docs/cv.md"
-    set host_cv ".data/docs/cv.md"
-    
-    # 1. Perform CV copy (carry-forward)
-    mkdir -p (dirname "$host_cv")
-    cp -f "$session_cv" "$host_cv"
-    if not test -f "$host_cv"
-        echo "Error [carry-forward boundary]: Failed to copy session CV to '$host_cv'." >&2
-        exit 1
-    end
-
-    # 2. Increment CURRENT_LOOP and write state JSON
-    set checkpoint_file $LOOP_STATE_PATH
-    if test -z "$checkpoint_file"
-        set checkpoint_file "/tmp/karen_guard_loop_state.json"
-    end
-    if test -f "$checkpoint_file"
-        set state_json (cat "$checkpoint_file")
-        # Extract variables
-        set current_loop (echo $state_json | jq -r '.current_loop')
-        set fit_score (echo $state_json | jq -r '.fit_score')
-        
-        if not string match -r '^\d+$' "$current_loop" >/dev/null
-            set current_loop 0
-        end
-        # Increment
-        set current_loop (math "$current_loop + 1")
-        
-        # Write back new state JSON
-        jq -n \
-            --argjson loop $current_loop \
-            --arg score "$fit_score" \
-            --arg sid "$session_id" \
-            '{current_loop: $loop, fit_score: $score, session_id: $sid}' \
-            > "$checkpoint_file"
-        
-        # Verify checkpoint update
-        set new_loop (cat "$checkpoint_file" | jq -r '.current_loop')
-        if test "$new_loop" -ne "$current_loop"
-            echo "Error [carry-forward boundary]: Failed to update loop checkpoint count." >&2
-            exit 1
-        end
-    else
-        echo "Warning [carry-forward boundary]: Checkpoint file '$checkpoint_file' not found. Creating it."
-        jq -n \
-            --argjson loop 1 \
-            --arg sid "$session_id" \
-            '{current_loop: $loop, fit_score: null, session_id: $sid}' \
-            > "$checkpoint_file"
-    end
-
-    exit 0
-else
-    echo "Usage: boundaries/bill_harvey.fish [--pre|--post] [session_id]" >&2
-    exit 2
+boundary_load_context "$argv[2]"; or exit $status
+switch "$mode"
+    case --pre
+        boundary_expect_phase bill_harvey.fish "$mode" commit_bill bill_running
+    case --post
+        boundary_transition bill_harvey.fish "$mode" commit_bill commit-bill
+    case '*'
+        boundary_usage bill_harvey.fish
 end

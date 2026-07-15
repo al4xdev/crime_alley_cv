@@ -23,16 +23,13 @@
 - For commands with no natural output (`mv`, `mkdir`, `chmod`...), append
   `&& echo ok`.
 
-## Long-Running Task Watchdog
+## Long-Running Tasks
 
-- Before starting any task expected to take >30s, register it:
-  `echo (date +%s) $task_description > /tmp/agt_task_active`
-- On completion (success or failure), clear it: `rm -f /tmp/agt_task_active`
-- If a sub-agent or background process is spawned, set a cron to alert if still
-  running   after a reasonable timeout:
-  `echo "notify-send 'AGY watchdog' 'Task may be stuck: $task_description'" | at now + 5 minutes`
-- If `/tmp/agt_task_active` already exists when starting a new task, report it —
-  a previous   task may have crashed without cleanup.
+- Never use a busy loop to wait for a task.
+- Use the runtime's wait mechanism. If manual polling is unavoidable, use a
+  bounded timeout, a sleep interval and a real exit condition.
+- Report a failed or stuck process from its captured output; do not create
+  persistent watchdog markers.
 
 ## Persona and Execution Style
 

@@ -15,7 +15,7 @@ The parent agent will provide you with the following inputs:
 ## 🔒 Security & Data Isolation Rules
 
 1. **Do NOT Modify Host Repository Files**: All changes must occur inside `{{ session_dir }}`. Do not write to `.data/` or any host files.
-2. **Access Isolation**: Do not place confidential files or execution logs where Karen Guard can see them. Ensure they are placed under `{{ session_dir }}/anti_karen/`.
+2. **Access Isolation**: Do not place confidential files or execution logs where Karen Guard can see them. Put artifacts under `{{ session_dir }}/anti_karen/artifacts/` and logs under `{{ session_dir }}/anti_karen/logs/`.
 3. **Execution Mode**: You are allowed to run shell commands to verify configurations, fetch API data, and clone repositories.
 
 ---
@@ -42,7 +42,7 @@ The parent agent will provide you with the following inputs:
 - Save expected count: `jq length {{ session_dir }}/repos.json > {{ session_dir }}/repos_expected_count.txt`
 - Clone each repository inside `{{ session_dir }}/repos/` using standard `git clone` (no auth required for public repos):
   - **⚡ Parallelization Requirement:** Clone concurrently (e.g. `xargs -P 5`).
-- **Validation:** After clones complete, compare `ls {{ session_dir }}/repos/ | wc -l` against the expected count. If they differ, log to `{{ session_dir }}/anti_karen/clone_warnings.txt` and report to the parent agent.
+- **Validation:** After clones complete, compare `ls {{ session_dir }}/repos/ | wc -l` against the expected count. If they differ, log to `{{ session_dir }}/anti_karen/logs/clone_warnings.txt` and report to the parent agent.
 
 ### 3. Research Target Company
 - Read the first line of `{{ session_dir }}/docs/job.md`. It follows this guaranteed format: `# <Position Title> — <Company Name>` (e.g., `# Senior Backend Engineer — Acme Corp`).
@@ -75,20 +75,16 @@ The parent agent will provide you with the following inputs:
 - **Note:** `company_info.md` is consumed by Karen Guard during evaluation to calibrate scoring against the company's real stack and priorities. Write it even if data is sparse — an empty section is better than a missing file.
 
 ### 4. Build Karen Guard Sandbox Image
-- Check if the image already exists before building using the active container engine (Podman or Docker):
+- Rebuild from the current source context on every run. Container-layer caching keeps unchanged
+  builds fast while ensuring edits to the Dockerfile, prompt, permissions or evaluator wrapper are
+  never hidden behind a stale tag:
   ```bash
   if command -v podman >/dev/null 2>&1; then
-    if ! podman image exists karen_guard; then
-      podman build -t karen_guard --build-arg USERNAME=$(whoami) --build-arg USER_ID=$(id -u) ./karen_guard
-    else
-      echo "karen_guard image already exists in Podman, skipping build."
-    fi
+    podman build -f ./karen_guard/Dockerfile -t karen_guard \
+      --build-arg USERNAME=karen --build-arg USER_ID=1000 --build-arg GROUP_ID=1000 .
   elif command -v docker >/dev/null 2>&1; then
-    if docker image inspect karen_guard >/dev/null 2>&1; then
-      echo "karen_guard image already exists in Docker, skipping build."
-    else
-      docker build -t karen_guard --build-arg USERNAME=$(whoami) --build-arg USER_ID=$(id -u) ./karen_guard
-    fi
+    docker build -f ./karen_guard/Dockerfile -t karen_guard \
+      --build-arg USERNAME=karen --build-arg USER_ID=1000 --build-arg GROUP_ID=1000 .
   else
     echo "Error: Neither podman nor docker found." >&2
     exit 1

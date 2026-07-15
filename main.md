@@ -2,8 +2,8 @@
 
 > [!IMPORTANT]
 > **SEQUENTIAL EXECUTION RULE:**
-> Read and execute **[harvey_guy/main.md](harvey_guy/main.md)** in strict sequential, line-by-line order.
-> Do **NOT** read the entire file at once or pre-analyze the whole process. This preserves the interactive feedback loop and architectural sanity.
+> Read **[harvey_guy/main.md](harvey_guy/main.md)** once, then execute its phases in order. Treat
+> the generated `state.json` as the only source of control-flow truth.
 
 ---
 
@@ -25,5 +25,5 @@ This is a multi-agent pipeline that iteratively refines a candidate's CV against
 ## How to Begin
 
 1. Open **[harvey_guy/main.md](harvey_guy/main.md)**.
-2. Read the Global Agent Execution Rules at the top.
-3. Execute **Phase 0: Dependency Verification**, **Phase 1: Initialize State**, then **Phase 1.5: Candidate Onboarding (Vera)**, step-by-step.
+2. Collect the four run inputs in one interaction.
+3. Initialize the canonical run and follow only the phase returned by the control plane.
