@@ -749,7 +749,43 @@ def test_replay_cli_runs_complete_control_plane(tmp_path: Path) -> None:
     assert payload["iterations_completed"] == 3
     state = json.loads(Path(payload["state_path"]).read_text(encoding="utf-8"))
     assert state["phase"] == "complete"
+    assert state["agent_provider"] == "replay"
     log_tree = Path(payload["log_tree"])
     assert log_tree.is_file()
     assert "run_completed" in log_tree.read_text(encoding="utf-8")
     assert (log_tree.parent / "logs" / "pipeline.log").is_file()
+
+
+def test_agent_provider_is_immutable_run_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _configure_runtime(tmp_path, monkeypatch)
+    state_path, state = initialize_run(
+        max_iterations=1,
+        min_fit_score=80,
+        karen_reads_background=False,
+        agent_provider="codex",
+        run_id="codex-provider",
+    )
+
+    assert state.agent_provider == "codex"
+    persisted = json.loads(state_path.read_text(encoding="utf-8"))
+    assert persisted["agent_provider"] == "codex"
+    assert RunStore(state_path).load().agent_provider == "codex"
+
+
+def test_legacy_state_without_agent_provider_defaults_to_agy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _configure_runtime(tmp_path, monkeypatch)
+    state_path, _ = initialize_run(
+        max_iterations=1,
+        min_fit_score=80,
+        karen_reads_background=False,
+        run_id="legacy-provider",
+    )
+    payload = json.loads(state_path.read_text(encoding="utf-8"))
+    payload.pop("agent_provider")
+    state_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert RunStore(state_path).load().agent_provider == "agy"

@@ -60,6 +60,43 @@ def test_agy_archive_is_versioned_and_checksum_verified() -> None:
     assert len(re.search(r"ARG AGY_SHA512_ARM64=([0-9a-f]+)", outer).group(1)) == 128
 
 
+def test_claude_and_codex_are_versioned_and_checksum_verified() -> None:
+    outer = _dockerfile_text(OUTER_DOCKERFILE)
+    karen = _dockerfile_text(KAREN_DOCKERFILE)
+    claude_installer = (REPOSITORY_ROOT / "tools/install_claude.sh").read_text()
+    codex_installer = (REPOSITORY_ROOT / "tools/install_codex.sh").read_text()
+
+    for dockerfile in (outer, karen):
+        assert "ARG CLAUDE_VERSION=2.1.210" in dockerfile
+        assert "ARG CODEX_VERSION=0.144.4" in dockerfile
+        assert "claude.ai/install.sh" not in dockerfile
+        assert "chatgpt.com/codex/install.sh" not in dockerfile
+        for name in (
+            "CLAUDE_SHA256_AMD64",
+            "CLAUDE_SHA256_ARM64",
+            "CODEX_SHA256_AMD64",
+            "CODEX_SHA256_ARM64",
+        ):
+            match = re.search(rf"ARG {name}=([0-9a-f]+)", dockerfile)
+            assert match is not None
+            assert len(match.group(1)) == 64
+
+    assert "sha256sum -c -" in claude_installer
+    assert "sha256sum -c -" in codex_installer
+    assert "amd64)" in claude_installer and "arm64)" in claude_installer
+    assert "amd64)" in codex_installer and "arm64)" in codex_installer
+
+
+def test_karen_selects_exactly_one_agent_installer() -> None:
+    karen = _dockerfile_text(KAREN_DOCKERFILE)
+
+    assert "FROM ${AGENT_PROVIDER}-installer AS selected-agent" in karen
+    assert "COPY --from=selected-agent /agent/bin/agent-cli" in karen
+    assert "FROM agent-downloader AS agy-installer" in karen
+    assert "FROM agent-downloader AS claude-installer" in karen
+    assert "FROM agent-downloader AS codex-installer" in karen
+
+
 def test_karen_image_has_no_unused_python_sdk_install() -> None:
     karen = _dockerfile_text(KAREN_DOCKERFILE)
 
