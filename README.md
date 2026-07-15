@@ -186,17 +186,30 @@ An accepted benchmark performs:
 3. three blinded comparisons between the final Bill CV and the simple baseline;
 4. at most one schema repair and one read-only verification batch of five excerpts per repetition.
 
-The judge provider and exact model are fixed in the capture request. A judge matching the executor
-is allowed but reported as a self-judge conflict. Judge CLIs run without write, shell, web or agent
-tools. Results are observational: no metric can gate a transition or modify the CV pipeline.
+Failed or interrupted evaluations do not seal the benchmark. Re-running with the same accepted
+plan digest validates completed results and resumes only missing repetitions. The frozen source
+case is never modified by baseline generation, judging, labels or reports; generated artifacts are
+kept in a separate benchmark directory with a hash-chained event ledger.
 
-Reports include judge consistency, evidence/citation proxies, unsupported-claim rate, comparison
-with the simpler pipeline, human/model agreement when labels exist, and sensitivity across judge
-models when compatible runs are available. “Real CV improvement” remains explicitly unavailable
-until blinded human labels or downstream outcomes exist; a model preference is only a proxy.
+The judge provider and explicit model ID are fixed in the capture request. A judge matching the
+executor is allowed but reported as a self-judge conflict. Dedicated provider images mount only
+one credential and the Celestial data directory. Claude runs with an empty tool set; Codex disables
+shell/unified execution, web search, user configuration and project rules in a read-only sandbox.
+Capability checks fail closed before quota is accepted. `agy` remains available for the normal
+pipeline and passive capture, but is blocked from Celestial baseline/judge calls until equivalent
+no-tool enforcement can be proven. Results are observational: no metric can gate a transition or
+modify the CV pipeline.
 
-Sensitive content and raw judge responses live under ignored `.celestial/`. Export blind human
-tasks and import completed labels with:
+Reports include within-item judge repeatability, schema-valid citation integrity, human-validated
+evidence precision, comparison with the simpler pipeline, human/model agreement, blinded revision
+acceptance, unsupported-claim reduction and sensitivity across compatible judge runs. Metrics that
+need two independent human labels remain explicitly unavailable until those labels exist. “Real CV
+improvement” means blinded human preference only—not a hiring or downstream outcome.
+
+Sensitive content and raw judge responses live under ignored `.celestial/`. Human exports use
+opaque item IDs, random A/B order and deterministic redaction of the candidate name and common
+contact identifiers. Review the export for unusual PII before sharing it. Two raters per item are
+required for human metrics. Export blind tasks and import completed labels with:
 
 ```fish
 uv run python -m the_celestial.cli export-labels \

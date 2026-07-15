@@ -5,14 +5,10 @@ import json
 from pathlib import Path
 
 from .benchmark import generate_baseline, plan_capture, run_benchmark
-from .capture import data_root, verify_frozen_case
-from .io import read_json_object
+from .capture import verify_frozen_case
 from .labels import export_blind_tasks, import_label
 from .metrics import build_report
-
-
-def _request(capture_id: str) -> dict[str, object]:
-    return read_json_object(data_root() / "captures" / capture_id / "request.json")
+from .provider import assert_model_capability
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -21,8 +17,8 @@ def _parser() -> argparse.ArgumentParser:
     for name in ("plan", "baseline", "judge"):
         command = commands.add_parser(name)
         command.add_argument("--capture", required=True)
-    judge = commands.choices["judge"]
-    judge.add_argument("--confirm-high-quota", action="store_true")
+    commands.choices["baseline"].add_argument("--accept-plan", required=True)
+    commands.choices["judge"].add_argument("--accept-plan", required=True)
     report = commands.add_parser("report")
     report.add_argument("--benchmark", required=True, type=Path)
     export = commands.add_parser("export-labels")
@@ -32,6 +28,9 @@ def _parser() -> argparse.ArgumentParser:
     import_command.add_argument("path", type=Path)
     verify = commands.add_parser("verify-case")
     verify.add_argument("case_id")
+    capability = commands.add_parser("capability")
+    capability.add_argument("--provider", choices=("agy", "claude", "codex"), required=True)
+    capability.add_argument("--model", required=True)
     return parser
 
 
@@ -40,39 +39,20 @@ def main() -> None:
     if args.command == "plan":
         value = plan_capture(args.capture)
     elif args.command == "baseline":
-        request = _request(args.capture)
-        if not request.get("celestial_requested"):
-            raise SystemExit("The Celestial was not enabled for this capture")
-        value = {
-            "baseline": str(
-                generate_baseline(
-                    args.capture,
-                    str(request["subject_provider"]),
-                    str(request["subject_model"]),
-                )
-            )
-        }
+        value = {"baseline": str(generate_baseline(args.capture, args.accept_plan))}
     elif args.command == "judge":
-        if not args.confirm_high_quota:
-            raise SystemExit("Refusing model calls without --confirm-high-quota")
-        request = _request(args.capture)
-        value = {
-            "benchmark": str(
-                run_benchmark(
-                    args.capture,
-                    judge_provider=str(request["judge_provider"]),
-                    judge_model=str(request["judge_model"]),
-                )
-            )
-        }
+        value = {"benchmark": str(run_benchmark(args.capture, plan_digest=args.accept_plan))}
     elif args.command == "report":
         value = build_report(args.benchmark)
     elif args.command == "export-labels":
         value = {"output": str(export_blind_tasks(args.benchmark, args.output))}
     elif args.command == "import-label":
         value = {"label": str(import_label(args.path))}
-    else:
+    elif args.command == "verify-case":
         value = verify_frozen_case(args.case_id)
+    else:
+        assert_model_capability(args.provider, args.model)
+        value = {"provider": args.provider, "model": args.model, "no_tools": True}
     print(json.dumps(value, ensure_ascii=False, indent=2))
 
 
