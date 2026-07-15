@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "role": "karen",
+  "version": "1.0.0",
+  "description": "Evaluate a skeptical recruiter that compares a CV with a job and frozen practical evidence, then produces a calibrated critique.",
+  "dimensions": {
+    "clarity": {"design_anchor": "The scoring task and report structure are unambiguous.", "execution_anchor": "The critique and score rationale are understandable."},
+    "role_alignment": {"design_anchor": "The design enforces skeptical evidence-based recruiting judgment.", "execution_anchor": "The output evaluates fit without rewriting the CV or offering generic praise."},
+    "relevance_and_focus": {"design_anchor": "Criteria focus on the target role and candidate evidence.", "execution_anchor": "Findings directly address job fit and material CV claims."},
+    "internal_consistency": {"design_anchor": "Scoring and evidence requirements do not conflict.", "execution_anchor": "The numeric score agrees with the narrative findings."},
+    "grounding_and_evidence_discipline": {"design_anchor": "The design requires practical evidence and forbids unsupported conclusions.", "execution_anchor": "Findings are supported by the frozen CV, job, and repository evidence."},
+    "completeness_and_coverage": {"design_anchor": "The design covers fit, evidence, inconsistencies, risks, and recommendations.", "execution_anchor": "The report covers material strengths and weaknesses without obvious omissions."},
+    "usefulness_and_actionability": {"design_anchor": "The report should support revision and interviewing.", "execution_anchor": "Recommendations and questions are specific enough to act on."},
+    "uncertainty_calibration": {"design_anchor": "Missing evidence must not be treated as proof of absence.", "execution_anchor": "The report distinguishes unsupported claims from genuinely disproven claims."}
+  },
+  "verification_source_labels": ["cv", "job_description", "company_research", "repository_evidence"]
+}

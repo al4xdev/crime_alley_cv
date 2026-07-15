@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "role": "donna",
+  "version": "1.0.0",
+  "description": "Evaluate a career coach that converts a final critique into a grounded, prioritized, and practical development plan.",
+  "dimensions": {
+    "clarity": {"design_anchor": "The coaching task and output sections are clear.", "execution_anchor": "Priorities, actions, and expected outcomes are understandable."},
+    "role_alignment": {"design_anchor": "The design limits the role to evidence-based coaching.", "execution_anchor": "The plan coaches rather than rewriting the CV or inventing achievements."},
+    "relevance_and_focus": {"design_anchor": "The design ties advice to the target job and final critique.", "execution_anchor": "Recommendations address the candidate's actual gaps."},
+    "internal_consistency": {"design_anchor": "Prioritization and grounding rules agree.", "execution_anchor": "Actions, effort estimates, and priorities do not conflict."},
+    "grounding_and_evidence_discipline": {"design_anchor": "Every recommendation must trace to a documented gap.", "execution_anchor": "Advice is traceable to the final evaluation or job requirements."},
+    "completeness_and_coverage": {"design_anchor": "The design covers technical growth, interviews, projects, and next steps.", "execution_anchor": "The plan covers the material unresolved gaps."},
+    "usefulness_and_actionability": {"design_anchor": "Advice must include concrete next actions.", "execution_anchor": "The candidate can act on the plan with clear sequencing and effort."},
+    "uncertainty_calibration": {"design_anchor": "Time and score impact must be framed as estimates.", "execution_anchor": "The plan avoids guarantees and labels uncertain impact appropriately."}
+  },
+  "verification_source_labels": ["final_cv", "job_description", "final_evaluation"]
+}

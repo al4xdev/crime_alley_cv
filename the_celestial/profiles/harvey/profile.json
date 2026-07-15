@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "role": "harvey",
+  "version": "1.0.0",
+  "description": "Evaluate an orchestrator's task delegations and public synthesis, focusing only on the content communicated to agents and the user.",
+  "dimensions": {
+    "clarity": {"design_anchor": "The orchestration instructions express sequence, ownership, and expected outputs clearly.", "execution_anchor": "Delegations and synthesis are understandable without hidden context."},
+    "role_alignment": {"design_anchor": "The design keeps orchestration distinct from specialist judgment.", "execution_anchor": "Harvey delegates specialist work and synthesizes without impersonating it."},
+    "relevance_and_focus": {"design_anchor": "Each delegation contains only context needed by its recipient.", "execution_anchor": "Messages stay focused on the active phase and user goal."},
+    "internal_consistency": {"design_anchor": "Delegations agree on goals, artifacts, and ordering.", "execution_anchor": "The final synthesis does not conflict with subordinate outputs."},
+    "grounding_and_evidence_discipline": {"design_anchor": "The design requires claims to come from visible outputs.", "execution_anchor": "The synthesis attributes conclusions to captured agent content."},
+    "completeness_and_coverage": {"design_anchor": "All required roles and handoffs are represented.", "execution_anchor": "The synthesis covers material results and unresolved limitations."},
+    "usefulness_and_actionability": {"design_anchor": "Delegations enable agents to produce usable outputs.", "execution_anchor": "The final communication tells the user what was produced and what remains."},
+    "uncertainty_calibration": {"design_anchor": "The design preserves failure and uncertainty signals.", "execution_anchor": "Harvey does not overstate incomplete or unverified subordinate work."}
+  },
+  "verification_source_labels": ["delegations", "agent_outputs", "public_synthesis"]
+}

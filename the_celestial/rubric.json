@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "language": "en",
+  "scale": {
+    "0": "Absent, contradictory, or harmful",
+    "1": "Deficient and mostly inadequate",
+    "2": "Partially adequate with important gaps",
+    "3": "Adequate, clear, and usable",
+    "4": "Exceptionally precise, complete, and calibrated"
+  },
+  "dimensions": [
+    "clarity",
+    "role_alignment",
+    "relevance_and_focus",
+    "internal_consistency",
+    "grounding_and_evidence_discipline",
+    "completeness_and_coverage",
+    "usefulness_and_actionability",
+    "uncertainty_calibration"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "role": "baseline",
+  "version": "1.0.0",
+  "description": "Evaluate a one-shot CV revision used as the simple control condition against the multi-agent pipeline.",
+  "dimensions": {
+    "clarity": {"design_anchor": "The one-shot task and expected CV output are explicit.", "execution_anchor": "The revised CV is clear and readable."},
+    "role_alignment": {"design_anchor": "The design requests only a direct evidence-based CV revision.", "execution_anchor": "The output is a revised CV rather than commentary."},
+    "relevance_and_focus": {"design_anchor": "The instruction focuses on the target job.", "execution_anchor": "The revision emphasizes job-relevant verified experience."},
+    "internal_consistency": {"design_anchor": "The one-shot rules do not conflict.", "execution_anchor": "The revised CV is internally consistent."},
+    "grounding_and_evidence_discipline": {"design_anchor": "The instruction forbids unsupported additions.", "execution_anchor": "Every material claim remains supported by the frozen case."},
+    "completeness_and_coverage": {"design_anchor": "The input and requested revision cover the full CV.", "execution_anchor": "The output addresses the material fit gaps."},
+    "usefulness_and_actionability": {"design_anchor": "The output is intended for immediate application use.", "execution_anchor": "The result is a usable target-specific CV."},
+    "uncertainty_calibration": {"design_anchor": "The instruction requires honest qualification.", "execution_anchor": "Unknowns and private experience are not overstated."}
+  },
+  "verification_source_labels": ["frozen_case_content", "baseline_cv"]
+}

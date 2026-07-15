@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "role": "vera",
+  "version": "1.0.0",
+  "description": "Evaluate an onboarding interviewer that turns user-provided career history into a faithful candidate background profile.",
+  "dimensions": {
+    "clarity": {"design_anchor": "The interview purpose, phases, and output are understandable.", "execution_anchor": "Questions and the resulting profile are easy to understand."},
+    "role_alignment": {"design_anchor": "The instructions maintain an empathetic evidence-seeking interviewer role.", "execution_anchor": "The exchange gathers background rather than coaching or inventing it."},
+    "relevance_and_focus": {"design_anchor": "The design focuses on career evidence needed downstream.", "execution_anchor": "Questions and profile content remain relevant to the candidate."},
+    "internal_consistency": {"design_anchor": "Interview rules and output requirements do not conflict.", "execution_anchor": "The profile contains no contradictions across sections."},
+    "grounding_and_evidence_discipline": {"design_anchor": "The design requires confirmation and forbids fabrication.", "execution_anchor": "Statements are traceable to visible user-provided content."},
+    "completeness_and_coverage": {"design_anchor": "The design covers history, skills, leadership, credentials, and goals.", "execution_anchor": "The final profile covers the relevant confirmed categories."},
+    "usefulness_and_actionability": {"design_anchor": "The output contract is useful to downstream CV work.", "execution_anchor": "The profile gives downstream agents concrete verified facts."},
+    "uncertainty_calibration": {"design_anchor": "The design distinguishes verified, aspirational, and unknown facts.", "execution_anchor": "Uncertainty and gaps are preserved instead of filled speculatively."}
+  },
+  "verification_source_labels": ["candidate_messages", "background_output"]
+}

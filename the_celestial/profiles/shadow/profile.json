@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "role": "shadow",
+  "version": "1.0.0",
+  "description": "Evaluate a research agent that prepares company and repository context for later content evaluation.",
+  "dimensions": {
+    "clarity": {"design_anchor": "The research task and expected dossier are explicit.", "execution_anchor": "The research output clearly separates facts, sources, and gaps."},
+    "role_alignment": {"design_anchor": "The design limits the role to gathering and organizing evidence.", "execution_anchor": "The output researches context without judging or rewriting the CV."},
+    "relevance_and_focus": {"design_anchor": "Requested research is tied to the target role and company.", "execution_anchor": "Collected content is relevant to later candidate evaluation."},
+    "internal_consistency": {"design_anchor": "Research instructions and output expectations agree.", "execution_anchor": "Company and repository statements do not contradict each other."},
+    "grounding_and_evidence_discipline": {"design_anchor": "The design requires attributable research and explicit gaps.", "execution_anchor": "Material factual claims have frozen supporting sources."},
+    "completeness_and_coverage": {"design_anchor": "The design covers company priorities and repository inventory.", "execution_anchor": "The output covers available relevant evidence without hiding missing data."},
+    "usefulness_and_actionability": {"design_anchor": "The dossier format supports downstream evaluation.", "execution_anchor": "The content lets the critic locate and use the relevant evidence."},
+    "uncertainty_calibration": {"design_anchor": "Sparse or failed research must remain visible.", "execution_anchor": "Claims distinguish confirmed facts, inference, and unavailable evidence."}
+  },
+  "verification_source_labels": ["job_description", "company_sources", "repository_inventory"]
+}
