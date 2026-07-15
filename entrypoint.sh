@@ -2,12 +2,10 @@
 # entrypoint.sh — Start background services and execute container command
 set -e
 
-# Never give the outer container a writable bind mount to host credentials. The orchestrator and
-# Karen setup operate on this ephemeral copy, which disappears with the container.
-if [ -d /run/host-gemini ]; then
-  mkdir -p /root/.gemini
-  cp -a /run/host-gemini/. /root/.gemini/
-  chmod 0700 /root/.gemini
+# The selected adapter receives one read-only host credential and copies it into
+# ephemeral container storage. Other providers' credentials are never mounted.
+if [ -n "${AGENT_PROVIDER:-}" ]; then
+  /app/config/agents/agent.sh "${AGENT_PROVIDER}" setup outer /app 0 0 /root
 fi
 
 # Execute the main container command (CMD)

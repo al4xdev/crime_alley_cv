@@ -68,6 +68,7 @@ def main() -> None:
         max_iterations=args.max_iterations,
         min_fit_score=args.min_fit_score,
         karen_reads_background=False,
+        agent_provider="replay",
         run_id="replay",
     )
     store = RunStore(state_path)

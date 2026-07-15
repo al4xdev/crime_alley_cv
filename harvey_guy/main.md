@@ -55,6 +55,7 @@ Initialize the canonical run and retain only `STATE_PATH`:
 set init_json (uv run python -m harvey_guy.pipeline init \
     --max-iterations "$MAX_ITERATIONS" \
     --min-fit-score "$MIN_FIT_SCORE" \
+    --agent-provider "$AGENT_PROVIDER" \
     --karen-reads-background "$KAREN_READS_BACKGROUND" | string collect)
 or return 1
 set STATE_PATH (echo "$init_json" | jq -r .state_path)
@@ -98,7 +99,8 @@ or return 1
 ```fish
 ./boundaries/harvey_karen.fish --pre "$STATE_PATH" >/dev/null
 or return 1
-./karen_guard/run.sh "$SESSION_DIR" \
+set AGENT_PROVIDER (jq -r .agent_provider "$STATE_PATH")
+./karen_guard/run.sh --agent "$AGENT_PROVIDER" --state "$STATE_PATH" "$SESSION_DIR" \
     > "$SESSION_DIR/anti_karen/logs/karen.stdout.log" \
     2> "$SESSION_DIR/anti_karen/logs/karen.stderr.log"
 or return 1

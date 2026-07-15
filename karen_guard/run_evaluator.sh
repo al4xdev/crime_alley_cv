@@ -3,8 +3,5 @@ set -euo pipefail
 
 cd /app/session
 
-exec agy \
-  --sandbox \
-  --mode accept-edits \
-  --log-file /tmp/agy.log \
-  --prompt "$(cat /app/prompt_persona.txt)"
+exec /opt/agents/agent.sh "${AGENT_PROVIDER:?AGENT_PROVIDER is required}" \
+  evaluate /app/prompt_persona.txt /app/session/out/evaluation.md

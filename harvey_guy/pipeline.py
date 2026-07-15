@@ -133,6 +133,7 @@ class RunState(BaseModel):
     run_dir: str
     data_dir: str
     session_root: str
+    agent_provider: Literal["agy", "claude", "codex", "replay"] = "agy"
     max_iterations: int = Field(ge=1)
     min_fit_score: int = Field(ge=0, le=100)
     karen_reads_background: bool
@@ -682,6 +683,7 @@ def initialize_run(
     max_iterations: int,
     min_fit_score: int,
     karen_reads_background: bool,
+    agent_provider: Literal["agy", "claude", "codex", "replay"] = "agy",
     run_id: str | None = None,
 ) -> tuple[Path, RunState]:
     data_dir = _configured_path("PIPELINE_DATA_DIR", REPOSITORY_ROOT / ".data")
@@ -709,6 +711,7 @@ def initialize_run(
             run_dir=str(run_dir),
             data_dir=str(data_dir),
             session_root=str(session_root),
+            agent_provider=agent_provider,
             max_iterations=max_iterations,
             min_fit_score=min_fit_score,
             karen_reads_background=karen_reads_background,
@@ -739,6 +742,7 @@ def initialize_run(
             "details": {
                 "max_iterations": max_iterations,
                 "min_fit_score": min_fit_score,
+                "agent_provider": agent_provider,
             },
         }
         atomic_write_text(staging / "events.jsonl", json.dumps(event) + "\n")
@@ -1093,6 +1097,7 @@ def _parse_args() -> argparse.Namespace:
     init.add_argument("--max-iterations", required=True, type=int)
     init.add_argument("--min-fit-score", required=True, type=int)
     init.add_argument("--karen-reads-background", choices=("yes", "no"), required=True)
+    init.add_argument("--agent-provider", choices=("agy", "claude", "codex"), default="agy")
     init.add_argument("--run-id")
 
     for name in (
@@ -1117,6 +1122,7 @@ def main() -> None:
                 max_iterations=args.max_iterations,
                 min_fit_score=args.min_fit_score,
                 karen_reads_background=args.karen_reads_background == "yes",
+                agent_provider=args.agent_provider,
                 run_id=args.run_id,
             )
         else:
