@@ -6,8 +6,7 @@ This guide defines how the host orchestrator agent runs and monitors the Karen G
 
 ## 📥 Inputs
 
-The orchestrator requires:
-- **`SESSION_ID`**: The active session UUID (e.g., `8ec80956-9f61-47d8-9a07-3942ffb87d7c`).
+The orchestrator requires `SESSION_DIR` and the canonical `STATE_PATH`.
 
 ---
 
@@ -16,18 +15,24 @@ The orchestrator requires:
 ### 1. Run the Evaluation Command
 Run the containerized evaluation wrapper script. You must redirect the output and error logs inside the isolated session folder instead of writing them directly under `/tmp/`.
 
+The wrapper owns image refresh, authentication and runtime hardening. Do not add alternate
+`docker run`/`podman run` commands in the prose orchestration: doing so would bypass its mount and
+capability contract.
+
 **Command to run:**
-```bash
-./karen_guard/run.sh $SESSION_ID > /tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.log 2> /tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.err
+```fish
+./karen_guard/run.sh "$SESSION_DIR" \
+    > "$SESSION_DIR/anti_karen/logs/karen.stdout.log" \
+    2> "$SESSION_DIR/anti_karen/logs/karen.stderr.log"
 ```
 
 ### 2. Monitor and Wait
-- The container image build and CLI execution logs will be written to `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.err` (stderr) and `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.log` (stdout).
-- Read `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.err` to check building progress and verify if Antigravity CLI has successfully started the evaluation process inside the container.
-- Wait for the background process to complete.
+- Build and CLI logs are written under `$SESSION_DIR/anti_karen/logs/`.
+- The wrapper is synchronous: when it returns successfully, the evaluation has completed.
+- On failure, inspect `$SESSION_DIR/anti_karen/logs/karen.stderr.log` and the other session logs.
 
 ### 3. Extract the Report and Fit Score
 Once completed:
-1. Read the last line of `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_run.log` to retrieve the absolute path to the generated evaluation report. This is **`KAREN_REPORT_PATH`** (typically `/tmp/karen_guard_$SESSION_ID/anti_karen/karen_output.md`).
-2. Open **`KAREN_REPORT_PATH`** (or the host copy at [.data/evaluation.md](../.data/evaluation.md)).
-3. Locate the **"Technical Fit Score"** section (e.g., `## Technical Fit Score: 75/100`) and extract the numeric value as **`FIT_SCORE`**.
+1. Treat `$SESSION_DIR/anti_karen/artifacts/karen_output.md` as the only evaluator report.
+2. Do not parse the score in prose or shell. The control plane validates and records it with
+   `uv run python -m harvey_guy.pipeline record-evaluation --state "$STATE_PATH"`.

@@ -1,232 +1,259 @@
-# Crime Alley CV: An Actor-Critic CV Optimization & Integrity Engine
+# Crime Alley CV: Actor-Critic CV Optimization & Integrity Engine
 
 ![Crime Alley CV multi-agent pipeline banner](assets/pipeline_meeting.jpg)
 
-Automated CV optimization and verification system based on a multi-agent **Actor-Critic** architecture. An orchestrator drives a feedback loop where a critic agent (**Karen**) audits the CV against real, cloned code evidence, and an editor agent (**Bill**) rewrites it until the score meets a target acceptance threshold.
+Automated CV optimization and verification based on an actor-critic architecture. Karen audits a
+CV against a target role and repository evidence, Bill revises it from the structured criticism,
+and Donna turns the remaining gaps into a development plan. Models own judgment; deterministic
+Python owns state transitions, limits and artifact validation.
 
-> [!NOTE]
-> **Environment Stability & Podman Migration (June 2026) - Resolved ✅**
-> We have successfully migrated the sandboxed subagent runtime from Docker to nested Podman to prevent socket-exposure security risks. All nested runtime configurations (storage, network/firewall, and user permissions) and authentication loop checks have been stabilized and validated via automated unit tests.
+> **Study note.** This project studies multi-agent orchestration primarily through readable natural
+> language runbooks, using deterministic code where ambiguity can fail silently. It intentionally
+> avoids orchestration frameworks such as LangGraph, CrewAI and AutoGen. The engineering artifact is
+> the boundary between prose and code: explicit contracts, isolated roles, durable evidence,
+> recovery and offline replay.
 
-> **Study note: What this demonstrates.** 
-> This is a study and practical utility project on orchestrating a multi-agent system primarily in **natural language runbooks**, using deterministic code only where it is strictly required to prevent silent failures. It is intentionally **framework-free** (no LangGraph, CrewAI, Autogen, etc.): the orchestration lives in readable runbooks (`.md` files), and the system boundary is enforced via structured container sandboxing. The artifact worth reviewing here is the software engineering discipline: the reasoning, the prose/code boundary, the security isolation model, the explicit contracts, and the debugging telemetry.
+This is a forward-only MVP. Python is the sole state owner; thin Fish boundary scripts validate
+each handoff and append run-scoped audit events without duplicating counters or transition rules.
 
----
-
-
-## 🗺️ System Architecture
+## System architecture
 
 ```mermaid
-graph TD
-    A[main.md / Host User] -->|1. Run ./start.sh| B(Global Docker Container: crime_alley_pipeline)
-    B -->|2. Run agy / @main.md| C{Orchestrator: Harvey}
-    C -->|Onboarding Setup| D[Vera: Onboarding Interview -> who_are_u.md]
-    C -->|Gathers context| E[Harvey Shadow]
-    E -->|DuckDuckGo search & git clone| F[(Candidate Repos & Company Info)]
-    C -->|3. Loop Start| G[Harvey: Carry Forward Logs & Workspace Ingestion]
-    G -->|4. Run sandbox| H[Karen Guard: Evaluator in Podman Sandbox]
-    F -.->|Read-Only Mount| H
-    H -->|Produces evaluation.md| I{Gatekeeper}
-    I -->|Failed Parse / Error| J[Exit Loop with Error status 3]
-    I -->|FIT_SCORE >= target OR MAX_LOOPS| K[Donna: Career Coach -> action_plan.md]
-    I -->|FIT_SCORE < target & loop < MAX_LOOPS| L[Bill: Editor Agent in anti_karen]
-    L -->|Rewrites CV based on Report| G
+flowchart TD
+    A[Inputs in .data/docs] --> B[Initialize canonical run]
+    B --> C[Fresh Harvey session]
+    C --> D[Shadow gathers company and repository evidence]
+    D --> E[Karen evaluates in a container]
+    E --> F[Strict score and artifact validation]
+    F -->|below target and budget remains| G[Bill revises CV]
+    G --> C
+    F -->|target met or budget exhausted| H[Donna creates action plan]
+    H --> I[Complete run]
 ```
 
-### Execution Loop Lifecycle
-1. **Phase 0 — Dependency Verification**: The orchestrator verifies host dependencies (`python`, `uv`, `docker`/`podman`, `at`, `git`) directly to prevent terminal stdin corruption.
-2. **Phase 1 — Interactive Setup**: The orchestrator prompts the user for configuration limits (`MAX_LOOPS`, `MIN_FIT_SCORE`, `JOB_DESCRIPTION_RAW`, `KAREN_READS_BACKGROUND`).
-3. **Phase 1.5 — Onboarding (Optional)**: If the candidate profile (`who_are_u.md`) does not exist, **Vera** conducts a roleplay interview to create it.
-4. **Step 1 — Environment & Setup**: **Harvey** creates an isolated workspace under `/tmp/karen_guard_<UUID>/` and carries forward historical run files. **Harvey Shadow** concurrently clones the candidate's public repositories and researches the company.
-5. **Step 2 — Skeptical Audit**: **Karen Guard** executes inside a containerized sandbox, evaluating the candidate's CV statements against actual code implementation patterns.
-6. **The Gatekeeper**: The evaluation report is parsed by a deterministic Python module to check exit conditions.
-7. **Step 3 — CV Revision**: **Bill** analyzes the gap report in a protected zone (`anti_karen/`) and refines `cv.md` for the next loop.
-8. **Post-Loop Coaching**: Once the target score is hit or loop boundaries are reached, **Donna** translates remaining gaps into a professional development road map (`action_plan.md`).
+The only control-flow source of truth is `.runs/<run-id>/state.json`. It records the phase,
+completed evaluations, latest score, active session, guard digests and terminal outcome.
+Transitions are locked, staged under `transactions/` and journaled in `events.jsonl`. Interrupted
+commits are replayed only after their strict manifest, revision, operation-specific targets and
+payload hashes pass validation. Evaluated inputs and outputs are archived in `iterations/`.
 
----
+The model-facing execution guide is [harvey_guy/main.md](harvey_guy/main.md); the deterministic
+state machine is [harvey_guy/pipeline.py](harvey_guy/pipeline.py).
 
-## ⚙️ Requirements & System Scope
+### Execution lifecycle
 
-> [!IMPORTANT]
-> **Operating System & Storage Constraints**
-> - **Linux Only**: The nested container sandbox relies heavily on Linux-specific containerization features (such as user namespaces, nested cgroups, and rootless Podman execution). It **only works on Linux host systems**. macOS and Windows (even under WSL in certain configurations) are not supported.
-> - **Disk Space Requirements**: 
->   - A minimum of **10 GB of free disk space** is required on the host system.
->   - The global orchestrator container and the nested Karen Guard sandbox image construction, along with downloaded base image layers and cloned target repositories, require substantial disk space for rootless image storage.
+1. Verify host dependencies from [requirements.md](requirements.md).
+2. Collect `MAX_ITERATIONS`, `MIN_FIT_SCORE`, the job description and the background-visibility
+   choice.
+3. Optionally let Vera create `who_are_u.md` through an onboarding interview.
+4. Initialize a canonical run and start a fresh Harvey session.
+5. Harvey Shadow researches the company and clones public repository evidence.
+6. Karen evaluates the current CV in the evaluator container.
+7. The control plane validates exactly one canonical score and either prepares Bill or ends the
+   optimization loop.
+8. Bill revises only the CV; an integrity guard must pass before it is carried forward.
+9. Donna writes a new action plan; its read-only inputs are checked before the run becomes complete.
 
----
+## Agent roster
 
-## 🤖 Agent Roster
-
-| Avatar | Agent | Directory | Runtime | Responsibility |
-|---|---|---|---|---|
-| <img src="assets/agents/vera.jpg" width="60" alt="Vera"> | **Vera** | `vera_psyco/` | prose agent | Onboarding interview & context collector $\rightarrow$ `who_are_u.md` |
-| <img src="assets/agents/harvey.jpg" width="60" alt="Harvey"> | **Harvey** | `harvey_guy/` | Python + prose runbook | Orchestration coordinator, path resolution, and state directory initialization. |
-| <img src="assets/agents/harvey.jpg" width="60" alt="Harvey Shadow"> | **Harvey Shadow** | `harvey_guy/` | prose agent | Parallel task runner: queries DuckDuckGo, clones target repos, pre-builds sandbox. |
-| <img src="assets/agents/karen.jpg" width="60" alt="Karen Guard"> | **Karen Guard** | `karen_guard/` | Gemini CLI in sandbox | Skeptical critic: compares CV claims against cloned code, produces evaluation. |
-| <img src="assets/agents/bill.jpg" width="60" alt="Bill"> | **Bill** | `billf/` | prose agent | CV Actor: revises resume in `anti_karen/` based on Karen's feedback. |
-| <img src="assets/agents/donna.jpg" width="60" alt="Donna"> | **Donna** | `donna_nana/` | prose agent | Post-loop coach: analyzes final score and creates the `action_plan.md`. |
-
----
-
-## 🧪 Design Decisions & Philosophy
-
-### 1. The Prose Orchestration Bet
-In this project, `.md` files are not static documentation—they are **executables** interpreted by agent clients (`agy`, `Claude Code`). The bet is that a capable reasoning model is a robust "interpreter" for prose runbooks, offering readability and auto-healing capabilities that outweigh the rigidity of a typical workflow engine.
-
-### 2. Prose vs. Code: "Migrate Only What Fails Silently"
-The core heuristic guiding this codebase is: **what fails loudly should live in prose; what fails silently must live in code.**
-
-* **Fails Loudly**: A missing file, a directory permission error, or a wrong command syntax. The agent runtime detects these errors natively and self-heals by rewriting the command or creating the directory. Hardcoding these scenarios creates brittle code.
-* **Fails Silently**: 
-  1. *History Accumulation*: If Bill writes a CV draft but the next iteration forgets to carry it forward, the loop runs with the *original* CV. The system completes without errors, but the scores stall. We migrated this to Python (`harvey_guy.py`) to systematically copy `anti_karen/karen_guard_core.log` and `cv.md` between iterations.
-  2. *Score Extraction*: If Karen writes `Technical Fit Score: 85/100` and Bill changes the layout next run to `Score - 80`, a rigid string-matcher would crash, but a soft LLM check might pass a hallucinated score. We hardened this into a deterministic Python validator ([gatekeeper.py](harvey_guy/gatekeeper.py)) that uses robust regex patterns to extract scores and map exit codes:
-     - `exit(0)`: Target met (Success).
-     - `exit(1)`: Loops exhausted (Max Loops reached).
-     - `exit(2)`: Threshold not met (Continue Loop).
-     - `exit(3)`: Parsing error (Fails loudly, halting execution).
-
-| Concern | Fails How? | Lives Where | Implementation |
+| Avatar | Agent | Directory | Responsibility |
 |---|---|---|---|
-| Score parsing, bounds validation | Silently (hallucinated score or runaway loops) | Code | [gatekeeper.py](harvey_guy/gatekeeper.py) |
-| CV carry-forward & workspace layout | Silently (loops evaluate same base resume) | Code | [harvey_guy.py](harvey_guy/harvey_guy.py) |
-| Onboarding, Critic & Editor judgment | "Worse result" (lacks context or style) | Prose | `main.md` runbooks |
-### 3. Decoupling Agent Logic: Fast Testing via Mocking
-To prevent wasting LLM tokens and make testing deterministic, we decouple environment and wrapper script validation from the agents themselves. By checking in actual runtime files (e.g. `company_info.md`, `repos.json`, and agent outputs) under [tests/mocks/](file:///home/alex/git/my/meta_2028/tests/mocks/) and utilizing mock wrapper binaries (such as mocking `podman` or `docker` commands in a localized sub-shell `PATH`), we can test the pipeline's control flow, directory structure mappings, and authentication verification rules in Python unit tests. This ensures our non-agent components (like setup scripts, environment validators, and local firewall setups) are completely testable and functional offline, without spawning container daemons or consuming LLM quotas.
+| <img src="assets/agents/vera.jpg" width="60" alt="Vera"> | **Vera** | `vera_psyco/` | Optional onboarding interview and candidate background |
+| <img src="assets/agents/harvey.jpg" width="60" alt="Harvey"> | **Harvey** | `harvey_guy/` | Deterministic orchestration, state and fresh sessions |
+| <img src="assets/agents/harvey.jpg" width="60" alt="Harvey Shadow"> | **Harvey Shadow** | `harvey_guy/` | Company research and repository acquisition |
+| <img src="assets/agents/karen.jpg" width="60" alt="Karen Guard"> | **Karen Guard** | `karen_guard/` | Skeptical evidence-based CV evaluation |
+| <img src="assets/agents/bill.jpg" width="60" alt="Bill"> | **Bill** | `billf/` | CV revision from Karen's validated report |
+| <img src="assets/agents/donna.jpg" width="60" alt="Donna"> | **Donna** | `donna_nana/` | Post-loop development and interview action plan |
 
----
+## Design decisions
 
-## 📋 System Requirements & Disk Space
+### The prose orchestration bet
 
-* **Operating System**: **Linux** (required for cgroups v2, user namespaces, and nested rootless Podman container support). Running this pipeline is **not supported on Windows or macOS** (unless run inside a full Linux VM).
-* **Disk Space**: A minimum of **10 GB of free disk space** on the host system is required. This accommodates the global Docker orchestrator image, the nested sandboxed critic image (`karen_guard`), temporary sandbox directories inside `/tmp/`, and downloaded repository artifacts.
+The Markdown files in this repository are executable instructions interpreted by agent clients,
+not merely passive documentation. Prose remains useful for interviewing, research, evaluation and
+editing because those tasks require contextual judgment. Code owns anything whose ambiguity could
+silently corrupt the workflow.
 
----
+The practical rule is: **judgment lives in prose; invariants live in code.**
 
-## 🎓 Theoretical Alignment & Academic Foundation
+| Concern | Failure mode | Owner |
+|---|---|---|
+| Phase, iteration and termination | Silent extra or infinite loops | `harvey_guy.pipeline` |
+| Score parsing and range | Hallucinated or ambiguous gate result | `harvey_guy.evaluation` |
+| Artifact carry-forward | Re-evaluating an old CV | Transactional control plane |
+| Bill and Donna write boundaries | Inputs changed while output is accepted | Digest-anchored guards |
+| Interviews, criticism and rewriting | Quality depends on context | Agent runbooks |
 
-This architecture directly implements the agentic design patterns established in Anthropic's research on effective agent systems [1] and aligns with academic work on multi-agent software engineering and self-feedback loops:
+### Deterministic contracts
 
-1. **The Orchestrator-Workers Pattern (ChatDev)**:
-   The coordinator **Harvey** acts as the central orchestrator, managing state variables, initializing environments, and delegating specific sub-tasks to specialized worker agents (**Vera**, **Harvey Shadow**, **Karen**, and **Bill**). This role-based isolation aligns with the multi-agent roleplay paradigm explored in *ChatDev* [2], where specialized agents collaborate sequentially to achieve complex goals.
-2. **The Evaluator-Optimizer Pattern (Self-Refine)**:
-   The core refinement loop is a classic Evaluator-Optimizer workflow. **Bill** (the Optimizer) proposes modifications to the CV, while **Karen Guard** (the Evaluator) acts as a strict, sandbox-isolated critic. This iterative loop implements the feedback and self-correction principles detailed in the *Self-Refine* framework [3], demonstrating that iterative evaluation and refinement dramatically improve output alignment and precision.
-3. **The Workflows vs. Agents Boundary**:
-   Following Anthropic's recommendations [1], autonomous model-driven routing is used only where judgment is required (e.g. CV auditing and rewrite planning), while deterministic code (Python, shell) is utilized to enforce strict control flows, state carry-over, and parsing boundaries, avoiding silent LLM failures.
+- A run has one canonical state file; runbooks never maintain a parallel counter.
+- `MAX_ITERATIONS` counts Karen evaluations and stops exactly at that boundary.
+- A Karen report has exactly one `## Technical Fit Score: N/100` line, with ASCII `N` from 0 to 100.
+- Every evaluation starts in a fresh session. Historical reports and drafts are not copied into the
+  next context.
+- Bill must change the CV and may not mutate the host worktree, canonical inputs, inventories,
+  reports or cloned repositories.
+- Donna must create content that differs from the prior action plan and may not mutate either
+  reachable CV/job copy, the archived final evaluation, session repositories or host worktree.
+- The Karen wrapper publishes only into its session. `record-evaluation` publishes
+  `.data/evaluation.md` only after parsing succeeds, in the same recoverable transition.
+- Tests and offline replay use temporary data, run and session roots.
 
----
+### Offline-first testing
 
-## 🔒 Security & Sandbox Isolation Layout
+Agent and provider calls are separated from the deterministic control plane. Tests use mock
+container commands and temporary filesystem roots to validate transitions, recovery, score parsing,
+authentication-flow detection and file boundaries without spending model quota. Recorded Karen
+reports can replay a full three-evaluation loop without `agy` or network access.
 
-The architecture enforces a physical separation between the untrusted code being audited and the privileged orchestrator environment.
+## System requirements
 
-### 1. Workspace Directory Partitioning
-Each execution creates a dynamic session path under `/tmp/karen_guard_<UUID>/`:
+- **Operating system:** Linux. Nested containers, user namespaces and the current shell scripts are
+  Linux-specific.
+- **Python environment:** `uv` with the project `.venv/`.
+- **Container engine:** Podman or Docker, as described in [requirements.md](requirements.md).
+- **Other tools:** Git and `jq`; the full list and supported versions live in the requirements file.
+- **Disk:** allow substantial space for the outer environment, evaluator image and cloned public
+  repositories. Ten GB free is a practical starting point for the current setup.
 
-```
-/tmp/karen_guard_<UUID>/
-├── docs/           ← cv.md, job.md, who_are_u.md   (Mounted read-only to Karen)
-├── repos/          ← Cloned target repositories     (Mounted read-only to Karen)
-├── company_info.md ← Company research profile      (Mounted read-only to Karen)
-├── out/            ← Evaluator's target output      (Mounted write-only to Karen)
-└── anti_karen/     ← PROTECTED ZONE (Not mounted into Karen's container)
-    ├── karen_output.md
-    └── karen_guard_core.log
-```
+Container builds use content-addressed Python and `uv` images, a dated Debian snapshot and a fixed
+`agy` release whose amd64/arm64 archives are checked with published SHA-512 values. These pins live
+in the two Dockerfiles and the small installers under `tools/`; update the version, digest/snapshot
+and checksums together. Python application dependencies remain locked by `uv.lock` and are installed
+with `uv sync --frozen`.
 
-Because `anti_karen/` is physically omitted from the sandbox container, **Karen Guard** has zero path visibility into historical logs, past drafts, or candidate onboarding notes, preventing prompt injection attacks and context contamination.
+Mutable roots are deployment-owned. In direct execution the values are used as written. With
+`start.sh`, data and runs select host directories that are mounted at `/app/.data` and `/app/.runs`;
+the session root is forwarded into the outer container and remains ephemeral unless the selected
+path is backed separately by the deployment.
 
-### 2. Nested Sandboxing (Podman-in-Docker)
-When running inside a containerized setup, exposing `/var/run/docker.sock` from the host allows containers to spawn sibling containers that bypass host access controls (privilege escalation). 
+| Variable | Default |
+|---|---|
+| `PIPELINE_DATA_DIR` | `.data` |
+| `PIPELINE_RUNS_DIR` | `.runs` |
+| `PIPELINE_SESSION_ROOT` | `/tmp` |
 
-To prevent this, the global system uses a **Podman-in-Docker** topology:
-* The outer container (`crime_alley_pipeline`) runs with `--privileged` to support nested cgroups.
-* The inner sandbox runs using **Podman** in rootless mode with user namespaces enabled (`--userns=keep-id`).
-* Inner container storage is configured to use the `vfs` driver inside `/etc/containers/storage.conf` to avoid host driver conflicts.
-* This ensures that even if Karen executes arbitrary test scripts within a cloned repository, the process remains restricted to a nested rootless user space with no path back to the host system.
+## Isolation layout and current trust boundary
 
----
+Each evaluation uses a fresh session:
 
-## ⚡ Token Management & Cost Optimization
-
-Multi-agent optimization cycles traversing large repositories can easily exhaust API token quotas. The pipeline implements three layers of cost control:
-
-1. **Global Ignore Engine (`.agentignore`)**:
-   Filters out irrelevant project structures (e.g., `node_modules`, `uv.lock`, `.git`, binary files, lockfiles, images) from being ingested by **any** agent in the pipeline.
-2. **Gemini Context Caching**:
-   Static assets (such as the cloned repositories and the raw job description) are cached on the Gemini API side. Refinement iterations only pay for the delta of the newly generated CV drafts and feedback reports, dropping token cost by up to 90% in subsequent runs.
-3. **Telemetry Tracking**:
-   Every run archives detailed iteration data to `.runs/<timestamp>/scores.csv` and compiles a token footprint log to monitor optimization efficiency.
-
----
-
-## 🛠️ Execution & Debugging Guide
-
-### 🚀 Running the System
-
-#### Option A: Containerized (Recommended)
-1. **Start the pipeline container**:
-   ```bash
-   ./start.sh
-   ```
-   *Note: This script mounts your host credentials (`~/.gemini` to `/root/.gemini`) dynamically, ensuring authorization persists inside the container.*
-2. **Launch the agent CLI inside the shell**:
-   ```bash
-   agy
-   ```
-3. **Trigger the loop**:
-   > **User Prompt**: `@main.md`
-
-#### Option B: Direct Host Execution
-1. Ensure your host shell matches the requirements in [requirements.md](requirements.md).
-2. Start your local agent client:
-   ```bash
-   agy
-   ```
-3. Trigger the runbook:
-   > **User Prompt**: `@main.md`
-
----
-
-### 🔍 Debugging & Troubleshooting
-
-#### 1. Tracking /tmp Context Status
-Because the orchestrator delegates parallel tasks to `Harvey Shadow`, you can monitor file construction in real-time. Open a secondary terminal on the host and run:
-
-```bash
-# Verify directory tree generation inside the container
-docker exec -it $(docker ps -lq) tree -L 3 -a /tmp
+```text
+/tmp/karen_guard_<uuid>/
+├── docs/               cv.md, job.md and optional public who_are_u.md
+├── repos/              cloned public repositories
+├── company_info.md     company research
+├── out/                evaluator write target
+└── anti_karen/         private and never mounted into Karen
+    ├── artifacts/      report, Bill notes and optional private background
+    ├── contracts/      typed prompts, instructions and JSON inputs by agent
+    └── logs/           process logs and clone warnings
 ```
 
-This output will highlight if cloned repositories are correctly isolated or if `company_info.md` was successfully written.
+Karen receives read-only mounts for documents, repository evidence and company information, plus a
+writable output mount. `anti_karen/` is omitted from the evaluator mount. The evaluator runs as a
+dedicated non-root user without `sudo`; capabilities are dropped, `no-new-privileges` is enabled,
+and `agy` uses sandbox mode with network/content escalation tools denied. Only the OAuth token file
+is mounted during evaluation, read-only. The image is rebuilt from the current context on every run
+while unchanged layers remain cached.
 
-#### 2. Resolving Agent Approval Loops (`ManageTask`)
-When runbooks spawn sub-agents (e.g., `Dependency_Checker` or `Harvey Shadow`), the client may halt and request confirmation (e.g., `ctrl+K to approve ManageTask`). 
+Provider transport still needs network access. The current boundary restricts Karen's tools rather
+than claiming that the whole container is offline; it is not a domain-level egress firewall. The
+outer orchestrator does not use Docker's `--privileged` bundle and mounts no host engine socket or
+host device. Nested Podman instead receives an explicit capability set, including `SYS_ADMIN`, and
+unconfined AppArmor and seccomp profiles. Nested builds use chroot isolation; child run containers
+disable cgroup creation because the outer container does not own the host cgroup tree. Podman
+children share the outer container's network namespace—not the physical host network—so provider
+transport works without granting nested network administration.
+This remains a broad mount/syscall boundary, but it is materially narrower than privileged mode.
+Host `.gemini` is received read-only before making an ephemeral internal copy.
 
-To bypass this loop and authorize the sub-agents to manage tasks autonomously, append `"mcp(*)"` permissions in your configuration:
-* File: `~/.gemini/config/config.json` (or `/root/.gemini/config/config.json` inside the container)
-* Setting:
-  ```json
-  {
-    "permissions": {
-      "mcp": ["*"]
-    }
-  }
-  ```
+Likewise, transaction hashes, guard digests and ancestor snapshots are local reliability and
+attribution checks. They detect stale, corrupt or accidentally replaced application files. They do
+not authenticate files against a malicious process running as the same host user; that requires a
+separate process and credential boundary.
 
-#### 3. Testing Deterministic Parts
-To validate that changes to path configurations or score regex patterns do not introduce regressions, run the unit test suite:
-```bash
+## Running the system
+
+### Containerized host environment
+
+```fish
+./start.sh
+```
+
+Inside the resulting shell, start the configured agent client and invoke `@main.md`. The runbook
+will initialize the canonical run and retain its returned `STATE_PATH` for all later commands.
+
+At completion, `boundaries/run_audit.fish --finalize "$STATE_PATH"` archives every session's
+private artifacts, contracts and logs under the run directory. It writes `log_tree.md`, a merged
+chronological trace from the Python event journal and every boundary handoff, plus
+`logs/pipeline.log` with the raw consolidated logs.
+
+### Direct host execution
+
+Install the dependencies from [requirements.md](requirements.md), start the agent client from the
+repository root and invoke `@main.md`.
+
+To inspect a run without editing it:
+
+```fish
+uv run python -m harvey_guy.pipeline status --state "$STATE_PATH" | jq .
+```
+
+## Development and replay
+
+```fish
+uv sync --frozen --group dev
 uv run pytest
+uv run ruff check .
+uv run mypy --strict harvey_guy tools/replay_pipeline.py
 ```
-Tests are located in [tests/](tests/) and mock the file system inputs to test directory isolation, history log carry-forward, and score checks.
 
----
+Replay the recorded boundary case without `agy`, network access or the real `.data` directory:
 
-## 📚 References
+```fish
+uv run python -m tools.replay_pipeline \
+    --report tests/fixtures/evaluation_72.md \
+    --report tests/fixtures/evaluation_62.md \
+    --report tests/fixtures/evaluation_68.md \
+    --max-iterations 3 \
+    --min-fit-score 80
+```
 
-[1] E. Schluntz and B. Zhang, "Building Effective Agents," Anthropic, Dec. 2024. [Online]. Available: https://www.anthropic.com/research/building-effective-agents
+This fixture ends with `outcome=max_iterations`, `iterations_completed=3` and no fourth session.
 
-[2] C. Qian et al., "Communicative Agents for Software Development," in *Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL)*, 2024. arXiv preprint arXiv:2307.07924.
+## Token and cost management
 
-[3] A. Madaan et al., "Self-Refine: Iterative Refinement with Self-Feedback," *arXiv preprint arXiv:2303.17651*, 2023.
+- `.agentignore` excludes dependency trees, binary assets, VCS metadata and other irrelevant input.
+- Fresh sessions prevent accidental accumulation of old reports and draft context.
+- Replay and mock-based tests validate control flow without consuming provider quota.
+- `.runs/<run-id>/scores.csv` and the event journal make iteration behavior inspectable.
+
+## Theoretical alignment
+
+The design combines three established patterns:
+
+1. **Orchestrator-workers:** Harvey coordinates specialized roles while keeping durable workflow
+   decisions in a deterministic control plane.
+2. **Evaluator-optimizer:** Karen evaluates and Bill optimizes in a feedback loop, following the
+   self-refinement family of systems.
+3. **Workflow-agent boundary:** fixed transitions and validation remain deterministic; autonomous
+   reasoning is used only where judgment is necessary.
+
+This direction aligns with the orchestrator-worker and evaluator-optimizer patterns discussed in
+Anthropic's *Building Effective Agents* [1], the role-based collaboration explored by ChatDev [2],
+and iterative self-feedback studied by Self-Refine [3].
+
+## Repository guides
+
+- [Agent architecture and conventions](style.md)
+- [Harvey control plane](harvey_guy/README.md)
+- [Karen evaluator](karen_guard/README.md)
+- [Forward-only audit](plans/2026-07-15-forward-only-audit.md)
+
+## References
+
+[1] E. Schluntz and B. Zhang, “Building Effective Agents,” Anthropic, 2024.
+
+[2] C. Qian et al., “Communicative Agents for Software Development,” ACL 2024; arXiv:2307.07924.
+
+[3] A. Madaan et al., “Self-Refine: Iterative Refinement with Self-Feedback,” arXiv:2303.17651, 2023.

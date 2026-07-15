@@ -1,0 +1,20 @@
+{
+  "userSettings": {
+    "globalPermissionGrants": {
+      "allow": [
+        "command(*)",
+        "read_file(/app/session/**)",
+        "write_file(/app/session/out/**)"
+      ],
+      "deny": [
+        "unsandboxed(*)",
+        "read_url(*)",
+        "mcp(*)",
+        "read_file(/home/**)",
+        "write_file(/app/session/docs/**)",
+        "write_file(/app/session/repos/**)"
+      ]
+    },
+    "useAiCredits": false
+  }
+}
