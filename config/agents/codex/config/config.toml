@@ -1,0 +1,11 @@
+approval_policy = "never"
+sandbox_mode = "read-only"
+web_search = "disabled"
+cli_auth_credentials_store = "file"
+
+[features]
+memories = false
+
+[memories]
+generate_memories = false
+use_memories = false
