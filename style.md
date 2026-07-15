@@ -80,9 +80,10 @@ its integrity guard passes.
 
 Karen is the external provider boundary. Its image has a fixed non-root identity and no `sudo`;
 the runner drops capabilities, enables `no-new-privileges`, mounts inputs read-only and mounts only
-the OAuth token file read-only. `agy --sandbox` restricts tools while provider transport remains
-online. Never describe this as a network-disconnected container: it is tool isolation, not a
-domain-level egress firewall.
+the selected provider credential read-only. The image contains only the selected CLI. agy uses its
+sandbox, Claude denies command/edit/network tools, and Codex uses a read-only sandbox with approvals
+disabled. Provider transport remains online. Never describe this as a network-disconnected
+container: it is tool isolation, not a domain-level egress firewall.
 
 ## Agent contracts
 

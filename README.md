@@ -123,7 +123,7 @@ replay demonstrates control-flow behavior rather than identical future model out
 Agent and provider calls are separated from the deterministic control plane. Tests use mock
 container commands and temporary filesystem roots to validate transitions, recovery, score parsing,
 authentication-flow detection and file boundaries without spending model quota. Recorded Karen
-reports can replay a full three-evaluation loop without `agy` or network access.
+reports can replay a full three-evaluation loop without an agent CLI or network access.
 
 ## System requirements
 
@@ -142,11 +142,11 @@ reduce it. Such optimization should be measured per layer and accepted only afte
 network, certificate, sandbox and end-to-end provider tests pass; replacing the base distribution
 alone is not assumed to save most of the footprint.
 
-Container builds use content-addressed Python and `uv` images, a dated Debian snapshot and a fixed
-`agy` release whose amd64/arm64 archives are checked with published SHA-512 values. These pins live
-in the two Dockerfiles and the small installers under `tools/`; update the version, digest/snapshot
-and checksums together. Python application dependencies remain locked by `uv.lock` and are installed
-with `uv sync --frozen`.
+Container builds use content-addressed Python and `uv` images, a dated Debian snapshot and fixed
+agy, Claude Code and Codex releases. Their amd64/arm64 artifacts are checked against pinned SHA-512
+or SHA-256 values before installation. These pins live in both Dockerfiles and the installers under
+`tools/`; update the version and both architecture checksums together. Python application
+dependencies remain locked by `uv.lock` and are installed with `uv sync --frozen`.
 
 Mutable roots are deployment-owned. In direct execution the values are used as written. With
 `start.sh`, data and runs select host directories that are mounted at `/app/.data` and `/app/.runs`;
@@ -178,9 +178,9 @@ Each evaluation uses a fresh session:
 Karen receives read-only mounts for documents, repository evidence and company information, plus a
 writable output mount. `anti_karen/` is omitted from the evaluator mount. The evaluator runs as a
 dedicated non-root user without `sudo`; capabilities are dropped, `no-new-privileges` is enabled,
-and `agy` uses sandbox mode with network/content escalation tools denied. Only the OAuth token file
-is mounted during evaluation, read-only. The image is rebuilt from the current context on every run
-while unchanged layers remain cached.
+and the selected CLI uses its read-only evaluator policy. The Karen image contains only that
+provider's executable, and only its credential file is mounted during evaluation, read-only. The
+image is rebuilt from the current context on every run while unchanged layers remain cached.
 
 Provider transport still needs network access. The current boundary restricts Karen's tools rather
 than claiming that the whole container is offline; it is not a domain-level egress firewall. The
@@ -191,7 +191,17 @@ disable cgroup creation because the outer container does not own the host cgroup
 children share the outer container's network namespace—not the physical host network—so provider
 transport works without granting nested network administration.
 This remains a broad mount/syscall boundary, but it is materially narrower than privileged mode.
-Host `.gemini` is received read-only before making an ephemeral internal copy.
+Only the selected host credential is received read-only before making an ephemeral internal copy;
+credentials for the other providers are not mounted.
+
+The provider boundary intentionally invokes the official CLIs instead of embedding the Claude
+Agent SDK or Codex SDK. Both SDKs are useful when an application needs structured event streams,
+custom tools or resumable in-process sessions. This pipeline needs parity with each user's
+interactive client: the same login, instruction discovery, settings, sandbox and subscription
+behavior must work in the outer orchestrator and in a one-shot evaluator. The Codex TypeScript SDK
+also wraps and spawns the Codex CLI, so it would add a Node integration layer without removing the
+binary boundary. Revisit SDK integration if the control plane starts consuming structured agent
+events rather than a final Markdown artifact.
 
 Likewise, transaction hashes, guard digests and ancestor snapshots are local reliability and
 attribution checks. They detect stale, corrupt or accidentally replaced application files. They do
@@ -204,10 +214,15 @@ separate process and credential boundary.
 
 ```fish
 ./start.sh
+
+# Non-interactive selection or a repeatable shortcut:
+./start.sh --agent codex
 ```
 
-Inside the resulting shell, start the configured agent client and invoke `@main.md`. The runbook
-will initialize the canonical run and retain its returned `STATE_PATH` for all later commands.
+Without `--agent`, the script presents a selector for agy, Claude Code or Codex. It then opens the
+selected client with `main.md` as the initial runbook. Use `--shell` together with `--agent` when a
+diagnostic Fish shell is needed instead. The runbook initializes the canonical run, records
+`agent_provider` in `state.json` and retains its returned `STATE_PATH` for all later commands.
 
 At completion, `boundaries/run_audit.fish --finalize "$STATE_PATH"` archives every session's
 private artifacts, contracts and logs under the run directory. It writes `log_tree.md`, a merged
@@ -217,7 +232,7 @@ chronological trace from the Python event journal and every boundary handoff, pl
 ### Direct host execution
 
 Install the dependencies from [requirements.md](requirements.md), start the agent client from the
-repository root and invoke `@main.md`.
+repository root, set `AGENT_PROVIDER` to `agy`, `claude` or `codex`, and invoke `@main.md`.
 
 To inspect a run without editing it:
 
@@ -234,7 +249,7 @@ uv run ruff check .
 uv run mypy --strict harvey_guy tools/replay_pipeline.py
 ```
 
-Replay the recorded boundary case without `agy`, network access or the real `.data` directory:
+Replay the recorded boundary case without an agent CLI, network access or the real `.data` directory:
 
 ```fish
 uv run python -m tools.replay_pipeline \
