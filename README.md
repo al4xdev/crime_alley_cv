@@ -29,6 +29,8 @@ flowchart TD
     G --> C
     F -->|target met or budget exhausted| H[Donna creates action plan]
     H --> I[Complete run]
+    I -. optional content capture .-> J[The Celestial frozen case]
+    J -. explicit quota confirmation .-> K[Baseline and blind repeated judging]
 ```
 
 The only control-flow source of truth is `.runs/<run-id>/state.json`. It records the phase,
@@ -158,6 +160,56 @@ path is backed separately by the deployment.
 | `PIPELINE_DATA_DIR` | `.data` |
 | `PIPELINE_RUNS_DIR` | `.runs` |
 | `PIPELINE_SESSION_ROOT` | `/tmp` |
+| `CELESTIAL_DATA_DIR` | `.celestial` |
+| `CELESTIAL_ENABLED` | prompt interactively; otherwise `0` |
+| `AGENT_MODEL` | required only when The Celestial is enabled |
+| `CELESTIAL_JUDGE_PROVIDER` | required only when enabled |
+| `CELESTIAL_JUDGE_MODEL` | required only when enabled |
+
+## Optional content benchmark: The Celestial
+
+The Celestial evaluates the visible conversational content of Vera, Harvey, Shadow, Karen, Bill
+and Donna. It does not score source code, containers, tools, permissions, hidden reasoning or the
+runtime environment. Every role uses the same eight dimensions and 0–4 scale, with a dynamic role
+description and role-specific anchors loaded from `the_celestial/profiles/`. Instruction design and
+execution/output each contribute 50% of the global 0–100 index.
+
+Docker asks whether to enable it near startup. Capture envelopes are written even when it is off,
+but capture is deterministic and makes no model calls. If enabled, the completed capture is frozen
+before the launcher prints an exact estimate and asks for a second explicit confirmation. Declining
+that confirmation leaves a reusable frozen case and spends no benchmark quota.
+
+An accepted benchmark performs:
+
+1. one simple one-shot CV baseline with the same provider and exact model used by the pipeline;
+2. three blind judge repetitions per observed content envelope;
+3. three blinded comparisons between the final Bill CV and the simple baseline;
+4. at most one schema repair and one read-only verification batch of five excerpts per repetition.
+
+The judge provider and exact model are fixed in the capture request. A judge matching the executor
+is allowed but reported as a self-judge conflict. Judge CLIs run without write, shell, web or agent
+tools. Results are observational: no metric can gate a transition or modify the CV pipeline.
+
+Reports include judge consistency, evidence/citation proxies, unsupported-claim rate, comparison
+with the simpler pipeline, human/model agreement when labels exist, and sensitivity across judge
+models when compatible runs are available. “Real CV improvement” remains explicitly unavailable
+until blinded human labels or downstream outcomes exist; a model preference is only a proxy.
+
+Sensitive content and raw judge responses live under ignored `.celestial/`. Export blind human
+tasks and import completed labels with:
+
+```fish
+uv run python -m the_celestial.cli export-labels \
+    --benchmark .celestial/benchmarks/<benchmark-id> \
+    --output /tmp/celestial-label-tasks.json
+
+uv run python -m the_celestial.cli import-label /tmp/completed-label.json
+```
+
+> [!WARNING]
+> The full authenticated benchmark has intentionally not been run with the maintainer's Claude or
+> Codex quota. Offline tests validate capture, schemas, frozen cases, prompts, call planning and
+> permission flags. Use the deferred frozen-case workflow for a low-risk live test later.
 
 ## Isolation layout and current trust boundary
 
