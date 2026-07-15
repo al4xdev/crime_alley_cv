@@ -76,6 +76,25 @@ silently corrupt the workflow.
 
 The practical rule is: **judgment lives in prose; invariants live in code.**
 
+### The frontier-model bet
+
+Agent work is inherently nondeterministic: the same inputs, model family and runbook may still
+produce different reasoning paths and artifacts. This project does not claim to reproduce an
+agent's hidden reasoning or make one provider universally superior. Provider quality depends on
+the task, model generation and surrounding tools, so agy, Claude Code and Codex are treated as
+replaceable execution clients behind the same explicit boundaries.
+
+The architectural bet is that future frontier models will be increasingly capable of using an
+open, prose-driven workspace, while the surrounding system remains responsible for confinement.
+The reproducible unit is therefore **the environment, inputs, contracts, limits and execution
+evidence—not the model's exact reasoning**. Containers, typed state transitions, immutable
+snapshots, validation and audit logs narrow the consequences of nondeterministic work without
+pretending to eliminate it.
+
+This is a research and engineering direction, not proof that the current architecture is optimal
+for every workload. Stronger isolation still requires deployment-level controls, and successful
+replay demonstrates control-flow behavior rather than identical future model output.
+
 | Concern | Failure mode | Owner |
 |---|---|---|
 | Phase, iteration and termination | Silent extra or infinite loops | `harvey_guy.pipeline` |
@@ -115,6 +134,13 @@ reports can replay a full three-evaluation loop without `agy` or network access.
 - **Other tools:** Git and `jq`; the full list and supported versions live in the requirements file.
 - **Disk:** allow substantial space for the outer environment, evaluator image and cloned public
   repositories. Ten GB free is a practical starting point for the current setup.
+
+The current image footprint favors explicit dependencies, inspectability and broad CLI
+compatibility over minimum size. It is not presented as an irreducible requirement: multi-stage
+builds, a distroless or otherwise minimal runtime, and manually verified shared libraries could
+reduce it. Such optimization should be measured per layer and accepted only after authentication,
+network, certificate, sandbox and end-to-end provider tests pass; replacing the base distribution
+alone is not assumed to save most of the footprint.
 
 Container builds use content-addressed Python and `uv` images, a dated Debian snapshot and a fixed
 `agy` release whose amd64/arm64 archives are checked with published SHA-512 values. These pins live
