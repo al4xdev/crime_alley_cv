@@ -11,8 +11,11 @@ fi
 case "${ACTION}" in
   interactive)
     PROMPT_FILE="${1:?interactive requires a prompt file}"
-    exec agy "${MODEL_ARGS[@]}" --mode accept-edits \
-      --prompt-interactive "$(cat "${PROMPT_FILE}")"
+    PIPELINE_PROMPT="The active pipeline workspace is /app. Start by reading /app/harvey_guy/main.md; do not search Antigravity's internal directories for project files.
+
+$(cat "${PROMPT_FILE}")"
+    exec agy "${MODEL_ARGS[@]}" --add-dir /app --mode accept-edits \
+      --prompt-interactive "${PIPELINE_PROMPT}"
     ;;
   auth-check)
     exec agy models

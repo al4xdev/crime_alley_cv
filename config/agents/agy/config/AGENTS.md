@@ -13,15 +13,24 @@
 
 ## Shell & Tooling
 
-- Shell: **fish**. Python projects use `uv` — venv at `.venv/`, activate with
-  `source .venv/bin/activate.fish`.
+- Prefer **fish** syntax in commands written for the user. Python projects use
+  `uv` — venv at `.venv/`, activate with `source .venv/bin/activate.fish`.
+- Commands executed through Antigravity's **Bash** tool must use Bash syntax.
+  Use `command || report_error` or `status=$?`; never use fish-only forms such
+  as `; or`, `and`, or `set status $status` in that tool.
 - Display server: **Wayland**. When output would be shown for the user to copy,
   pipe it to `wl-copy` instead. Never use `xclip` or `xsel`.
 - Every shell command must capture output. Never run a command and assume it
-  succeeded. Always append  `; or report_error` to your commands, or immediately
-  `set st $status`.
+  succeeded. Inspect its exit status and relevant output.
 - For commands with no natural output (`mv`, `mkdir`, `chmod`...), append
   `&& echo ok`.
+
+## Workspace
+
+- For the outer Crime Alley pipeline session, the project root is `/app` and
+  the runbook is `/app/harvey_guy/main.md`.
+- Evaluator sessions operate from `/app/session` and must remain scoped there.
+- Never search Antigravity's internal `.gemini` directories for project files.
 
 ## Long-Running Tasks
 

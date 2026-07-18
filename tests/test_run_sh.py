@@ -238,8 +238,22 @@ def test_agy_pipeline_action_opens_an_interactive_prompt_session() -> None:
     launcher = (REPOSITORY_ROOT / "config/agents/agy/run.sh").read_text(encoding="utf-8")
     interactive_branch = launcher.split("interactive)", 1)[1].split(";;", 1)[0]
     assert "--prompt-interactive" in interactive_branch
+    assert "--add-dir /app" in interactive_branch
     assert "--mode accept-edits" in interactive_branch
+    assert "/app/harvey_guy/main.md" in interactive_branch
     assert "--prompt \"" not in interactive_branch
+
+
+def test_agy_instructions_match_the_cli_bash_tool_and_workspace() -> None:
+    instructions = (
+        REPOSITORY_ROOT / "config/agents/agy/config/AGENTS.md"
+    ).read_text(encoding="utf-8")
+
+    assert "Bash syntax" in instructions
+    assert "never use fish-only forms" in instructions
+    assert "project root is `/app`" in instructions
+    assert "runbook is `/app/harvey_guy/main.md`" in instructions
+    assert "Always append\N{NO-BREAK SPACE} `; or report_error`" not in instructions
 
 
 def test_provider_configs_disable_network_tools_and_memories() -> None:
