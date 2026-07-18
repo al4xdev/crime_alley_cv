@@ -55,7 +55,7 @@ def _load_results(root: Path) -> dict[str, list[EvaluationResult]]:
 
 def build_report(benchmark_root: Path) -> dict[str, Any]:
     manifest = read_json_object(benchmark_root / "manifest.json")
-    if manifest.get("schema_version") != 2:
+    if manifest.get("schema_version") not in {2, 3}:
         raise ValueError("Celestial v1 benchmarks are audit-only")
     by_item = _load_results(benchmark_root)
     results = [result for repetitions in by_item.values() for result in repetitions]
@@ -321,7 +321,16 @@ def build_report(benchmark_root: Path) -> dict[str, Any]:
             else None,
             "note": "Reported only after matched baseline and final-CV claim labels exist.",
         },
+        "subject_provider": manifest["subject_provider"],
+        "subject_model": manifest.get("subject_model"),
+        "baseline_provider": manifest.get("baseline_provider", manifest["subject_provider"]),
+        "baseline_model": manifest.get("baseline_model", manifest.get("subject_model")),
+        "judge_provider": manifest["judge_provider"],
+        "judge_model": manifest["judge_model"],
         "self_judge_conflict": manifest["self_judge_conflict"],
+        "baseline_judge_conflict": manifest.get(
+            "baseline_judge_conflict", manifest["self_judge_conflict"]
+        ),
         "observational_only": True,
     }
     atomic_write_json(benchmark_root / "report.json", report)
@@ -329,6 +338,11 @@ def build_report(benchmark_root: Path) -> dict[str, Any]:
         benchmark_root / "report.md",
         "# The Celestial report\n\n"
         f"- Benchmark: `{manifest['benchmark_id']}`\n"
+        f"- Subject: `{manifest['subject_provider']}` / "
+        f"`{manifest.get('subject_model') or 'unreported'}`\n"
+        f"- Baseline: `{manifest.get('baseline_provider', manifest['subject_provider'])}` / "
+        f"`{manifest.get('baseline_model', manifest.get('subject_model')) or 'unreported'}`\n"
+        f"- Judge: `{manifest['judge_provider']}` / `{manifest['judge_model']}`\n"
         f"- Valid evaluations: {len(results)}\n"
         f"- Human labels: {len(labels)}\n"
         "- Observational only; unavailable metrics remain explicit in report.json.\n",

@@ -139,7 +139,7 @@ class PendingManifest(StrictModel):
 class RunState(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    schema_version: Literal[3] = 3
+    schema_version: Literal[4] = 4
     revision: int = Field(default=0, ge=0)
     run_id: str
     run_dir: str
@@ -149,7 +149,9 @@ class RunState(BaseModel):
     agent_model: str | None = None
     celestial_capture_id: str | None = None
     celestial_requested: bool = False
-    celestial_judge_provider: Literal["agy", "claude", "codex"] | None = None
+    celestial_baseline_provider: Literal["claude", "codex"] | None = None
+    celestial_baseline_model: str | None = None
+    celestial_judge_provider: Literal["claude", "codex"] | None = None
     celestial_judge_model: str | None = None
     max_iterations: int = Field(ge=1)
     min_fit_score: int = Field(ge=0, le=100)
@@ -167,20 +169,35 @@ class RunState(BaseModel):
 
     @model_validator(mode="after")
     def validate_celestial_configuration(self) -> RunState:
+        baseline_values = (self.celestial_baseline_provider, self.celestial_baseline_model)
         judge_values = (self.celestial_judge_provider, self.celestial_judge_model)
+        if any(baseline_values) and not all(baseline_values):
+            raise ValueError("Celestial baseline provider and model must be configured together")
         if any(judge_values) and not all(judge_values):
             raise ValueError("Celestial judge provider and model must be configured together")
         if self.celestial_requested and (
-            self.celestial_capture_id is None or self.agent_model is None or not all(judge_values)
+            self.celestial_capture_id is None
+            or not all(baseline_values)
+            or not all(judge_values)
         ):
             raise ValueError(
-                "An enabled Celestial benchmark requires capture, subject model and judge model"
+                "An enabled Celestial benchmark requires capture, baseline model and judge model"
             )
-        if self.celestial_requested and (
-            self.agent_provider not in {"claude", "codex"}
-            or self.celestial_judge_provider not in {"claude", "codex"}
+        if self.celestial_requested and self.agent_provider in {"claude", "codex"}:
+            if self.agent_model is None:
+                raise ValueError("A Claude or Codex subject requires an exact model")
+            if (
+                self.celestial_baseline_provider != self.agent_provider
+                or self.celestial_baseline_model != self.agent_model
+            ):
+                raise ValueError("Claude or Codex subjects must generate their own baseline")
+        if self.celestial_requested and self.agent_provider not in {"agy", "claude", "codex"}:
+            raise ValueError("Celestial subjects must be Agy, Claude or Codex")
+        if self.celestial_requested and self.agent_provider == "agy" and (
+            self.celestial_baseline_provider != self.celestial_judge_provider
+            or self.celestial_baseline_model != self.celestial_judge_model
         ):
-            raise ValueError("Celestial calls fail closed to Claude or Codex providers")
+            raise ValueError("Agy requires one secondary provider for baseline and judging")
         return self
 
     @property
@@ -219,6 +236,24 @@ def _parse_run_state(raw: str) -> RunState:
             "celestial_requested": False,
             "celestial_judge_provider": None,
             "celestial_judge_model": None,
+        }
+    if value.get("schema_version") == 3:
+        celestial_requested = bool(value.get("celestial_requested"))
+        agent_provider = value.get("agent_provider")
+        if celestial_requested and agent_provider in {"claude", "codex"}:
+            baseline_provider = agent_provider
+            baseline_model = value.get("agent_model")
+        elif celestial_requested and agent_provider == "agy":
+            baseline_provider = value.get("celestial_judge_provider")
+            baseline_model = value.get("celestial_judge_model")
+        else:
+            baseline_provider = None
+            baseline_model = None
+        value = {
+            **value,
+            "schema_version": 4,
+            "celestial_baseline_provider": baseline_provider,
+            "celestial_baseline_model": baseline_model,
         }
     return RunState.model_validate_json(json.dumps(value))
 
@@ -389,6 +424,8 @@ class RunStore:
             "agent_model",
             "celestial_capture_id",
             "celestial_requested",
+            "celestial_baseline_provider",
+            "celestial_baseline_model",
             "celestial_judge_provider",
             "celestial_judge_model",
             "max_iterations",
@@ -734,7 +771,9 @@ def initialize_run(
     agent_model: str | None = None,
     celestial_capture_id: str | None = None,
     celestial_requested: bool = False,
-    celestial_judge_provider: Literal["agy", "claude", "codex"] | None = None,
+    celestial_baseline_provider: Literal["claude", "codex"] | None = None,
+    celestial_baseline_model: str | None = None,
+    celestial_judge_provider: Literal["claude", "codex"] | None = None,
     celestial_judge_model: str | None = None,
     run_id: str | None = None,
 ) -> tuple[Path, RunState]:
@@ -750,6 +789,18 @@ def initialize_run(
     first_line = job_path.read_text(encoding="utf-8").splitlines()[0]
     if JOB_HEADER.fullmatch(first_line) is None:
         raise PipelineError("job.md must start with '# <Position> — <Company>'")
+
+    if (
+        celestial_requested
+        and celestial_baseline_provider is None
+        and celestial_baseline_model is None
+    ):
+        if agent_provider in {"claude", "codex"}:
+            celestial_baseline_provider = "claude" if agent_provider == "claude" else "codex"
+            celestial_baseline_model = agent_model
+        elif agent_provider == "agy":
+            celestial_baseline_provider = celestial_judge_provider
+            celestial_baseline_model = celestial_judge_model
 
     if run_id is None:
         run_id = f"{utc_now()[:19].replace(':', '').replace('-', '')}_{uuid.uuid4().hex[:6]}"
@@ -767,6 +818,8 @@ def initialize_run(
             agent_model=agent_model,
             celestial_capture_id=celestial_capture_id,
             celestial_requested=celestial_requested,
+            celestial_baseline_provider=celestial_baseline_provider,
+            celestial_baseline_model=celestial_baseline_model,
             celestial_judge_provider=celestial_judge_provider,
             celestial_judge_model=celestial_judge_model,
             max_iterations=max_iterations,
@@ -803,6 +856,10 @@ def initialize_run(
                 "agent_model": agent_model,
                 "celestial_capture_id": celestial_capture_id,
                 "celestial_requested": celestial_requested,
+                "celestial_baseline_provider": celestial_baseline_provider,
+                "celestial_baseline_model": celestial_baseline_model,
+                "celestial_judge_provider": celestial_judge_provider,
+                "celestial_judge_model": celestial_judge_model,
             },
         }
         atomic_write_text(staging / "events.jsonl", json.dumps(event) + "\n")
@@ -824,6 +881,8 @@ def initialize_run(
             celestial_requested=celestial_requested,
             judge_provider=celestial_judge_provider,
             judge_model=celestial_judge_model,
+            baseline_provider=celestial_baseline_provider,
+            baseline_model=celestial_baseline_model,
         )
         record_envelope(
             capture_id=celestial_capture_id,
@@ -1326,7 +1385,9 @@ def _parse_args() -> argparse.Namespace:
     init.add_argument("--agent-model")
     init.add_argument("--celestial-capture-id")
     init.add_argument("--celestial-enabled", action="store_true")
-    init.add_argument("--celestial-judge-provider", choices=("agy", "claude", "codex"))
+    init.add_argument("--celestial-baseline-provider", choices=("claude", "codex"))
+    init.add_argument("--celestial-baseline-model")
+    init.add_argument("--celestial-judge-provider", choices=("claude", "codex"))
     init.add_argument("--celestial-judge-model")
     init.add_argument("--run-id")
 
@@ -1356,6 +1417,8 @@ def main() -> None:
                 agent_model=args.agent_model,
                 celestial_capture_id=args.celestial_capture_id,
                 celestial_requested=args.celestial_enabled,
+                celestial_baseline_provider=args.celestial_baseline_provider,
+                celestial_baseline_model=args.celestial_baseline_model,
                 celestial_judge_provider=args.celestial_judge_provider,
                 celestial_judge_model=args.celestial_judge_model,
                 run_id=args.run_id,

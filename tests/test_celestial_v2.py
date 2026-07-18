@@ -20,7 +20,7 @@ from the_celestial.capture import (
 )
 from the_celestial.labels import export_blind_tasks, import_label
 from the_celestial.metrics import build_report
-from the_celestial.models import DIMENSIONS, AgentRole, VerificationRequest
+from the_celestial.models import DIMENSIONS, AgentRole, BenchmarkSpec, VerificationRequest
 from the_celestial.provider import ProviderCapabilityError, run_prompt
 from the_celestial.verification import collect_frozen_excerpts
 
@@ -140,6 +140,91 @@ def _completed_benchmark(
     generate_baseline("capture-v2", digest)
     root = run_benchmark("capture-v2", plan_digest=digest)
     return root, calls, case_id
+
+
+def test_agy_uses_one_secondary_for_baseline_and_judging(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CELESTIAL_DATA_DIR", str(tmp_path / "celestial"))
+    create_run_request(
+        capture_id="agy-secondary",
+        run_id="agy-run",
+        run_dir="/not-exposed",
+        subject_provider="agy",
+        subject_model=None,
+        celestial_requested=True,
+        judge_provider="codex",
+        judge_model="gpt-5.4",
+        baseline_provider="codex",
+        baseline_model="gpt-5.4",
+    )
+    for label, content in (
+        ("initial_cv", "# Alice Example\n\n- Built reliable Python services.\n"),
+        ("job_description", "# Platform Engineer\n\nBuild services.\n"),
+        ("final_cv", "# Alice Example\n\n- Built reliable Python services.\n"),
+    ):
+        record_case_input("agy-secondary", label, content)
+    record_envelope(
+        capture_id="agy-secondary",
+        run_id="agy-run",
+        role=AgentRole.KAREN,
+        invocation=1,
+        instruction=("karen_instruction", "Assess only supplied CV evidence."),
+        inputs={"candidate_cv": "# Alice Example\n\nBuilt Python services."},
+        outputs={"evaluation_report": "# Evaluation\n\nThe experience is relevant."},
+    )
+    update_request("agy-secondary", status="capture_complete")
+    freeze_capture("agy-secondary")
+    update_request("agy-secondary", status="ready")
+
+    calls: list[tuple[str, str]] = []
+    fake = _fake_provider([])
+
+    def secondary(provider: str, model: str, prompt: str, **kwargs: Any) -> str:
+        calls.append((provider, model))
+        return fake(provider, model, prompt, **kwargs)
+
+    monkeypatch.setattr("the_celestial.benchmark.run_prompt", secondary)
+    plan = plan_capture("agy-secondary")
+    digest = str(plan["plan_digest"])
+    generate_baseline("agy-secondary", digest)
+    root = run_benchmark("agy-secondary", plan_digest=digest)
+
+    spec = json.loads((root / "spec.json").read_text())
+    manifest = json.loads((root / "manifest.json").read_text())
+    report = build_report(root)
+    assert spec["subject_provider"] == "agy"
+    assert spec["subject_model"] is None
+    assert spec["baseline_provider"] == "codex"
+    assert calls == [("codex", "gpt-5.4")] * 10
+    assert manifest["self_judge_conflict"] is False
+    assert manifest["baseline_judge_conflict"] is True
+    assert report["subject_provider"] == "agy"
+    assert report["baseline_provider"] == "codex"
+
+
+def test_v2_benchmark_spec_infers_its_subject_as_the_baseline() -> None:
+    spec = BenchmarkSpec.model_validate(
+        {
+            "schema_version": 2,
+            "benchmark_id": "legacy-benchmark",
+            "capture_id": "legacy-capture",
+            "case_id": "0" * 24,
+            "case_digest": "1" * 64,
+            "subject_provider": "claude",
+            "subject_model": "claude-sonnet-4-20250514",
+            "judge_provider": "codex",
+            "judge_model": "gpt-5.4",
+            "rubric_sha256": "2" * 64,
+            "profile_sha256": {"baseline": "3" * 64},
+            "repetitions": 3,
+            "plan_digest": "4" * 64,
+            "created_at": "2026-07-18T00:00:00Z",
+        }
+    )
+
+    assert spec.baseline_provider == "claude"
+    assert spec.baseline_model == "claude-sonnet-4-20250514"
 
 
 def test_benchmark_is_immutable_idempotent_and_does_not_mutate_case(

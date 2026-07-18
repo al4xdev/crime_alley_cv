@@ -189,13 +189,15 @@ class EvaluationResult(StrictModel):
 
 
 class BenchmarkSpec(StrictModel):
-    schema_version: Literal[2] = 2
+    schema_version: Literal[2, 3] = 3
     benchmark_id: str = Field(pattern=SAFE_ID)
     capture_id: str = Field(pattern=SAFE_ID)
     case_id: str = Field(pattern=r"^[0-9a-f]{24}$")
     case_digest: str = Field(pattern=SHA256)
     subject_provider: Literal["agy", "claude", "codex"]
-    subject_model: str
+    subject_model: str | None
+    baseline_provider: Literal["claude", "codex"] | None = None
+    baseline_model: str | None = None
     judge_provider: Literal["claude", "codex"]
     judge_model: str
     rubric_sha256: str = Field(pattern=SHA256)
@@ -203,6 +205,17 @@ class BenchmarkSpec(StrictModel):
     repetitions: Literal[3] = 3
     plan_digest: str = Field(pattern=SHA256)
     created_at: str
+
+    @model_validator(mode="after")
+    def resolve_legacy_baseline(self) -> BenchmarkSpec:
+        if self.schema_version == 2 and self.baseline_provider is None:
+            if self.subject_provider not in {"claude", "codex"} or self.subject_model is None:
+                raise ValueError("Legacy benchmark has no usable baseline provider")
+            self.baseline_provider = "claude" if self.subject_provider == "claude" else "codex"
+            self.baseline_model = self.subject_model
+        if self.baseline_provider is None or self.baseline_model is None:
+            raise ValueError("Benchmark baseline provider and model are required")
+        return self
 
 
 class PairwiseResult(StrictModel):

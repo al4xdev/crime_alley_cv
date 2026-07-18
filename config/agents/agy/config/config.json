@@ -9,6 +9,7 @@
       "deny": [
         "unsandboxed(*)",
         "read_url(*)",
+        "execute_url(*)",
         "mcp(*)",
         "read_file(/home/**)",
         "write_file(/app/session/docs/**)",

@@ -11,7 +11,8 @@ fi
 case "${ACTION}" in
   interactive)
     PROMPT_FILE="${1:?interactive requires a prompt file}"
-    exec agy "${MODEL_ARGS[@]}" --prompt "$(cat "${PROMPT_FILE}")"
+    exec agy "${MODEL_ARGS[@]}" --mode accept-edits \
+      --prompt-interactive "$(cat "${PROMPT_FILE}")"
     ;;
   auth-check)
     exec agy models

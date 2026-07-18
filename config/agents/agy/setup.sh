@@ -33,8 +33,7 @@ fi
 
 mkdir -p "${SESSION_GEMINI_DIR}/config"
 install -m 0644 "${DIR}/config/AGENTS.md" "${SESSION_GEMINI_DIR}/config/AGENTS.md"
-if [ "${SCOPE}" = "evaluator" ]; then
-    install -m 0644 "${DIR}/config/config.json" "${SESSION_GEMINI_DIR}/config/config.json"
-fi
+install -m 0600 "${DIR}/config/settings.json" "${SESSION_AUTH_DIR}/settings.json"
+install -m 0600 "${DIR}/config/config.json" "${SESSION_GEMINI_DIR}/config/config.json"
 
 chown -R "${RUNTIME_UID}:${RUNTIME_GID}" "${SESSION_GEMINI_DIR}"

@@ -60,11 +60,13 @@ if set -q CELESTIAL_CAPTURE_ID
 end
 if set -q CELESTIAL_ENABLED; and test "$CELESTIAL_ENABLED" = "1"
     set -a celestial_args --celestial-enabled \
+        --celestial-baseline-provider "$CELESTIAL_BASELINE_PROVIDER" \
+        --celestial-baseline-model "$CELESTIAL_BASELINE_MODEL" \
         --celestial-judge-provider "$CELESTIAL_JUDGE_PROVIDER" \
         --celestial-judge-model "$CELESTIAL_JUDGE_MODEL"
 end
 set model_args
-if set -q AGENT_MODEL
+if set -q AGENT_MODEL; and test -n "$AGENT_MODEL"
     set -a model_args --agent-model "$AGENT_MODEL"
 end
 set init_json (uv run python -m harvey_guy.pipeline init \

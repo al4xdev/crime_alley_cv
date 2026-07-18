@@ -165,9 +165,9 @@ path is backed separately by the deployment.
 | `PIPELINE_SESSION_ROOT` | `/tmp` |
 | `CELESTIAL_DATA_DIR` | `.celestial` |
 | `CELESTIAL_ENABLED` | prompt interactively; otherwise `0` |
-| `AGENT_MODEL` | required only when The Celestial is enabled |
-| `CELESTIAL_JUDGE_PROVIDER` | required only when enabled |
-| `CELESTIAL_JUDGE_MODEL` | required only when enabled |
+| `AGENT_MODEL` | required when The Celestial is enabled with Claude/Codex as the pipeline agent |
+| `CELESTIAL_JUDGE_PROVIDER` | required only when enabled; also runs the baseline for Agy |
+| `CELESTIAL_JUDGE_MODEL` | required only when enabled; also runs the baseline for Agy |
 
 ## Optional content benchmark: The Celestial
 
@@ -184,7 +184,8 @@ that confirmation leaves a reusable frozen case and spends no benchmark quota.
 
 An accepted benchmark performs:
 
-1. one simple one-shot CV baseline with the same provider and exact model used by the pipeline;
+1. one simple one-shot CV baseline with the pipeline model, or with the selected secondary when
+   Agy is the pipeline agent;
 2. three blind judge repetitions per observed content envelope;
 3. three blinded comparisons between the final Bill CV and the simple baseline;
 4. at most one schema repair and one read-only verification batch of five excerpts per repetition.
@@ -194,14 +195,15 @@ plan digest validates completed results and resumes only missing repetitions. Th
 case is never modified by baseline generation, judging, labels or reports; generated artifacts are
 kept in a separate benchmark directory with a hash-chained event ledger.
 
-The judge provider and explicit model ID are fixed in the capture request. A judge matching the
-executor is allowed but reported as a self-judge conflict. Dedicated provider images mount only
-one credential and the Celestial data directory. Claude runs with an empty tool set; Codex disables
-shell/unified execution, web search, user configuration and project rules in a read-only sandbox.
-Capability checks fail closed before quota is accepted. `agy` remains available for the normal
-pipeline and passive capture, but is blocked from Celestial baseline/judge calls until equivalent
-no-tool enforcement can be proven. Results are observational: no metric can gate a transition or
-modify the CV pipeline.
+The baseline and judge providers and their explicit model IDs are fixed in the capture request.
+Provider/model conflicts are reported for both the subject and the baseline. Dedicated provider
+images mount only one credential and the Celestial data directory. Claude runs with an empty tool
+set; Codex disables shell/unified execution, web search, user configuration and project rules in a
+read-only sandbox. Capability checks fail closed before quota is accepted. `agy` remains blocked
+from direct Celestial calls until equivalent no-tool enforcement can be proven; when Agy runs the
+pipeline, one selected Claude or Codex secondary generates the baseline and performs all judging.
+The report preserves Agy as the evaluated subject and flags that the secondary judged its own
+baseline. Results are observational: no metric can gate a transition or modify the CV pipeline.
 
 Reports include within-item judge repeatability, schema-valid citation integrity, human-validated
 evidence precision, comparison with the simpler pipeline, human/model agreement, blinded revision

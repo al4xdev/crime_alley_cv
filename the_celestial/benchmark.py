@@ -221,7 +221,7 @@ def _evaluate_once(
 
 def _case_for_request(capture_id: str) -> tuple[Path, dict[str, Any], dict[str, Any]]:
     request = read_json_object(data_root() / "captures" / capture_id / "request.json")
-    if request.get("schema_version") != 2:
+    if request.get("schema_version") not in {2, 3}:
         raise ValueError("Celestial v1 captures are audit-only")
     if request.get("status") not in {"ready", "captured_disabled"}:
         raise ValueError("Capture is not ready for benchmarking")
@@ -241,10 +241,14 @@ def plan_capture(capture_id: str) -> dict[str, Any]:
     if not request.get("celestial_requested"):
         raise ValueError("The Celestial was not enabled for this capture")
     subject_provider = str(request["subject_provider"])
-    subject_model = str(request["subject_model"])
+    subject_model_value = request.get("subject_model")
+    subject_model = str(subject_model_value) if subject_model_value is not None else None
+    baseline_provider = str(request.get("baseline_provider") or subject_provider)
+    baseline_model_value = request.get("baseline_model") or subject_model
+    baseline_model = str(baseline_model_value) if baseline_model_value is not None else ""
     judge_provider = str(request["judge_provider"])
     judge_model = str(request["judge_model"])
-    validate_exact_model(subject_provider, subject_model)
+    validate_exact_model(baseline_provider, baseline_model)
     validate_exact_model(judge_provider, judge_model)
     envelopes = sorted((case_root / "envelopes").glob("*/*.json"))
     observed = [path for path in envelopes if read_json_object(path).get("status") == "observed"]
@@ -252,12 +256,14 @@ def plan_capture(capture_id: str) -> dict[str, Any]:
     profile_sha256 = {role: load_profile(role)[1] for role in sorted(roles)}
     _, rubric_sha256 = load_rubric()
     plan_body = {
-        "schema_version": 2,
+        "schema_version": 3,
         "capture_id": capture_id,
         "case_id": case_root.name,
         "case_digest": manifest["content_digest"],
         "subject_provider": subject_provider,
         "subject_model": subject_model,
+        "baseline_provider": baseline_provider,
+        "baseline_model": baseline_model,
         "judge_provider": judge_provider,
         "judge_model": judge_model,
         "rubric_sha256": rubric_sha256,
@@ -300,6 +306,15 @@ def plan_capture(capture_id: str) -> dict[str, Any]:
 
 
 def _load_spec(capture_id: str, plan_digest: str) -> tuple[BenchmarkSpec, Path, Path]:
+    existing_root = data_root() / "benchmarks" / f"{capture_id}-{plan_digest[:12]}"
+    existing_spec_path = existing_root / "spec.json"
+    if existing_spec_path.is_file():
+        existing_spec = BenchmarkSpec.model_validate_json(existing_spec_path.read_text())
+        if existing_spec.capture_id != capture_id or existing_spec.plan_digest != plan_digest:
+            raise ValueError("Existing benchmark spec conflicts with the accepted plan")
+        existing_case_root = data_root() / "cases" / existing_spec.case_id
+        verify_frozen_case(existing_spec.case_id)
+        return existing_spec, existing_root, existing_case_root
     plan = plan_capture(capture_id)
     if plan["plan_digest"] != plan_digest:
         raise ValueError("Quota confirmation digest does not match the current benchmark plan")
@@ -369,12 +384,14 @@ def generate_baseline(capture_id: str, plan_digest: str) -> Path:
             raise ValueError("Existing baseline failed integrity validation")
         return output
     prompt = compile_baseline_prompt(case_root)
-    raw = run_prompt(spec.subject_provider, spec.subject_model, prompt)
+    assert spec.baseline_provider is not None
+    assert spec.baseline_model is not None
+    raw = run_prompt(spec.baseline_provider, spec.baseline_model, prompt)
     calls = 1
     if len(raw.strip()) < 100 or not raw.lstrip().startswith("#"):
         raw = run_prompt(
-            spec.subject_provider,
-            spec.subject_model,
+            spec.baseline_provider,
+            spec.baseline_model,
             prompt + "\nReturn only a complete Markdown CV; the previous output was invalid.",
         )
         calls += 1
@@ -495,7 +512,10 @@ def run_benchmark(capture_id: str, *, plan_digest: str) -> Path:
     if completed_manifest.exists():
         _verify_ledger(root)
         manifest = read_json_object(completed_manifest)
-        if manifest.get("schema_version") != 2 or manifest.get("plan_digest") != plan_digest:
+        if (
+            manifest.get("schema_version") not in {2, 3}
+            or manifest.get("plan_digest") != plan_digest
+        ):
             raise ValueError("Existing benchmark manifest conflicts with the accepted plan")
         completed_records = [
             record for record in manifest.get("records", []) if record.get("status") == "complete"
@@ -572,10 +592,14 @@ def run_benchmark(capture_id: str, *, plan_digest: str) -> Path:
         raise RuntimeError("Benchmark remains incomplete; rerun the same accepted plan to resume")
     pairwise = _pairwise_compare(spec, root, case_root)
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         **spec.model_dump(mode="json"),
         "self_judge_conflict": (
             spec.subject_provider == spec.judge_provider and spec.subject_model == spec.judge_model
+        ),
+        "baseline_judge_conflict": (
+            spec.baseline_provider == spec.judge_provider
+            and spec.baseline_model == spec.judge_model
         ),
         "records": records,
         "pairwise_records": [record.model_dump(mode="json") for record in pairwise],

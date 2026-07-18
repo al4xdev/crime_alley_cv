@@ -234,7 +234,18 @@ def test_evaluator_images_and_cli_wrappers_are_non_privileged() -> None:
     assert "--dns=8.8.8.8" not in runner
 
 
+def test_agy_pipeline_action_opens_an_interactive_prompt_session() -> None:
+    launcher = (REPOSITORY_ROOT / "config/agents/agy/run.sh").read_text(encoding="utf-8")
+    interactive_branch = launcher.split("interactive)", 1)[1].split(";;", 1)[0]
+    assert "--prompt-interactive" in interactive_branch
+    assert "--mode accept-edits" in interactive_branch
+    assert "--prompt \"" not in interactive_branch
+
+
 def test_provider_configs_disable_network_tools_and_memories() -> None:
+    agy_settings = json.loads(
+        (REPOSITORY_ROOT / "config/agents/agy/config/settings.json").read_text()
+    )
     agy_config = json.loads(
         (REPOSITORY_ROOT / "config/agents/agy/config/config.json").read_text()
     )
@@ -244,10 +255,19 @@ def test_provider_configs_disable_network_tools_and_memories() -> None:
     codex_config = (
         REPOSITORY_ROOT / "config/agents/codex/config/config.toml"
     ).read_text()
+    agy_setup = (REPOSITORY_ROOT / "config/agents/agy/setup.sh").read_text()
 
-    agy_denies = agy_config["userSettings"]["globalPermissionGrants"]["deny"]
+    agy_grants = agy_config["userSettings"]["globalPermissionGrants"]
+    agy_allows = agy_grants["allow"]
+    agy_denies = agy_grants["deny"]
+    assert agy_settings["toolPermission"] == "always-proceed"
+    assert agy_settings["artifactReviewPolicy"] == "always-proceed"
+    assert "command(*)" in agy_allows
     assert "read_url(*)" in agy_denies
+    assert "execute_url(*)" in agy_denies
     assert "mcp(*)" in agy_denies
+    assert 'config/settings.json" "${SESSION_AUTH_DIR}/settings.json' in agy_setup
+    assert 'config/config.json" "${SESSION_GEMINI_DIR}/config/config.json' in agy_setup
     assert "WebFetch" in claude_config["permissions"]["deny"]
     assert "WebSearch" in claude_config["permissions"]["deny"]
     assert 'web_search = "disabled"' in codex_config
@@ -263,6 +283,28 @@ def _mock_docker(tmp_path: Path) -> tuple[Path, Path]:
         "#!/bin/sh\n"
         "printf 'CALL\\n' >> \"$MOCK_DOCKER_LOG\"\n"
         "printf '<%s>\\n' \"$@\" >> \"$MOCK_DOCKER_LOG\"\n",
+        encoding="utf-8",
+    )
+    docker.chmod(0o755)
+    return binary_dir, log
+
+
+def _mock_celestial_docker(tmp_path: Path) -> tuple[Path, Path]:
+    binary_dir = tmp_path / "bin"
+    binary_dir.mkdir()
+    log = tmp_path / "docker.log"
+    docker = binary_dir / "docker"
+    docker.write_text(
+        "#!/bin/sh\n"
+        "printf 'CALL\\n' >> \"$MOCK_DOCKER_LOG\"\n"
+        "printf '<%s>\\n' \"$@\" >> \"$MOCK_DOCKER_LOG\"\n"
+        "case \"$*\" in\n"
+        "  *the_celestial.cli\\ plan*)\n"
+        "    printf '{\"plan_digest\":\""
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "\"}\\n'\n"
+        "    ;;\n"
+        "esac\n",
         encoding="utf-8",
     )
     docker.chmod(0o755)
@@ -310,6 +352,54 @@ def test_start_sh_mounts_only_selected_credential(
     assert f"<{provider}>" in calls
 
 
+def test_start_sh_uses_codex_as_the_single_celestial_secondary_for_agy(
+    tmp_path: Path,
+) -> None:
+    binary_dir, log = _mock_celestial_docker(tmp_path)
+    home = _home_with_credential(tmp_path, "agy")
+    codex_credential, _ = _credential_paths(home, "codex")
+    codex_credential.parent.mkdir(parents=True)
+    codex_credential.write_text("mock-codex-credential\n", encoding="utf-8")
+    codex_credential.chmod(0o600)
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "HOME": str(home),
+            "MOCK_DOCKER_LOG": str(log),
+            "PATH": f"{binary_dir}{os.pathsep}{environment['PATH']}",
+            "PIPELINE_DATA_DIR": str(tmp_path / "data"),
+            "PIPELINE_RUNS_DIR": str(tmp_path / "runs"),
+            "CELESTIAL_DATA_DIR": str(tmp_path / "celestial"),
+            "CELESTIAL_ENABLED": "1",
+            "CELESTIAL_JUDGE_PROVIDER": "codex",
+            "CELESTIAL_JUDGE_MODEL": "gpt-5.4",
+        }
+    )
+    environment.pop("AGENT_MODEL", None)
+    environment.pop("SUDO_USER", None)
+
+    result = subprocess.run(
+        [str(REPOSITORY_ROOT / "start.sh"), "--agent", "agy"],
+        cwd=REPOSITORY_ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Agy cannot run isolated Celestial calls" in result.stderr
+    calls = log.read_text(encoding="utf-8")
+    agy_credential, _ = _credential_paths(home, "agy")
+    assert "<celestial-agy>" not in calls
+    assert "<celestial-codex>" in calls
+    assert f"<{agy_credential}:/run/host-agent-auth:ro>" in calls
+    assert f"<{codex_credential}:/run/host-agent-auth:ro>" in calls
+    assert "<CELESTIAL_BASELINE_PROVIDER=codex>" in calls
+    assert "<CELESTIAL_BASELINE_MODEL=gpt-5.4>" in calls
+    assert "<AGENT_PROVIDER=agy>" in calls
+
+
 def test_start_sh_requires_provider_without_tty(tmp_path: Path) -> None:
     binary_dir, _ = _mock_docker(tmp_path)
     environment = os.environ.copy()
@@ -325,6 +415,16 @@ def test_start_sh_requires_provider_without_tty(tmp_path: Path) -> None:
     )
     assert result.returncode == 2
     assert "select an agent" in result.stderr
+
+
+def test_start_sh_offers_numeric_and_mnemonic_agent_shortcuts() -> None:
+    launcher = (REPOSITORY_ROOT / "start.sh").read_text(encoding="utf-8")
+    assert "1/a) Antigravity" in launcher
+    assert "2/c) Claude Code" in launcher
+    assert "3/o) OpenAI Codex" in launcher
+    assert "1|a|A) AGENT_PROVIDER=agy" in launcher
+    assert "2|c|C) AGENT_PROVIDER=claude" in launcher
+    assert "3|o|O) AGENT_PROVIDER=codex" in launcher
 
 
 def test_outer_container_uses_explicit_nested_runtime_boundary() -> None:

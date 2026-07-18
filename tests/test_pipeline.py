@@ -774,6 +774,48 @@ def test_agent_provider_is_immutable_run_metadata(
     assert RunStore(state_path).load().agent_provider == "codex"
 
 
+def test_agy_celestial_derives_baseline_from_the_single_secondary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _configure_runtime(tmp_path, monkeypatch)
+    monkeypatch.setenv("CELESTIAL_DATA_DIR", str(tmp_path / "celestial"))
+    state_path, state = initialize_run(
+        max_iterations=1,
+        min_fit_score=80,
+        karen_reads_background=False,
+        agent_provider="agy",
+        celestial_capture_id="agy-secondary",
+        celestial_requested=True,
+        celestial_judge_provider="codex",
+        celestial_judge_model="gpt-5.4",
+        run_id="agy-celestial",
+    )
+
+    assert state.schema_version == 4
+    assert state.agent_model is None
+    assert state.celestial_baseline_provider == "codex"
+    assert state.celestial_baseline_model == "gpt-5.4"
+    persisted = json.loads(state_path.read_text(encoding="utf-8"))
+    request = json.loads(
+        (tmp_path / "celestial/captures/agy-secondary/request.json").read_text()
+    )
+    assert persisted["agent_provider"] == "agy"
+    assert request["schema_version"] == 3
+    assert request["subject_provider"] == "agy"
+    assert request["subject_model"] is None
+    assert request["baseline_provider"] == "codex"
+    assert request["judge_provider"] == "codex"
+
+    persisted["schema_version"] = 3
+    persisted.pop("celestial_baseline_provider")
+    persisted.pop("celestial_baseline_model")
+    state_path.write_text(json.dumps(persisted), encoding="utf-8")
+    migrated = RunStore(state_path).load()
+    assert migrated.schema_version == 4
+    assert migrated.celestial_baseline_provider == "codex"
+    assert migrated.celestial_baseline_model == "gpt-5.4"
+
+
 def test_legacy_state_without_agent_provider_defaults_to_agy(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -55,7 +55,7 @@ def _cv_claims(content: str) -> list[dict[str, str]]:
 
 def export_blind_tasks(benchmark_root: Path, output: Path) -> Path:
     manifest = read_json_object(benchmark_root / "manifest.json")
-    if manifest.get("schema_version") != 2:
+    if manifest.get("schema_version") not in {2, 3}:
         raise ValueError("Celestial v1 benchmarks are audit-only")
     case_root = data_root() / "cases" / str(manifest["case_id"])
     initial_cv = (case_root / "inputs" / "initial_cv.md").read_text(encoding="utf-8")

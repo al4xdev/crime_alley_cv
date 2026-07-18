@@ -7,6 +7,11 @@ repos
 .celestial
 .stable_version_results
 .dependencies_checked.md
+cvs
+cv_adjust_stage.completed.bak
+plans
+chat_gpt_test.md
+cv_raw.md
 __pycache__
 *.pyc
 *.pyo

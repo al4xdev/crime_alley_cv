@@ -12,6 +12,11 @@ def _dockerfile_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def test_local_workspace_archives_do_not_enter_the_container_context() -> None:
+    ignored = set((REPOSITORY_ROOT / ".dockerignore").read_text().splitlines())
+    assert {"cvs", "cv_adjust_stage.completed.bak", "plans"} <= ignored
+
+
 def test_container_inputs_are_content_addressed() -> None:
     outer = _dockerfile_text(OUTER_DOCKERFILE)
     karen = _dockerfile_text(KAREN_DOCKERFILE)

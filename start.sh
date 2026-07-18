@@ -46,14 +46,14 @@ if [ -z "${AGENT_PROVIDER}" ]; then
     exit 2
   fi
   echo "Select the agent runtime:" >&2
-  echo "  1) Antigravity (agy)" >&2
-  echo "  2) Claude Code" >&2
-  echo "  3) OpenAI Codex" >&2
-  read -r -p "Agent [1-3]: " selection
+  echo "  1/a) Antigravity (agy)" >&2
+  echo "  2/c) Claude Code" >&2
+  echo "  3/o) OpenAI Codex" >&2
+  read -r -p "Agent [1-3 | a/c/o]: " selection
   case "${selection}" in
-    1) AGENT_PROVIDER=agy ;;
-    2) AGENT_PROVIDER=claude ;;
-    3) AGENT_PROVIDER=codex ;;
+    1|a|A) AGENT_PROVIDER=agy ;;
+    2|c|C) AGENT_PROVIDER=claude ;;
+    3|o|O) AGENT_PROVIDER=codex ;;
     *) echo "Error: invalid agent selection." >&2; exit 2 ;;
   esac
 fi
@@ -81,6 +81,8 @@ fi
 
 CELESTIAL_ENABLED="${CELESTIAL_ENABLED:-}"
 AGENT_MODEL="${AGENT_MODEL:-}"
+CELESTIAL_BASELINE_PROVIDER=""
+CELESTIAL_BASELINE_MODEL=""
 CELESTIAL_JUDGE_PROVIDER="${CELESTIAL_JUDGE_PROVIDER:-}"
 CELESTIAL_JUDGE_MODEL="${CELESTIAL_JUDGE_MODEL:-}"
 CELESTIAL_CAPTURE_ID="${CELESTIAL_CAPTURE_ID:-capture-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
@@ -99,14 +101,46 @@ if [ "${SHELL_ONLY}" = false ] && [ -z "${CELESTIAL_ENABLED}" ]; then
 fi
 
 if [ "${CELESTIAL_ENABLED}" = "1" ]; then
-  if [ -t 0 ]; then
-    [ -n "${AGENT_MODEL}" ] || read -r -p "Versioned ${AGENT_PROVIDER} executor model: " AGENT_MODEL
-    [ -n "${CELESTIAL_JUDGE_PROVIDER}" ] || read -r -p "Fixed judge [claude|codex]: " CELESTIAL_JUDGE_PROVIDER
-    [ -n "${CELESTIAL_JUDGE_MODEL}" ] || read -r -p "Versioned fixed judge model: " CELESTIAL_JUDGE_MODEL
-  fi
   if [ "${AGENT_PROVIDER}" = "agy" ]; then
-    echo "Error: agy is fail-closed for Celestial calls until no-tool enforcement is verifiable." >&2
-    exit 2
+    echo >&2
+    echo "Agy cannot run isolated Celestial calls." >&2
+    echo "A Claude or Codex secondary will generate the baseline and judge the captured Agy output." >&2
+    if [ -t 0 ]; then
+      if [ -z "${CELESTIAL_JUDGE_PROVIDER}" ]; then
+        read -r -p "Celestial provider: Codex [o] / Claude [c]: " celestial_provider_selection
+        case "${celestial_provider_selection}" in
+          o|O|codex|CODEX) CELESTIAL_JUDGE_PROVIDER=codex ;;
+          c|C|claude|CLAUDE) CELESTIAL_JUDGE_PROVIDER=claude ;;
+          *) echo "Error: invalid Celestial provider selection." >&2; exit 2 ;;
+        esac
+      fi
+      if [ -z "${CELESTIAL_JUDGE_MODEL}" ]; then
+        if [ "${CELESTIAL_JUDGE_PROVIDER}" = "codex" ]; then
+          configured_codex_model=""
+          if [ -f "${ORIG_HOME}/.codex/config.toml" ]; then
+            configured_codex_model="$(sed -nE 's/^[[:space:]]*model[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "${ORIG_HOME}/.codex/config.toml" | head -n 1)"
+          fi
+          if [[ "${configured_codex_model}" =~ ^gpt-[0-9]+(\.[0-9]+)+(-[a-z0-9.-]+)?$ ]]; then
+            read -r -p "Codex model [${configured_codex_model}]: " celestial_model_selection
+            CELESTIAL_JUDGE_MODEL="${celestial_model_selection:-${configured_codex_model}}"
+          else
+            read -r -p "Versioned Codex model (example: gpt-5.4): " CELESTIAL_JUDGE_MODEL
+          fi
+        else
+          read -r -p "Versioned Claude model (example: claude-sonnet-4-20250514): " CELESTIAL_JUDGE_MODEL
+        fi
+      fi
+    fi
+    CELESTIAL_BASELINE_PROVIDER="${CELESTIAL_JUDGE_PROVIDER}"
+    CELESTIAL_BASELINE_MODEL="${CELESTIAL_JUDGE_MODEL}"
+  else
+    if [ -t 0 ]; then
+      [ -n "${AGENT_MODEL}" ] || read -r -p "Versioned ${AGENT_PROVIDER} executor model: " AGENT_MODEL
+      [ -n "${CELESTIAL_JUDGE_PROVIDER}" ] || read -r -p "Fixed judge [claude|codex]: " CELESTIAL_JUDGE_PROVIDER
+      [ -n "${CELESTIAL_JUDGE_MODEL}" ] || read -r -p "Versioned fixed judge model: " CELESTIAL_JUDGE_MODEL
+    fi
+    CELESTIAL_BASELINE_PROVIDER="${AGENT_PROVIDER}"
+    CELESTIAL_BASELINE_MODEL="${AGENT_MODEL}"
   fi
   case "${CELESTIAL_JUDGE_PROVIDER}" in claude|codex) ;; *)
     echo "Error: the Celestial judge must be claude or codex." >&2; exit 2 ;;
@@ -116,6 +150,12 @@ if [ "${CELESTIAL_ENABLED}" = "1" ]; then
   fi
   if [ "${AGENT_PROVIDER}" = "codex" ] && [[ ! "${AGENT_MODEL}" =~ ^gpt-[0-9]+(\.[0-9]+)+(-[a-z0-9.-]+)?$ ]]; then
     echo "Error: Codex requires a versioned model ID." >&2; exit 2
+  fi
+  if [ "${CELESTIAL_BASELINE_PROVIDER}" = "claude" ] && [[ ! "${CELESTIAL_BASELINE_MODEL}" =~ ^claude-[a-z0-9-]+-[0-9]{8}$ ]]; then
+    echo "Error: Claude baseline requires a complete versioned model ID." >&2; exit 2
+  fi
+  if [ "${CELESTIAL_BASELINE_PROVIDER}" = "codex" ] && [[ ! "${CELESTIAL_BASELINE_MODEL}" =~ ^gpt-[0-9]+(\.[0-9]+)+(-[a-z0-9.-]+)?$ ]]; then
+    echo "Error: Codex baseline requires a versioned model ID." >&2; exit 2
   fi
   if [ "${CELESTIAL_JUDGE_PROVIDER}" = "claude" ] && [[ ! "${CELESTIAL_JUDGE_MODEL}" =~ ^claude-[a-z0-9-]+-[0-9]{8}$ ]]; then
     echo "Error: Claude judge requires a complete versioned model ID." >&2; exit 2
@@ -137,7 +177,12 @@ if [ ! -f "${AUTH_FILE}" ]; then
 fi
 
 if [ "${CELESTIAL_ENABLED}" = "1" ]; then
+  BASELINE_AUTH_FILE="$(auth_file_for "${CELESTIAL_BASELINE_PROVIDER}")"
   JUDGE_AUTH_FILE="$(auth_file_for "${CELESTIAL_JUDGE_PROVIDER}")"
+  if [ ! -f "${BASELINE_AUTH_FILE}" ]; then
+    echo "Error: baseline credential file does not exist: ${BASELINE_AUTH_FILE}" >&2
+    exit 1
+  fi
   if [ ! -f "${JUDGE_AUTH_FILE}" ]; then
     echo "Error: judge credential file does not exist: ${JUDGE_AUTH_FILE}" >&2
     exit 1
@@ -163,11 +208,11 @@ RUNS_HOST_DIR="$(realpath "${RUNS_HOST_DIR}")"
 CELESTIAL_HOST_DIR="$(realpath "${CELESTIAL_HOST_DIR}")"
 
 if [ "${CELESTIAL_ENABLED}" = "1" ]; then
-  echo "Building dedicated Celestial ${AGENT_PROVIDER} image..." >&2
+  echo "Building dedicated Celestial ${CELESTIAL_BASELINE_PROVIDER} image..." >&2
   "${DOCKER_CMD[@]}" build -f the_celestial/Dockerfile \
-    --build-arg AGENT_PROVIDER="${AGENT_PROVIDER}" \
-    -t "celestial-${AGENT_PROVIDER}" .
-  if [ "${CELESTIAL_JUDGE_PROVIDER}" != "${AGENT_PROVIDER}" ]; then
+    --build-arg AGENT_PROVIDER="${CELESTIAL_BASELINE_PROVIDER}" \
+    -t "celestial-${CELESTIAL_BASELINE_PROVIDER}" .
+  if [ "${CELESTIAL_JUDGE_PROVIDER}" != "${CELESTIAL_BASELINE_PROVIDER}" ]; then
     echo "Building dedicated Celestial ${CELESTIAL_JUDGE_PROVIDER} image..." >&2
     "${DOCKER_CMD[@]}" build -f the_celestial/Dockerfile \
       --build-arg AGENT_PROVIDER="${CELESTIAL_JUDGE_PROVIDER}" \
@@ -193,11 +238,14 @@ celestial_container() {
 }
 
 if [ "${CELESTIAL_ENABLED}" = "1" ]; then
-  celestial_container "${AGENT_PROVIDER}" "${AUTH_FILE}" \
-    python -m the_celestial.cli capability --provider "${AGENT_PROVIDER}" --model "${AGENT_MODEL}"
-  celestial_container "${CELESTIAL_JUDGE_PROVIDER}" "${JUDGE_AUTH_FILE}" \
-    python -m the_celestial.cli capability --provider "${CELESTIAL_JUDGE_PROVIDER}" \
-    --model "${CELESTIAL_JUDGE_MODEL}"
+  celestial_container "${CELESTIAL_BASELINE_PROVIDER}" "${BASELINE_AUTH_FILE}" \
+    python -m the_celestial.cli capability --provider "${CELESTIAL_BASELINE_PROVIDER}" \
+    --model "${CELESTIAL_BASELINE_MODEL}"
+  if [ "${CELESTIAL_JUDGE_PROVIDER}:${CELESTIAL_JUDGE_MODEL}" != "${CELESTIAL_BASELINE_PROVIDER}:${CELESTIAL_BASELINE_MODEL}" ]; then
+    celestial_container "${CELESTIAL_JUDGE_PROVIDER}" "${JUDGE_AUTH_FILE}" \
+      python -m the_celestial.cli capability --provider "${CELESTIAL_JUDGE_PROVIDER}" \
+      --model "${CELESTIAL_JUDGE_MODEL}"
+  fi
 fi
 
 if [ "${SHELL_ONLY}" = true ]; then
@@ -237,6 +285,8 @@ echo "Starting ${AGENT_PROVIDER} pipeline container..." >&2
   -e CELESTIAL_CAPTURE_ID="${CELESTIAL_CAPTURE_ID}" \
   -e CELESTIAL_ENABLED="${CELESTIAL_ENABLED}" \
   -e AGENT_MODEL="${AGENT_MODEL}" \
+  -e CELESTIAL_BASELINE_PROVIDER="${CELESTIAL_BASELINE_PROVIDER}" \
+  -e CELESTIAL_BASELINE_MODEL="${CELESTIAL_BASELINE_MODEL}" \
   -e CELESTIAL_JUDGE_PROVIDER="${CELESTIAL_JUDGE_PROVIDER}" \
   -e CELESTIAL_JUDGE_MODEL="${CELESTIAL_JUDGE_MODEL}" \
   -v "${DATA_HOST_DIR}:/app/.data" \
@@ -250,7 +300,7 @@ if [ "${SHELL_ONLY}" = true ] || [ "${CELESTIAL_ENABLED}" != "1" ]; then
 fi
 
 echo "The pipeline finished. Calculating the exact benchmark call estimate..." >&2
-plan_json="$(celestial_container "${AGENT_PROVIDER}" "${AUTH_FILE}" \
+plan_json="$(celestial_container "${CELESTIAL_BASELINE_PROVIDER}" "${BASELINE_AUTH_FILE}" \
   python -m the_celestial.cli plan --capture "${CELESTIAL_CAPTURE_ID}")"
 echo "${plan_json}"
 plan_digest="$(echo "${plan_json}" | jq -er .plan_digest)"
@@ -268,7 +318,7 @@ else
   exit 0
 fi
 
-celestial_container "${AGENT_PROVIDER}" "${AUTH_FILE}" \
+celestial_container "${CELESTIAL_BASELINE_PROVIDER}" "${BASELINE_AUTH_FILE}" \
   python -m the_celestial.cli baseline --capture "${CELESTIAL_CAPTURE_ID}" \
   --accept-plan "${plan_digest}"
 

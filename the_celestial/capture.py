@@ -113,15 +113,19 @@ def create_run_request(
     celestial_requested: bool,
     judge_provider: str | None,
     judge_model: str | None,
+    baseline_provider: str | None = None,
+    baseline_model: str | None = None,
 ) -> Path:
     root = capture_root(capture_id)
     request = {
-        "schema_version": 2,
+        "schema_version": 3,
         "capture_id": capture_id,
         "run_id": run_id,
         "run_dir": run_dir,
         "subject_provider": subject_provider,
         "subject_model": subject_model,
+        "baseline_provider": baseline_provider,
+        "baseline_model": baseline_model,
         "celestial_requested": celestial_requested,
         "judge_provider": judge_provider,
         "judge_model": judge_model,
@@ -137,6 +141,8 @@ def create_run_request(
             "run_id",
             "subject_provider",
             "subject_model",
+            "baseline_provider",
+            "baseline_model",
             "celestial_requested",
             "judge_provider",
             "judge_model",
@@ -152,7 +158,7 @@ def create_run_request(
 def update_request(capture_id: str, **updates: Any) -> Path:
     path = capture_root(capture_id) / "request.json"
     value = read_json_object(path)
-    if value.get("schema_version") != 2:
+    if value.get("schema_version") not in {2, 3}:
         raise ValueError("Celestial v1 captures are audit-only; create a new capture")
     value.update(updates)
     value["updated_at"] = utc_now()
@@ -298,7 +304,7 @@ def _file_map(root: Path) -> dict[str, str]:
 def freeze_capture(capture_id: str, *, evidence_roots: list[Path] | None = None) -> Path:
     root = capture_root(capture_id)
     request = read_json_object(root / "request.json")
-    if request.get("schema_version") != 2:
+    if request.get("schema_version") not in {2, 3}:
         raise ValueError("Celestial v1 captures are audit-only")
     if request.get("status") not in {"capture_complete", "frozen", "ready", "captured_disabled"}:
         raise ValueError("Capture must be complete and error-free before freezing")
