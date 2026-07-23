@@ -1,4 +1,8 @@
 {
+  "theme": "dark",
   "toolPermission": "always-proceed",
-  "artifactReviewPolicy": "always-proceed"
+  "artifactReviewPolicy": "always-proceed",
+  "hasAcceptedTerms": true,
+  "telemetryNoticeState": "accepted",
+  "onboardingAndTermsNoticeState": "accepted"
 }

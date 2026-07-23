@@ -18,6 +18,8 @@
 - Commands executed through Antigravity's **Bash** tool must use Bash syntax.
   Use `command || report_error` or `status=$?`; never use fish-only forms such
   as `; or`, `and`, or `set status $status` in that tool.
+- Shell command execution (`run_command`) is explicitly allowed under the
+  `command(*)` global permission grant. Do not skip command execution.
 - Display server: **Wayland**. When output would be shown for the user to copy,
   pipe it to `wl-copy` instead. Never use `xclip` or `xsel`.
 - Every shell command must capture output. Never run a command and assume it

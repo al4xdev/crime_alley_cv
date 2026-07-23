@@ -6,8 +6,10 @@ IMAGE_NAME="crime_alley_pipeline"
 AGENT_PROVIDER="${AGENT_PROVIDER:-}"
 SHELL_ONLY=false
 
+NO_CACHE=false
+
 usage() {
-  echo "Usage: ./start.sh [--agent agy|claude|codex] [--shell]" >&2
+  echo "Usage: ./start.sh [--agent agy|claude|codex] [--shell] [--no-cache]" >&2
 }
 
 auth_file_for() {
@@ -27,6 +29,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --shell)
       SHELL_ONLY=true
+      shift
+      ;;
+    --no-cache)
+      NO_CACHE=true
       shift
       ;;
     -h|--help)
@@ -189,8 +195,13 @@ if [ "${CELESTIAL_ENABLED}" = "1" ]; then
   fi
 fi
 
+BUILD_ARGS=()
+if [ "${NO_CACHE}" = true ]; then
+  BUILD_ARGS+=(--no-cache)
+fi
+
 echo "Building global orchestrator image..." >&2
-"${DOCKER_CMD[@]}" build -t "${IMAGE_NAME}" . || {
+"${DOCKER_CMD[@]}" build "${BUILD_ARGS[@]}" -t "${IMAGE_NAME}" . || {
   echo "Error: Docker build failed." >&2
   exit 1
 }
@@ -209,12 +220,12 @@ CELESTIAL_HOST_DIR="$(realpath "${CELESTIAL_HOST_DIR}")"
 
 if [ "${CELESTIAL_ENABLED}" = "1" ]; then
   echo "Building dedicated Celestial ${CELESTIAL_BASELINE_PROVIDER} image..." >&2
-  "${DOCKER_CMD[@]}" build -f the_celestial/Dockerfile \
+  "${DOCKER_CMD[@]}" build "${BUILD_ARGS[@]}" -f the_celestial/Dockerfile \
     --build-arg AGENT_PROVIDER="${CELESTIAL_BASELINE_PROVIDER}" \
     -t "celestial-${CELESTIAL_BASELINE_PROVIDER}" .
   if [ "${CELESTIAL_JUDGE_PROVIDER}" != "${CELESTIAL_BASELINE_PROVIDER}" ]; then
     echo "Building dedicated Celestial ${CELESTIAL_JUDGE_PROVIDER} image..." >&2
-    "${DOCKER_CMD[@]}" build -f the_celestial/Dockerfile \
+    "${DOCKER_CMD[@]}" build "${BUILD_ARGS[@]}" -f the_celestial/Dockerfile \
       --build-arg AGENT_PROVIDER="${CELESTIAL_JUDGE_PROVIDER}" \
       -t "celestial-${CELESTIAL_JUDGE_PROVIDER}" .
   fi

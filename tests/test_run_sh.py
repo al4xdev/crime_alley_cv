@@ -277,9 +277,9 @@ def test_provider_configs_disable_network_tools_and_memories() -> None:
     assert agy_settings["toolPermission"] == "always-proceed"
     assert agy_settings["artifactReviewPolicy"] == "always-proceed"
     assert "command(*)" in agy_allows
+    assert "mcp(*)" in agy_allows
     assert "read_url(*)" in agy_denies
     assert "execute_url(*)" in agy_denies
-    assert "mcp(*)" in agy_denies
     assert 'config/settings.json" "${SESSION_AUTH_DIR}/settings.json' in agy_setup
     assert 'config/config.json" "${SESSION_GEMINI_DIR}/config/config.json' in agy_setup
     assert "WebFetch" in claude_config["permissions"]["deny"]
